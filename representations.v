@@ -6,60 +6,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicits Defensive.
 
-Definition prod_fun (S S' T T' : Type)
-  (F : S -> T -> Prop) (G : S' -> T' -> Prop) : S * S' -> (T * T') -> Prop :=
-  fun c x => F c.1 x.1 /\ G c.2 x.2.
-
-Definition dom (S T : Type) (f : S -> T -> Prop) (s : S) := exists t, f s t.
-
-Definition is_surjective S T (F: S -> T-> Prop) :=
-  forall t, exists s, F s t.
-
-Lemma prod_surj (S S' T T' : Type) (F: S -> T -> Prop) (G : S' -> T' -> Prop) :
-  is_surjective F /\ is_surjective G -> is_surjective (prod_fun F G).
-Proof.
-  move => [Fissur Gissur] x.
-  move: (Fissur x.1) (Gissur x.2) => [c ciscode] [d discode].
-  by exists (c,d).
-Qed.
-
-Definition is_single_valued S T (F: S -> T -> Prop) :=
-  forall s t t', and (F s t) (F s t') -> t = t'.
-
-Lemma prod_single_valued
-(S S' T T' : Type) (F: S -> T -> Prop) (G : S' -> T' -> Prop) :
-  is_single_valued F /\ is_single_valued G -> is_single_valued (prod_fun F G).
-Proof.
-  move => [Fissing Gissing] a x y.
-    move => [] [a0isxname a1isxname] [a0isyname a1isyname].
-    apply: injective_projections.
-    - apply: (Fissing (a.1) x.1 y.1).
-      by split.
-    - apply: (Gissing (a.2) x.2 y.2).
-      by split.
-Qed.
-
-Definition is_rep S T (is_name: S -> T -> Prop) :=
-  is_surjective is_name /\ is_single_valued is_name.
-
-Lemma product_rep (S S' T T' : Type) (F : S -> T -> Prop) (G : S' -> T' -> Prop) :
-  is_rep F -> is_rep G -> is_rep (prod_fun F G).
-Proof.
-  move => [Fissur Fissing] [Gissur Gissing].
-  split.
-  - exact : prod_surj.
-  - exact : prod_single_valued.
-Qed.
-
-Lemma id_rep (S :Type) : is_rep (fun (a b : S) => a = b).
-Proof.
-  split.
-  - move => a.
-    by exists a.
-  - move => c a b [cea ceb].
-    by rewrite -cea -ceb.
-Qed.
-
 Structure SizeType := size_type {
   elems :> Type;
   size : elems -> nat;
@@ -124,12 +70,30 @@ Canonical Q := @size_type
   size_Q
   (QArith_base.Qmake 0 1).
 
+Definition is_fun S T (F: S -> T -> Prop) :=
+  forall s t t', and (F s t) (F s t') -> t = t'.
+
+Definition is_sur S T (F: S -> T-> Prop) :=
+  forall t, exists s, F s t.
+
+Definition is_rep S T (delta: S -> T -> Prop) :=
+  is_sur delta /\ is_fun delta.
+
 Structure Compsp := Compspace {
   elts :> Type;
   codes : SizeType;
   is_code : codes -> elts -> Prop;
   not_is_valid : is_rep is_code;
   }.
+
+Lemma id_rep (S :Type) : is_rep (fun (a b : S) => a = b).
+Proof.
+  split.
+  - move => a.
+    by exists a.
+  - move => c a b [cea ceb].
+    by rewrite -cea -ceb.
+Qed.
 
 Canonical Compspace_nat := @Compspace
   nat
@@ -196,9 +160,11 @@ Structure Repsp := Repspace
   elements :> Type;
   questions : SizeType;
   answers: SizeType;
-  is_descr : (questions -> answers) -> elements -> Prop;
+  is_descr: (questions -> answers) -> elements -> Prop;
   representation_is_valid : is_rep is_descr;
 }.
+
+Definition descriptions (X : Repsp):Type := (questions X)-> (answers X).
 
 Definition prod_rep (X Y : Repsp) := fun phi z =>
     (is_descr (fun c => 
@@ -231,11 +197,12 @@ Proof.
                                  | inr _ => inh (answers X)
                                  end) x.1 y.1).
       done.
-    - apply (issingx (fun c : questions Y => match phi (inr c) with
+    - apply (issingy (fun c : questions Y => match phi (inr c) with
                                  | inr a => a
                                  | inl _ => inh (answers Y)
                                  end) x.2 y.2).
       done.
+Qed.
 
 Canonical Repspace_prod X Y := @Repspace
   (elements X * elements Y)
@@ -252,7 +219,7 @@ Canonical Repspace_prod X Y := @Repspace
         | inr a => a
         | inl b => inh (answers Y)
       end) z.2))
-  (product_rep (@representation_is_valid X) (@representation_is_valid Y)).
+  (prod_rep_is_rep X Y).
 
 Lemma not_to_rep (S X : Type) (is_code: S -> X -> Prop) :
   is_rep is_code -> is_rep (fun (phi : one -> S) (x : X) =>
@@ -274,28 +241,20 @@ Canonical Repspace_from_Compspace (M : Compsp) := @Repspace
   (fun phi x => is_code (phi star) x)
   (not_to_rep (not_is_valid M)).
 
-Canonical Repspace_sum X Y := @Repspace
-  (elements X + elements Y)
-  (questions X + questions Y)
-  (answers X + answers Y + SizeType_one)
-  (fun phi z => match z with
-    | inl x =>
+Definition is_rlzr (X Y : Compsp) phi (f : X -> Y) :=
+  forall a x, is_code a x -> is_code (phi a) (f x).
 
-Definition is_realizer (X Y : Repsp) phi (f : X -> Y) :=
-  forall a x, is_name a x -> is_name (phi a) (f x).
-
-Lemma function_representation (X Y : Repsp):
-  (exists (d : (names Y)), True) -> is_rep (@is_realizer X Y).
+Lemma function_repsp (X Y : Compsp): is_rep (@is_rlzr X Y).
 Proof.
-  move: (representation_is_valid X) (representation_is_valid Y)
-    => [Xsur Xsing] [Ysur Ysing] [d' _].
-  set C := names X.
-  set D := names Y.
+  move: (not_is_valid X) (not_is_valid Y)
+    => [Xsur Xsing] [Ysur Ysing].
+  set C := codes X.
+  set D := codes Y.
   split.
   - move => f.
-    set R := fun c d => forall x, is_name c x -> is_name d (f x).
-    apply: (@choice (names X) (names Y) R) => c.
-    case: (classic (exists x, is_name c x)).
+    set R := fun c d => forall x, is_code c x -> is_code d (f x).
+    apply: (@choice (codes X) (codes Y) R) => c.
+    case: (classic (exists x, is_code c x)).
     - move => [x xisnameofc].
       move: (Ysur (f x)) => [d dinofx].
       exists d.
@@ -305,7 +264,51 @@ Proof.
       move => xeqx0.
       by rewrite -xeqx0.
     - move => assump.
-      exists d'.
+      exists (inh (codes Y)).
+      move => x cisnox.
+      exfalso.
+      apply: assump.
+      by exists x.
+  - move => phi f g [isnamex isnamey].
+    apply: functional_extensionality => x.
+    move: (Xsur x) => [a ainox].
+    apply (Ysing (phi a) (f x) (g x)).
+    split.
+    - by apply isnamex.
+    - by apply isnamey.
+Qed.
+
+Canonical Repspace_fun (X Y : Compsp) := @Repspace
+  (X -> Y)
+  (codes X)
+  (codes Y)
+  (@is_rlzr X Y)
+  ((@function_repsp X Y)).
+
+Definition is_realizer (X Y : Repsp) phi (f : X -> Y) :=
+  forall a x, is_descr a x -> is_descr (phi a) (f x).
+
+Lemma function_representation (X Y : Repsp): is_rep (@is_realizer X Y).
+Proof.
+  move: (representation_is_valid X) (representation_is_valid Y)
+    => [Xsur Xsing] [Ysur Ysing].
+  set C := descriptions X.
+  set D := descriptions Y.
+  split.
+  - move => f.
+    set R := fun c d => forall x, is_descr c x -> is_descr d (f x).
+    apply: (@choice (descriptions X) (descriptions Y) R) => c.
+    case: (classic (exists x, is_descr c x)).
+    - move => [x xisnameofc].
+      move: (Ysur (f x)) => [d dinofx].
+      exists d.
+      move => x0 cinox0.
+      have: x = x0.
+      - by apply: (Xsing c x x0).
+      move => xeqx0.
+      by rewrite -xeqx0.
+    - move => assump.
+      exists (fun c => inh (answers Y)).
       move => x cisnox.
       exfalso.
       apply: assump.
