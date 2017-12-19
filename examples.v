@@ -1,6 +1,6 @@
-From mathcomp Require Import all_ssreflect ssrnat.
-Require Import Reals Lra Classical ClassicalFacts Psatz.
 Load representations.
+From mathcomp Require Import ssrnat.
+Require Import Reals Lra Classical ClassicalFacts Psatz.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -136,20 +136,22 @@ Qed.
 
 Definition Q2R (q : QArith_base.Q) : R := QArith_base.Qnum q * / QArith_base.QDen q.
 
-Coercion Q2R : QArith_base.Q >-> R.
+Notation Q := QArith_base.Q.
+
+Coercion Q2R : Q >-> R.
 
 Definition rep_R : (nat -> Q*Q) -> R -> Prop := fun phi x => forall n,
   Rabs(x-(phi n).1) <= (phi n).2 /\ forall eps, exists n, (phi n).2<= eps.
 
 Canonical Repspace_R := @Repspace
   R
-  (SizeType_nat->SizeType_Z)
+  (nat->Z)
   (fun n => Z0)
   C_rep_R
   CrepRisrep.
 
 Definition is_computable (X Y: Repsp) (f: X -> Y):=
-  exists phi, is_realizer phi f.
+  exists F, is_realizer F f.
 
 Lemma idiscomputable : is_computable (id : R -> R).
 Proof.
@@ -189,7 +191,6 @@ Qed.
 Lemma rounding_R (d : Z) : (d-2<= 4*round_4(d) <= d+2)%R.
 Admitted.
 
-Open Scope R_scope.
 Lemma additioniscomputable : is_computable (fun x => Rplus (x.1) (x.2)).
 Proof.
   Definition addition_realizer (phi : descriptions Repspace_R* descriptions Repspace_R) n : Z :=

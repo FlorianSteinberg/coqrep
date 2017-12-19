@@ -28,6 +28,7 @@ Fixpoint eval (P : type) l n :=
 Definition sopeq (P Q : type) :=
   forall l n, eval P l n = eval Q l n.
 End Sop.
+
 Notation sop := Sop.type.
 Delimit Scope sop_scope with sop.
 Bind Scope sop_scope with sop.
