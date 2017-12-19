@@ -25,9 +25,14 @@ Definition mf_sum (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') : (S + S') ->
       | inr z => g b z
     end
   end.
+(* the sum of multivalued functions is not used anywhere so far. Probably because it the use of
+sums is rather unusual for represented spaces. While infinite coproducts show up for some weird
+spaces like polynomials or analytic functions I have not seen finite coproducts very often. *)
 
 Definition mf_prod (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') : (S * S') ->> (T * T') :=
   fun c x => f c.1 x.1 /\ g c.2 x.2.
+(* in contrast to coproducts, products are very common and I have already included several lemmas
+about them because I needed them. *)
 
 Notation "f , g" := (mf_prod f g) (format "f , g", at level 50).
 (*This is the notation for the tupling of multifunctions, it clashes with the pair notation *)
