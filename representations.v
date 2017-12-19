@@ -1,18 +1,9 @@
-From mathcomp Require Import all_ssreflect ssrnat.
+Load functions.
 Require Import ClassicalChoice FunctionalExtensionality.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicits Defensive.
-
-Definition is_fun S T (F: S -> T -> Prop) :=
-  forall s t t', and (F s t) (F s t') -> t = t'.
-
-Definition is_sur S T (F: S -> T-> Prop) :=
-  forall t, exists s, F s t.
-
-Definition is_rep S T (delta: S -> T -> Prop) :=
-  is_sur delta /\ is_fun delta.
 
 Structure Repsp := Repspace {
   space :> Type;
