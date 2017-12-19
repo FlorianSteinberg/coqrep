@@ -34,7 +34,7 @@ Notation "f , g" := (mf_prod f g) (format "f , g", at level 50).
 
 Definition is_sing S T (f: S ->> T) :=
   forall s t t', and (f s t) (f s t') -> t = t'.
-(* a single valued function is still a PARTIAL function *)
+(* a single valued function is still a partial function *)
 
 Lemma prod_sing S S' T T' (f: S ->> T) (g : S' ->> T') :
   is_sing f /\ is_sing g -> is_sing (f , g).
