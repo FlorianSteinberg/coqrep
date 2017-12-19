@@ -48,6 +48,15 @@ Definition is_realizer (X Y : rep_space) (F: names X -> names Y) (f : X -> Y) :=
   forall phi x, is_name phi x -> is_name (F phi) (f x).
 (* A second candidate: the total singlevalued realizable functions *)
 
+Definition is_computable (X Y : rep_space) (F: names X -> names Y) (f : X -> Y) :=
+  forall phi x, is_name phi x -> is_name (F phi) (f x).
+(* I don't like this notion of computability as it requires the existence of a total
+realizer. I think actually the realizer will automatically be primitive recursive.
+Of course the use of mathematical functions is not debatable but I want to replace it
+by a better notion of computability at some point. A candidate can be found at the end
+of the functions.v file, but that candidate is not usable yet, so I will work with the
+above notion of computability for now. *)
+
 Require Import ClassicalChoice FunctionalExtensionality.
 (* These are only needed to guarantee that it is always possible to provide a
 realizer of a function. *)
