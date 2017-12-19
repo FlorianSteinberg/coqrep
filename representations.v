@@ -48,8 +48,8 @@ Definition is_realizer (X Y : rep_space) (F: names X -> names Y) (f : X -> Y) :=
   forall phi x, is_name phi x -> is_name (F phi) (f x).
 (* A second candidate: the total singlevalued realizable functions *)
 
-Definition is_computable (X Y : rep_space) (F: names X -> names Y) (f : X -> Y) :=
-  forall phi x, is_name phi x -> is_name (F phi) (f x).
+Definition is_computable (X Y : rep_space) (f : X -> Y) :=
+  exists F, is_realizer F f.
 (* I don't like this notion of computability as it requires the existence of a total
 realizer. I think actually the realizer will automatically be primitive recursive.
 Of course the use of mathematical functions is not debatable but I want to replace it
