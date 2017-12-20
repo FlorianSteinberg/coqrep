@@ -234,41 +234,21 @@ Qed.
 (* This is a trivial example. The proof looks nice, though... The next example uses the product
 construction that was introduced in the file representations.v *)
 
-(* Lemma cond_eq_nat : forall x y, (forall n, (P2R n) * Rabs (x - y) <= 1) -> x = y.
-Admitted. *)
-(* This will be needed in the next proof. Since the proof is not finished I don't need it yet. *)
-
 Lemma Rplus_is_computable : is_computable (fun x => Rplus (x.1) (x.2)).
 Proof.
   Definition Rplus_realizer (phi : names rep_space_R * names rep_space_R) eps : Q :=
     (Qplus (phi.1 (Qmult (Qmake 1 2) eps)) (phi.2(Qmult (Qmake 1 2) eps))).
   exists Rplus_realizer.
   move => phi x [phi0 phi1] eps eg0.
+  rewrite /Rplus_realizer.
+  Search _ "Ropp".
+  rewrite plus_Q2R.
   set r := phi.1 (Qmult (Qmake 1 2) eps).
   set q := phi.2 (Qmult (Qmake 1 2) eps).
-  have round : (Rabs((Rplus_realizer phi eps) -r-q) <= /2).
-  rewrite /Rplus_realizer /=.
-  rewrite /r /q.
-Admitted.
-(*
-  rewrite plus_IZR in stufffff.
-  split_Rabs; try lra.
-  admit.
-  have rapprox : Rabs(x.1 - r/2^n) <= 2^n.+2.
-  move : phi0.
-  rewrite /(is_name).
-  Search _ "Int_part".
-  admit.
-  have qapprox : Rabs(x.2 - q/2^n) <= 2^n.+2.
-  admit.
-  set sum := Rabs( x.1 + x.2 - (r+q)/2^n) + Rabs(addition_realizer phi n -r-q)/2^n.
-  have add : sum <= /2^n.
-  admit.
-  suff esti: Rabs(x.1 + x.2 -addition_realizer phi n /2^n) <= sum.
-  apply : (Rle_trans _ sum) => //.
-  by rewrite /Rdiv Rmult_1_l.
-  admit.
-*)
+  rewrite /Rminus.
+  rewrite Ropp_plus_distr.
+  rewrite Rplus_assoc.
+  Admitted.
 
 (* Frome here on I try to work with the traditional Cauchy representation used by people who
 do complexity theory based on the TTE approach but who don't want to talk about signed digits.
