@@ -90,6 +90,5 @@ neither be singlevalued nor total. *)
 Definition is_comp S T (f: S ->> T):=
   exists M, forall s, (exists t, f s t) -> forall t, eval M s t -> f s t.
 (* This is the best candidate for computability I have come up with so far: If there are eligible
-return values then the machine produces one of these, but if there are not the machine may behave
-arbitrarily. I am not one hundred percent sure this is the right notion, but pretty confident.
-if it is a good one, though. *)
+return values then the machine produces one of these, but if there are none, the machine may behave
+arbitrarily. I am not one hundred percent sure this is the right notion, but pretty confident. *)
