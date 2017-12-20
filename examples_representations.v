@@ -55,9 +55,7 @@ and then to a real numbers. I think that is stuped so I tried to replace it. How
 out that IZR is used in some lemmas, so I need to rely on it anyway. *)
 Definition Q2R q := QArith_base.Qnum q / QArith_base.QDen q.
 Coercion Q2R : Q >-> R.
-Definition Z2Q z := Qmake z xH.
-Coercion Z2Q : Z >-> Q.
-(* This should actually not be coerced since it leads to ambiguous paths. *)
+(* This is not coerced since it leads to ambiguous paths. *)
 (* \end{syntacticalsuggar} *)
 (* It turns out that these coercions are not enough. To avoid heaps of burocracy I need to find
 a way to also coerce the operators. Any hints about how to do this in a reasonable way are
@@ -138,8 +136,8 @@ apply: lt0_Q2R; lra.
 Qed.
 (* \end{usefulllemmas} *)
 
-Definition rep_R : (positive -> Q) -> R -> Prop :=
-  fun phi x => forall n, (P2R n) * Rabs(x-(phi n)) <= 1.
+Definition rep_R : (Q -> Q) -> R -> Prop :=
+  fun phi x => forall eps, (0 < eps)%Q -> Rabs(x-(phi eps)) <= eps.
 (* This is close to the standard definition of the chauchy representation. Usually integers
 are prefered to avoid to many possible answers. I try this further down but it leads to 
 extensive additional work so I gave up at some point. I also moved the error bound to the
@@ -150,11 +148,11 @@ different types. Also I feel like this is the most natural formulation of the Ca
 representation. (Compare for instance "bounded time computation for metric spaces and Banach
 spaces" by Matthias and me.) *)
 
-Lemma INR_Pos_to_nat_P2R: forall n, INR( Pos.to_nat n) = P2R n.
+(* Lemma INR_Pos_to_nat_P2R: forall n, INR( Pos.to_nat n) = P2R n.
 Admitted.
 Lemma pos_positive: forall n, P2R n > 0.
 Admitted.
-(* Todo: proof these. Am I missing something, or is the type positive unusable in its current form? *)
+Todo: proof these. Am I missing something, or is the type positive unusable in its current form? *)
 
 
 Lemma approx : forall r, r - Int_part r <= 1.
@@ -171,35 +169,41 @@ Qed.
 
 Lemma rep_R_is_sur: is_sur rep_R.
 Proof.
-  move => t.
-  exists (fun n => Qmake (Int_part(t*(P2R n))) n).
-  move => n.
+  move => x.
+  exists (fun eps => Qmult eps (Qmake(Int_part(x/eps)) xH)).
+  move => eps eg0.
+  rewrite mul_Q2R.
+  rewrite Q2R_make1.
   rewrite Rabs_pos_eq.
-  - rewrite Rmult_minus_distr_l.
-    rewrite -!Rmult_assoc /=.
-    rewrite (INR_Pos_to_nat_P2R (n)).
-    rewrite !(Rmult_comm (P2R n)).
-    rewrite !Rmult_assoc.
-    rewrite (Rinv_r (P2R n)).
-    - rewrite !Rmult_1_r.
-      apply (approx (t * (P2R n))).
+  - rewrite -{1}(Rmult_1_l x).
+    rewrite -(Rinv_r (eps)).
+    rewrite Rmult_assoc.
+    rewrite -{5}(Rmult_1_r eps).
+    rewrite -(Rmult_minus_distr_l eps).
+    - apply: (Rmult_le_compat_l (eps)).
+      apply: le0_Q2R.
+      by apply: Qlt_le_weak.
+    rewrite (Rmult_comm (/eps)).
+    rewrite /Rdiv.
+    apply (approx (x * /eps)).
     apply: Rlt_dichotomy_converse.
     right.
-    apply: pos_positive.
-  apply: (Rmult_le_reg_l (P2R n)).
-  - apply: pos_positive.
-  rewrite Rmult_minus_distr_l.
-  rewrite -!Rmult_assoc /=.
-  rewrite (INR_Pos_to_nat_P2R (n)).
+    by apply: lt0_Q2R.
+  apply: (Rmult_le_reg_l (/eps));last first.
   rewrite Rmult_0_r.
-  rewrite !(Rmult_comm (P2R n)).
-  rewrite Rmult_assoc.
-  rewrite (Rinv_r (P2R n)).
-  - rewrite Rmult_1_r.
-    apply approx'.
-  apply Rlt_dichotomy_converse.
-  right.
-  apply: pos_positive.
+  rewrite Rmult_minus_distr_l.
+  rewrite -Rmult_assoc.
+  Search _ "Rinv".
+  rewrite -(Rinv_l_sym eps).
+  - rewrite Rmult_1_l.
+    rewrite (Rmult_comm (/eps)).
+    rewrite /Rdiv.
+    apply (approx' (x * /eps)).
+    apply: Rlt_dichotomy_converse.
+    right.
+    by apply: lt0_Q2R.
+  apply : Rinv_0_lt_compat.
+  by apply: lt0_Q2R.
 Qed.
 
 Lemma rep_R_is_sing: is_sing rep_R.
@@ -218,7 +222,7 @@ Qed.
 
 Canonical rep_space_R := @make_rep_space
   R
-  (positive -> Q)
+  (Q -> Q)
   (fun n => Qmake Z0 xH)
   rep_R
   rep_R_is_rep.
@@ -236,13 +240,13 @@ Admitted. *)
 
 Lemma Rplus_is_computable : is_computable (fun x => Rplus (x.1) (x.2)).
 Proof.
-  Definition Rplus_realizer (phi : names rep_space_R * names rep_space_R) n : Q :=
-    (QArith_base.Qplus (phi.1 (xO n)) (phi.2 (xO n))).
+  Definition Rplus_realizer (phi : names rep_space_R * names rep_space_R) eps : Q :=
+    (Qplus (phi.1 (Qmult (Qmake 1 2) eps)) (phi.2(Qmult (Qmake 1 2) eps))).
   exists Rplus_realizer.
-  move => phi x [phi0 phi1] n.
-  set r := phi.1 (xO n).
-  set q := phi.2 (xO n).
-  have round : (Rabs((Rplus_realizer phi n) -r-q) <= /2).
+  move => phi x [phi0 phi1] eps eg0.
+  set r := phi.1 (Qmult (Qmake 1 2) eps).
+  set q := phi.2 (Qmult (Qmake 1 2) eps).
+  have round : (Rabs((Rplus_realizer phi eps) -r-q) <= /2).
   rewrite /Rplus_realizer /=.
   rewrite /r /q.
 Admitted.
