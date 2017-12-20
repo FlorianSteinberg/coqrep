@@ -1,6 +1,8 @@
 (*This file is supposed to contain the knowledge needed about second-order
 polynomials to prove the closure of polynomial time computable operators
-under composition. It is currently a mess and needs to be cleaned up. *)
+under composition. It is currently a mess and needs to be cleaned up. I want
+to eventually make this another example of representations, but I do not yet
+know how to use subtypes properly. *)
 
 From mathcomp Require Import all_ssreflect.
 Set Implicit Arguments.

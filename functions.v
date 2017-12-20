@@ -9,6 +9,9 @@ Unset Printing Implicits Defensive.
 Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 (*This is the notation I use for multivalued functions *)
 
+Definition F2MF S T (f : S -> T) s t := f(s) = t.
+(* I'd like this to be a Coercion but it won't allow me to do so. *)
+
 Definition mf_concat (R S T : Type) (f : R ->> S) (g : S ->> T) : R ->> T :=
   fun r t => forall s, f r s -> g s t.
 (* Eventhough multivalued functions are relations, this is different from the relational
@@ -53,8 +56,9 @@ Proof.
       by split.
 Qed.
 
-Definition is_sur S T (F: S ->> T) :=
-  forall t, exists s, F s t.
+Definition range S T (f: S ->> T) (t : T) := exists s, f s t.
+
+Definition is_sur S T (f: S ->> T) := forall t, range f t.
 
 Lemma prod_sur S S' T T' (f: S ->> T) (g : S' ->> T') :
   is_sur f /\ is_sur g -> is_sur (f , g).

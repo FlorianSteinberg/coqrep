@@ -5,9 +5,8 @@ here, i.e. the set of all mappings from strings to strings. However, since I don
 to rely on a handwritten type of strings as I attempted in the file "operators.v", and
 use more generaly a space S -> T as substitute for B, I have to make some assumptions
 about the types S and T. This is why I came up with "SizeTypes", that are defined in the
-separate file "sizetypes.v" and are used here. *)
-Load functions.
-Load sizetypes.
+separate file "SizeTypes.v" and are used here. *)
+Load SizeTypes.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
