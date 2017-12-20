@@ -47,6 +47,8 @@ Definition is_mf_realizer (X Y : rep_space) (F: names X -> names Y) (f : X ->> Y
 Definition is_realizer (X Y : rep_space) (F: names X -> names Y) (f : X -> Y) :=
   forall phi x, is_name phi x -> is_name (F phi) (f x).
 (* A second candidate: the total singlevalued realizable functions *)
+Arguments is_realizer {X Y}.
+(* Syntactical suggar *)
 
 Definition is_computable (X Y : rep_space) (f : X -> Y) :=
   exists F, is_realizer F f.
@@ -94,6 +96,9 @@ Proof.
     - by apply isnamex.
     - by apply isnamey.
 Qed.
+Arguments is_realizer_is_rep {X Y}.
+(* Syntactical suggar *)
+
 (* Using this lemma it is possible to provide a full functionspace construction
 This functionspace construction will usually be utterly useless as the types
 of names become higher and higher type objects. For a better function space one
@@ -104,5 +109,5 @@ Canonical rep_space_all_functions X Y := @make_rep_space
   (space X -> space Y)
   (names X -> names Y)
   (fun c => (inhe Y))
-  (@is_realizer X Y)
-  (@is_realizer_is_rep X Y).
+  (is_realizer)
+  (is_realizer_is_rep).

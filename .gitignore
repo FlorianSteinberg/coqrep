@@ -1,2 +1,5 @@
 *.cache
 *#
+*.aux
+*.glob
+*.stackdump

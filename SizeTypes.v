@@ -11,6 +11,8 @@ Structure SizeType := size_type {
   size : elems -> nat;
   inh: elems
   }.
+(* I am unsure if the type of the size function is correct. Maybe it should be a
+mathematical function. *)
 
 Inductive one : Type :=
   | star.

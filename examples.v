@@ -6,34 +6,82 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicits Defensive.
 
-(* The following is just to make the rest look nicer. *)
+Local Open Scope Z_scope.
+(* This is some auxilliary stuff whose proof breaks if an R_scope is opened.
+Ignore them for now *)
+Definition round_4 (d : Z) : Z := ((d / 2 + 1) / 2)%Z.
+Lemma rounding (d : Z): (d-2<= 4*round_4(d) <= d+2)%Z.
+Proof.
+  rewrite /round_4.
+  Search Z.div Z.modulo.
+  rewrite  (Zdiv.Z_div_mod_eq d 4); try lia.
+  replace (4*(d/4)) with (d/4*2*2) by ring.
+  rewrite Zdiv.Z_div_plus_full_l; try lia.
+  rewrite Zplus_assoc_reverse.
+  rewrite Zdiv.Z_div_plus_full_l; try lia.
+  have : d mod 4 = 0 \/ d mod 4 = 1 \/ d mod 4 = 2 \/ d mod 4 = 3.
+  Search Z.modulo.
+  have : 0 <= d mod 4 < 4.
+  apply: Zdiv.Z_mod_lt; lia.
+  lia.
+  (case; [idtac|case;[idtac| case]]) => -> ;
+  rewrite [(_/_ + _)/2] /=.
+  change (1/2) with 0.
+  lia.
+  change (1/2) with 0.
+  lia.
+  change (2/2) with 1.
+  lia.
+  change (2/2) with 1.
+  lia.
+Qed.
+Import QArith.
 Local Open Scope R_scope.
-Coercion IZR : Z >-> R.
-Definition Q2R (q : QArith_base.Q) : R := QArith_base.Qnum q / QArith_base.QDen q.
-Notation Q := QArith_base.Q.
-Notation Qmake := QArith_base.Qmake.
-Coercion Q2R : Q >-> R.
-Coercion Pos.of_nat : nat >-> positive.
-Print positive.
-Fixpoint IPR (n : positive) : R := match n with
-  | xH => 1
-  | xO m => 2* IPR m
-  | xI k => 2* IPR k +1
-end.
-Coercion IPR : positive >-> R.
 
-Lemma INR_Pos_to_nat_IPR: forall n, INR( Pos.to_nat n) = IPR n.
-Admitted.
-Lemma pos_positive: forall n, IPR n > 0.
-Admitted.
-(* Todo: proof these. Am I missing something, or is the type positive unusable in its current form? *)
+(* \begin{syntacticsuggar} *)
+Fixpoint P2R n := match n with
+  | xH => 1
+  | xO m => 2* P2R m
+  | xI k => 2* P2R k + 1
+end.
+(* It eludes my why this function is not provided under the name IPR in the standard Library *)
+Fixpoint Z2R z := match z with
+  | Z0 => 0
+  | Zpos n => P2R n
+  | Zneg m => - P2R m
+end.
+Coercion IZR : Z >-> R.
+(* The translation IZR from the standard library translates to natural numbers in unary
+and then to a real numbers. I think that is stuped so I tried to replace it. However, it turns
+out that IZR is used in some lemmas, so I need to rely on it anyway. *)
+Definition Q2R q := QArith_base.Qnum q / QArith_base.QDen q.
+Coercion Q2R : Q >-> R.
+Definition Z2Q z := Qmake z xH.
+Coercion Z2Q : Z >-> Q.
+(* This should actually not be coerced since it leads to ambiguous paths. *)
+(* \end{syntacticalsuggar} *)
+(* It turns out that these coercions are not enough. To avoid heaps of burocracy I need to find
+a way to also coerce the operators. Any hints about how to do this in a reasonable way are
+appreciated *)
 
 Definition rep_R : (positive -> Q) -> R -> Prop :=
-  fun phi x => forall n, (IPR n) * Rabs(x-(phi n)) <= 1.
+  fun phi x => forall n, (P2R n) * Rabs(x-(phi n)) <= 1.
 (* This is close to the standard definition of the chauchy representation. Usually integers
 are prefered to avoid to many possible answers. I try this further down but it leads to 
 extensive additional work so I gave up at some point. I also moved the error bound to the
-left side of the inequality because it is better for the proofs. *)
+left side of the inequality because it is better for the proofs. I'll probbably change the
+type of names to Q -> Q soon. Most difficulties are encountered because of translations
+between different types not working properly, so it seems good to avoid the use of to many
+different types. Also I feel like this is the most natural formulation of the Cauchy
+representation. (Compare for instance "bounded time computation for metric spaces and Banach
+spaces" by Matthias and me.) *)
+
+Lemma INR_Pos_to_nat_P2R: forall n, INR( Pos.to_nat n) = P2R n.
+Admitted.
+Lemma pos_positive: forall n, P2R n > 0.
+Admitted.
+(* Todo: proof these. Am I missing something, or is the type positive unusable in its current form? *)
+
 
 Lemma approx : forall r, r - Int_part r <= 1.
 Proof.
@@ -50,29 +98,29 @@ Qed.
 Lemma rep_R_is_sur: is_sur rep_R.
 Proof.
   move => t.
-  exists (fun n => Qmake (Int_part(t*(IPR n))) n).
+  exists (fun n => Qmake (Int_part(t*(P2R n))) n).
   move => n.
   rewrite Rabs_pos_eq.
   - rewrite Rmult_minus_distr_l.
     rewrite -!Rmult_assoc /=.
-    rewrite (INR_Pos_to_nat_IPR (n)).
-    rewrite !(Rmult_comm (IPR n)).
+    rewrite (INR_Pos_to_nat_P2R (n)).
+    rewrite !(Rmult_comm (P2R n)).
     rewrite !Rmult_assoc.
-    rewrite (Rinv_r (IPR n)).
+    rewrite (Rinv_r (P2R n)).
     - rewrite !Rmult_1_r.
-      apply (approx (t * (IPR n))).
+      apply (approx (t * (P2R n))).
     apply: Rlt_dichotomy_converse.
     right.
     apply: pos_positive.
-  apply: (Rmult_le_reg_l (IPR n)).
+  apply: (Rmult_le_reg_l (P2R n)).
   - apply: pos_positive.
   rewrite Rmult_minus_distr_l.
   rewrite -!Rmult_assoc /=.
-  rewrite (INR_Pos_to_nat_IPR (n)).
+  rewrite (INR_Pos_to_nat_P2R (n)).
   rewrite Rmult_0_r.
-  rewrite !(Rmult_comm (IPR n)).
+  rewrite !(Rmult_comm (P2R n)).
   rewrite Rmult_assoc.
-  rewrite (Rinv_r (IPR n)).
+  rewrite (Rinv_r (P2R n)).
   - rewrite Rmult_1_r.
     apply approx'.
   apply Rlt_dichotomy_converse.
@@ -80,13 +128,12 @@ Proof.
   apply: pos_positive.
 Qed.
 
-Lemma cond_eq_nat : forall x y, (forall n, (IPR n) * Rabs (x - y) <= 1) -> x = y.
-Admitted.
-
 Lemma rep_R_is_sing: is_sing rep_R.
 Admitted.
-(* These two are Admitted here, but the proofs are carried out for the cauchy representation
-below. They do not carry over easily, and I have not had time to fix that. *)
+
+(* This is Admitted here. The proof of this statement for the more traditional cauchy representation
+is carried out below. The proofs do not carry over easily but simplify a lot (compare the proof of the
+surjectivity to that of the traditional cauchy representation) *)
 
 Lemma rep_R_is_rep: is_rep rep_R.
 Proof.
@@ -102,24 +149,30 @@ Canonical rep_space_R := @make_rep_space
   rep_R
   rep_R_is_rep.
 
-Lemma idiscomputable : is_computable (id : R -> R).
+Lemma id_is_computable : is_computable (id : R -> R).
 Proof.
   by exists (fun phi=>phi).
 Qed.
 (* This is a trivial example. The proof looks nice, though... The next example uses the product
 construction that was introduced in the file representations.v *)
 
-Lemma additioniscomputable : is_computable (fun x => Rplus (x.1) (x.2)).
+(* Lemma cond_eq_nat : forall x y, (forall n, (P2R n) * Rabs (x - y) <= 1) -> x = y.
+Admitted. *)
+(* This will be needed in the next proof. Since the proof is not finished I don't need it yet. *)
+
+Lemma Rplus_is_computable : is_computable (fun x => Rplus (x.1) (x.2)).
 Proof.
-  Definition addition_realizer (phi : names rep_space_R * names rep_space_R) n : Q :=
+  Definition Rplus_realizer (phi : names rep_space_R * names rep_space_R) n : Q :=
     (QArith_base.Qplus (phi.1 (xO n)) (phi.2 (xO n))).
-  exists addition_realizer.
+  exists Rplus_realizer.
   move => phi x [phi0 phi1] n.
   set r := phi.1 (xO n).
   set q := phi.2 (xO n).
-  have round : (Rabs((addition_realizer phi n) -r-q) <= /2).
-  rewrite /addition_realizer /=.
+  have round : (Rabs((Rplus_realizer phi n) -r-q) <= /2).
+  rewrite /Rplus_realizer /=.
   rewrite /r /q.
+Admitted.
+(*
   rewrite plus_IZR in stufffff.
   split_Rabs; try lra.
   admit.
@@ -137,6 +190,12 @@ Proof.
   apply : (Rle_trans _ sum) => //.
   by rewrite /Rdiv Rmult_1_l.
   admit.
+*)
+
+(* Frome here on I try to work with the traditional Cauchy representation used by people who
+do complexity theory based on the TTE approach but who don't want to talk about signed digits.
+I do not suggest trying to follow the proofs, they are pretty technical and I want to move
+away from this. Some of the proofs where provided by Laurent Thiery. *)
 
 Definition C_rep_R : (nat -> Z) -> R -> Prop := fun phi x => forall n,
   Rabs(x-(phi n) / 2^n) <= (1/2^n).
@@ -250,77 +309,51 @@ Proof.
   lra.
 Qed.
 
-Canonical Repspace_R := @Repspace
+Definition traditional_rep_space_R := @make_rep_space
   R
   (nat->Z)
   (fun n => Z0)
   C_rep_R
   CrepRisrep.
 
-Lemma idiscomputable : is_computable (id : R -> R).
+Notation Rc := traditional_rep_space_R.
+
+Lemma idiscomputable : is_computable (id : Rc -> Rc).
 Proof.
   by exists (fun phi=>phi).
-Qed.
-
-Open Scope Z_scope.
-
-Definition round_4 (d : Z) : Z := ((d / 2 + 1) / 2)%Z.
-
-Lemma rounding (d : Z): (d-2<= 4*round_4(d) <= d+2)%Z.
-Proof.
-  rewrite /round_4.
-  Search Z.div Z.modulo.
-  rewrite  (Zdiv.Z_div_mod_eq d 4); try lia.
-  replace (4*(d/4)) with (d/4*2*2) by ring.
-  rewrite Zdiv.Z_div_plus_full_l; try lia.
-  rewrite Zplus_assoc_reverse.
-  rewrite Zdiv.Z_div_plus_full_l; try lia.
-  have : d mod 4 = 0 \/ d mod 4 = 1 \/ d mod 4 = 2 \/ d mod 4 = 3.
-  Search Z.modulo.
-  have : 0 <= d mod 4 < 4.
-  apply: Zdiv.Z_mod_lt; lia.
-  lia.
-  (case; [idtac|case;[idtac| case]]) => -> ;
-  rewrite [(_/_ + _)/2] /=.
-  change (1/2) with 0.
-  lia.
-  change (1/2) with 0.
-  lia.
-  change (2/2) with 1.
-  lia.
-  change (2/2) with 1.
-  lia.
 Qed.
 
 Lemma rounding_R (d : Z) : (d-2<= 4*round_4(d) <= d+2)%R.
 Admitted.
 
-Lemma additioniscomputable : is_computable (fun x => Rplus (x.1) (x.2)).
+Lemma additioniscomputable : @is_computable _ Rc (fun (x : (rep_space_prod Rc Rc)) => Rplus (x.1) (x.2)).
+(* This would look a lot less complicated if there wouldn't be the "standard" way to compute on R by means
+of rep_space_R, i.e. the representation rep_R instead of C_rep_R. *)
 Proof.
-  Definition addition_realizer (phi : descriptions Repspace_R* descriptions Repspace_R) n : Z :=
+  Definition addition_realizer (phi : names Rc* names Rc) n : Z :=
     round_4(phi.1 (n.+2) + phi.2 (n.+2)).
   exists addition_realizer.
   move => phi x [phi0 phi1] n.
   set r := phi.1 (n.+2)/4.
   set q := phi.2 (n.+2)/4.
-  have round : (Rabs((addition_realizer phi n) -r-q) <= /2).
+  have round : Rabs((addition_realizer phi n) -r-q) <= /2.
   rewrite /addition_realizer.
   move : (rounding_R (phi.1 (n.+2) + phi.2 (n.+2))) => stufffff.
   rewrite /r /q.
   rewrite plus_IZR in stufffff.
   split_Rabs; try lra.
-  admit.
+  (* From here on it is more an outline of how the proof should proceed. I am unsure I want to put more work into
+  this as I feel it is an overly complicated setting to work in. This is why I decided to change to a simpler
+  representation. *)
   have rapprox : Rabs(x.1 - r/2^n) <= 2^n.+2.
   move : phi0.
-  rewrite /(is_name).
-  Search _ "Int_part".
   admit.
   have qapprox : Rabs(x.2 - q/2^n) <= 2^n.+2.
   admit.
-  set sum := Rabs( x.1 + x.2 - (r+q)/2^n) + Rabs(addition_realizer phi n -r-q)/2^n.
+  set sum := (Rabs( x.1 + x.2 - (r+q)/2^n) + Rabs(addition_realizer phi n -r-q)/2^n)%R.
   have add : sum <= /2^n.
   admit.
-  suff esti: Rabs(x.1 + x.2 -addition_realizer phi n /2^n) <= sum.
+  suff esti: (Rabs(x.1 + x.2 -addition_realizer phi n /2^n) <= sum)%R.
   apply : (Rle_trans _ sum) => //.
   by rewrite /Rdiv Rmult_1_l.
-  admit.
+Admitted.
