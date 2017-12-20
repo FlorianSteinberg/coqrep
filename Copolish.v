@@ -1,6 +1,6 @@
-(* This file contains an alternative to the Compspace file, that seems to be closer to
-Matthias Schroeders Copolish spaces. That's where the name is taken from. It will have
-to become clear from the applications which approach is nicer to use. *)
+(* This file will be an alternativ to the Compspace file, where I try to keep the terminology closer
+to Matthias Schroeders Copolish spaces. That's where the name is taken from. It will have to become
+clear from the applications which approach is nicer to use. *)
 
 Load representations.
 
