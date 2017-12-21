@@ -116,7 +116,7 @@ suff: 0 < Q2R (r2 - r1) by rewrite minus_Q2R; lra.
 apply: lt0_Q2R; lra.
 Qed.
 
-Definition Q2Rt := (lt_Q2R, le_Q2R, minus_Q2R, opp_Q2R, mul_Q2R, plus_Q2R, Q2R_make).
+Definition Q2Rt := (minus_Q2R, opp_Q2R, mul_Q2R, plus_Q2R, Q2R_make1, Q2R_make).
 (* \end{usefulllemmas} *)
 
 Definition rep_R : (Q -> Q) -> R -> Prop :=
@@ -139,46 +139,29 @@ Proof.
   lra.
 Qed.
 
-Lemma rep_R_is_sur: is_sur rep_R.
+Lemma rep_R_is_sur: rep_R is_surjective.
 Proof.
   move => x.
   exists (fun eps => Qmult eps (Qmake(Int_part(x/eps)) xH)).
   move => eps eg0.
-  rewrite mul_Q2R.
-  rewrite Q2R_make1.
+  rewrite !Q2Rt.
   rewrite Rabs_pos_eq.
-  - (* Why doesn't this work:
-      set z := Int_part(x/eps).
-      replace (x - eps * z) with (eps * (x / eps - z)) by field. *)
-    rewrite -{1}(Rmult_1_l x).
-    rewrite -(Rinv_r (eps)).
-    rewrite Rmult_assoc.
-    rewrite -{5}(Rmult_1_r eps).
-    rewrite -(Rmult_minus_distr_l eps).
-    - apply: (Rmult_le_compat_l (eps)).
-      apply: le0_Q2R.
-      by apply: Qlt_le_weak.
-    rewrite (Rmult_comm (/eps)).
-    rewrite /Rdiv.
-    apply (approx (x * /eps)).
-    apply: Rlt_dichotomy_converse.
-    right.
-    by apply: lt0_Q2R.
-  apply: (Rmult_le_reg_l (/eps));last first.
+  - set z := Int_part(x/eps).
+    replace (x - eps * z) with (eps * (x / eps - z));first last.
+    - field.
+      by apply: Rlt_dichotomy_converse; right; apply lt0_Q2R.
+    rewrite -{3}(Rmult_1_r eps).
+    apply: Rmult_le_compat_l.
+    - by left; apply lt0_Q2R.
+    apply: (approx (x * /eps)).
+  apply: (Rmult_le_reg_l (/eps)).
+  - by apply: Rinv_0_lt_compat; apply: lt0_Q2R.
   rewrite Rmult_0_r.
-  rewrite Rmult_minus_distr_l.
-  rewrite -Rmult_assoc.
-  Search _ "Rinv".
-  rewrite -(Rinv_l_sym eps).
-  - rewrite Rmult_1_l.
-    rewrite (Rmult_comm (/eps)).
-    rewrite /Rdiv.
-    apply (approx' (x * /eps)).
-    apply: Rlt_dichotomy_converse.
-    right.
-    by apply: lt0_Q2R.
-  apply : Rinv_0_lt_compat.
-  by apply: lt0_Q2R.
+  set z := Int_part(x/eps).
+  replace (/eps*(x - eps * z)) with (x/eps - z);last first.
+  - field.
+    by apply: Rlt_dichotomy_converse; right; apply lt0_Q2R.
+  apply (approx' (x * /eps)).
 Qed.
 
 Lemma rep_R_is_sing: is_sing rep_R.
