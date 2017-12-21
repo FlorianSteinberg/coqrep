@@ -23,6 +23,7 @@ works in a more general setting: also N->N is sometimes used to measure
 sizes. The operations are there because at some point I want to be able
 to talk about Polynomials over a Major type. Note that the Major type
 is taken from the file about second-order polynomials. *)
+Notation "b 'majorizes' a" := (major a b) (at level 2): major_scope.
 
 Canonical Major_nat := @Major.Pack nat leq 0 max plus mult.
 (* The most basic example of a Major type: the natural numbers *)
@@ -42,7 +43,8 @@ Canonical Major_arrow M1 M2 := @Major.Pack
   (fun l k => fun n => Major.add (l n) (k n))
   (fun l k => fun n => Major.mult (l n) (k n))
 .
-Notation is_monotone b := (major b b).
+
+Notation "b 'is_monotone'" := (major b b) (at level 2): major_scope.
 (* In most situations it is probably enough to consider the monotone bounds. *)
 
 Structure size_type := make_size_type {
@@ -54,6 +56,8 @@ Structure size_type := make_size_type {
 (* If there is a way to measure the size of an element by something of Major type
 then a size type can be constructed. Size types provide enough structure such
 that it is possible to form products, arrows. *)
+Notation "b 'is_bound_of' s" := (forall k, is_size s k -> major k b) (at level 2).
+Notation "s 'is_bounded'" := (exists b, b is_bound_of s) (at level 2).
 
 Canonical size_type_prod S T := @make_size_type
   (elems S * elems T)
@@ -98,11 +102,3 @@ Canonical size_type_list S := @make_size_type
   (fun L b => exists (f: elems S -> bounds S),
     consistent_with_list f L /\ b = list_size f L)
   (nil).
-
-Notation is_bound s b:= (forall k, is_size s k -> major k b).
-Notation has_bound s := (exists b, is_bound s b).
-Definition is_bounded (S T : size_type) (f: S -> T) :=
-  (forall s, has_bound s -> has_bound (f s)).
-(* These are rather arbitrary.. for instance is is_bound the same as has_bound?
-I'd guess so but its difficult to prove things through these functionspace
-constructions things. *)
