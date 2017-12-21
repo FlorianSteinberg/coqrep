@@ -12,17 +12,18 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicits Defensive.
 
-Definition iscon F := forall phi n, exists m, forall psi,
-  begseg psi m = begseg phi m -> begseg (F phi) n = begseg (F psi) n.
+Fixpoint consistent_with S T (psi : S -> T) (L : list (S * T)) :=
+  match L with
+    | nil => True
+    | cons s K => (psi(s.1) = s.2) /\ (consistent_with psi K)
+  end.
 
-Notation operator := (nat -> B -> str -> option str).
+Definition is_continuous (S : size_type) (S' T T' :Type) (F: (S -> T) -> S' -> T') :=
+  forall phi s', exists (L : list S),
+  forall psi, (map psi L = map phi L) ->  F phi s' = F psi s'.
+(* This notion is porbably way to inefficient to be of any use. *)
 
-Definition dom (F : operator) (phi : B) :=
-  forall a b, exists n, F n phi a = some b.
-
-Definition is_value (F : operator) phi psi :=
-  forall a, exists k, F k phi a = Some (psi a)
-    /\ forall n, n <= k -> F n phi a = None.
+Notation operator S T S' T' := (nat -> (S -> T) -> S' -> option T').
 
 Fixpoint U n psi a := match n with
   | 0 => None
