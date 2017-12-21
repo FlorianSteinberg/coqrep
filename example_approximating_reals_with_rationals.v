@@ -206,18 +206,22 @@ Qed.
 (* This is a trivial example. The proof looks nice, though... The next example uses the product
 construction that was introduced in the file representations.v *)
 
+Lemma triang r x y: (Rabs x) + (Rabs y) <= r -> Rabs(x + y) <= r.
+Proof.
+  move => ass.
+Admitted.
+
 Lemma Rplus_is_computable : (fun x => Rplus (x.1) (x.2)) is_computable.
 Proof.
   Definition Rplus_realizer (phi : names rep_space_R * names rep_space_R) eps : Q :=
-    (Qplus (phi.1 (Qmult (Qmake 1 2) eps)) (phi.2(Qmult (Qmake 1 2) eps))).
+    (Qplus (phi.1 (Qdiv eps (1+1))) (phi.2(Qdiv eps (1+1)))).
   exists Rplus_realizer.
   move => phi x [phi0 phi1] eps eg0.
   rewrite /Rplus_realizer.
-  Search _ "Ropp".
   rewrite plus_Q2R.
-  set r := phi.1 (Qmult (Qmake 1 2) eps).
-  set q := phi.2 (Qmult (Qmake 1 2) eps).
-  rewrite /Rminus.
-  rewrite Ropp_plus_distr.
-  rewrite Rplus_assoc.
-  Admitted.
+  set r := Q2R (phi.1 (Qdiv eps (1 + 1))).
+  set q := Q2R (phi.2 (Qdiv eps (1 + 1))).
+  replace (x.1 + x.2 - (r + q)) with (x.1 - r + x.2 - q); last first.
+  - field.
+  move: Rabs_triang.
+Admitted.
