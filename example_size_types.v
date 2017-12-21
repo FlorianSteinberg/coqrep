@@ -1,3 +1,5 @@
+Load size_types.
+
 Inductive one : Type :=
   | star.
 
@@ -21,7 +23,7 @@ Fixpoint size_pos (n : positive) := match n with
   | xI m => S (size_pos m)
 end.
 
-Canonical size_type_pos := @make_size_type 
+Canonical size_type_pos := @make_size_type
   positive
   Major_nat
   (fun n m => size_pos n = m)
