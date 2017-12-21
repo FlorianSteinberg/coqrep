@@ -61,7 +61,7 @@ Of course the use of mathematical functions is not debatable but I want to repla
 by a better notion of computability at some point. A candidate can be found at the end
 of the functions.v file, but that candidate is not usable yet, so I will work with the
 above notion of computability for now. *)
-Notation "f 'is_computable" := (is_comp f) (at level 2).
+Notation "f 'is_computable'" := (is_comp f) (at level 2).
 
 Require Import ClassicalChoice FunctionalExtensionality.
 (* These are only needed to guarantee that it is always possible to provide a

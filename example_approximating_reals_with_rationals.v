@@ -35,7 +35,7 @@ Coercion IZR : Z >-> R.
 and then to a real numbers. I think that is stuped so I tried to replace it. However, it turns
 out that IZR is used in some lemmas, so I need to rely on it anyway. *)
 Definition Q2R q := QArith_base.Qnum q / QArith_base.QDen q.
-Coercion Q2R : Q >-> R.
+(* Coercion Q2R : Q >-> R. *)
 (* This is not coerced since it leads to ambiguous paths. *)
 (* \end{syntacticalsuggar} *)
 (* It turns out that these coercions are not enough. To avoid heaps of burocracy I need to find
@@ -120,7 +120,7 @@ Definition Q2Rt := (minus_Q2R, opp_Q2R, mul_Q2R, plus_Q2R, Q2R_make1, Q2R_make).
 (* \end{usefulllemmas} *)
 
 Definition rep_R : (Q -> Q) -> R -> Prop :=
-  fun phi x => forall eps, (0 < eps)%Q -> Rabs(x-(phi eps)) <= eps.
+  fun phi x => forall eps, (0 < eps)%Q -> Rabs(x-Q2R(phi eps)) <= Q2R eps.
 (* This is close to the standard definition of the chauchy representation. Usually integers
 are prefered to avoid to many possible answers. I tried this in the other example file
 "example_approximating_reals_with_integers" but it leads to extensive additional work so I
@@ -142,10 +142,11 @@ Qed.
 Lemma rep_R_is_sur: rep_R is_surjective.
 Proof.
   move => x.
-  exists (fun eps => Qmult eps (Qmake(Int_part(x/eps)) xH)).
-  move => eps eg0.
+  exists (fun eps => Qmult eps (Qmake(Int_part(x/(Q2R eps))) xH)).
+  move => epsr eg0.
   rewrite !Q2Rt.
   rewrite Rabs_pos_eq.
+  set eps := Q2R epsr.
   - set z := Int_part(x/eps).
     replace (x - eps * z) with (eps * (x / eps - z));first last.
     - field.
@@ -154,6 +155,7 @@ Proof.
     apply: Rmult_le_compat_l.
     - by left; apply lt0_Q2R.
     apply: (approx (x * /eps)).
+  set eps := Q2R epsr.
   apply: (Rmult_le_reg_l (/eps)).
   - by apply: Rinv_0_lt_compat; apply: lt0_Q2R.
   rewrite Rmult_0_r.
@@ -164,12 +166,24 @@ Proof.
   apply (approx' (x * /eps)).
 Qed.
 
-Lemma rep_R_is_sing: is_sing rep_R.
+(* The following is admitted here. However, it can probably be easily deduced from
+the lemma cond_eq_nat that is proven in "example_approximating_reals_with_integers.v"
+the biggest problem is type conversion... again. I'd prefer an independet and shorter proof. *)
+Lemma cond_eq_rat : forall x y, (forall q, Q2R q > 0 -> Rabs (x - y) <= Q2R q) -> x = y.
 Admitted.
+(* TODO: give a proof of this. *)
 
-(* This is Admitted here. The proof of this statement for the more traditional cauchy representation
-is carried out below. The proofs do not carry over easily but simplify a lot (compare the proof of the
-surjectivity to that of the traditional cauchy representation) *)
+Lemma rep_R_is_sing: is_sing rep_R.
+Proof.
+  move => phi x x' [pinox pinox'].
+  apply: cond_eq_rat => q qg0.
+  set r := Q2R (phi (Qdiv q (1+1))).
+  replace (Rabs (x - x')) with (Rabs(x - r) + Rabs(r - x')).
+  replace q with (Qplus (Qdiv q (1+1)) (Qdiv q (1+1))).
+  rewrite plus_Q2R.
+  apply: Rplus_le_compat.
+  apply: pinox.
+Admitted.
 
 Lemma rep_R_is_rep: is_rep rep_R.
 Proof.
@@ -185,14 +199,14 @@ Canonical rep_space_R := @make_rep_space
   rep_R
   rep_R_is_rep.
 
-Lemma id_is_computable : is_computable (id : R -> R).
+Lemma id_is_computable : (id : R -> R) is_computable.
 Proof.
   by exists (fun phi=>phi).
 Qed.
 (* This is a trivial example. The proof looks nice, though... The next example uses the product
 construction that was introduced in the file representations.v *)
 
-Lemma Rplus_is_computable : is_computable (fun x => Rplus (x.1) (x.2)).
+Lemma Rplus_is_computable : (fun x => Rplus (x.1) (x.2)) is_computable.
 Proof.
   Definition Rplus_realizer (phi : names rep_space_R * names rep_space_R) eps : Q :=
     (Qplus (phi.1 (Qmult (Qmake 1 2) eps)) (phi.2(Qmult (Qmake 1 2) eps))).
