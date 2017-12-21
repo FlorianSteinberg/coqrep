@@ -1,3 +1,25 @@
+Load size_types.
+Load example_size_types.
+
+Structure find_machine_type := make_machine_type {
+  type : size_type;
+  input_type : Type;
+  output_type : Type;
+  machine_type : Type;
+}.
+
+Canonical machine_type_arrow (S T : find_machine_type) := @make_machine_type
+  (size_type_arrow (type S) (type T))
+  (type S -> (input_type T))
+  (output_type T)
+  (nat -> type S -> input_type T -> option (output_type T)).
+
+Canonical machine_type_one := @make_machine_type
+  size_type_one
+  False
+  one
+  (nat -> option one).
+
 Notation "S ~> T" := (S -> nat -> option T) (format "S ~> T", at level 2).
 (* I think about this type as a type of machines: For M : S ~> T I read M s n = nothing as
 "the Machine can't say anything about the return value yet" and M s n = some t as "after n
