@@ -6,21 +6,22 @@ to rely on a handwritten type of strings as I attempted in the file "operators.v
 use more generaly a space S -> T as substitute for B, I have to make some assumptions
 about the types S and T. This is why I came up with "SizeTypes", that are defined in the
 separate file "SizeTypes.v" and are used here. *)
-Load SizeTypes.
+Load size_types.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicits Defensive.
 
-Fixpoint consistent_with S T (psi : S -> T) (L : list (S * T)) :=
+Fixpoint equal_on S T (phi : S -> T) (psi : S -> T) (L : list S) :=
   match L with
     | nil => True
-    | cons s K => (psi(s.1) = s.2) /\ (consistent_with psi K)
+    | cons s K => (phi s = psi s) /\ (equal_on phi psi K)
   end.
+Notation "phi 'and' psi 'coincide_on' L" := (equal_on phi psi L) (at level 2).
 
 Definition is_continuous (S : size_type) (S' T T' :Type) (F: (S -> T) -> S' -> T') :=
   forall phi s', exists (L : list S),
-  forall psi, (map psi L = map phi L) ->  F phi s' = F psi s'.
+  forall psi, phi and psi coincide_on L ->  F phi s' = F psi s'.
 (* This notion is porbably way to inefficient to be of any use. *)
 
 Notation operator S T S' T' := (nat -> (S -> T) -> S' -> option T').
