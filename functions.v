@@ -9,7 +9,7 @@ Unset Printing Implicits Defensive.
 Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 (*This is the notation I use for multivalued functions *)
 
-Definition F2MF S T (f : S -> T) s t := f(s) = t.
+Definition F2MF S T (f : S -> T) s t := f s = t.
 (* I'd like this to be a Coercion but it won't allow me to do so. *)
 
 Definition mf_concat (R S T : Type) (f : R ->> S) (g : S ->> T) : R ->> T :=
@@ -37,15 +37,16 @@ Definition mf_prod (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') : (S * S') -
 (* in contrast to coproducts, products are very common and I have already included several lemmas
 about them because I needed them. *)
 
-Notation "f , g" := (mf_prod f g) (format "f , g", at level 50).
+Notation "f \, g" := (mf_prod f g) (at level 50).
 (*This is the notation for the tupling of multifunctions, it clashes with the pair notation *)
 
 Definition is_sing S T (f: S ->> T) :=
   forall s t t', and (f s t) (f s t') -> t = t'.
+Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
 (* a single valued function is still a partial function *)
 
 Lemma prod_sing S S' T T' (f: S ->> T) (g : S' ->> T') :
-  is_sing f /\ is_sing g -> is_sing (f , g).
+  f is_single_valued /\ g is_single_valued -> (f \, g) is_single_valued.
 Proof.
   move => [Fissing Gissing] a x y.
     move => [] [a0isxname a1isxname] [a0isyname a1isyname].
@@ -57,11 +58,13 @@ Proof.
 Qed.
 
 Definition range S T (f: S ->> T) (t : T) := exists s, f s t.
+Notation "t 'from_range' f" := (range f t) (at level 2).
 
 Definition is_sur S T (f: S ->> T) := forall t, range f t.
+Notation "f 'is_surjective'" := (is_sur f) (at level 2).
 
 Lemma prod_sur S S' T T' (f: S ->> T) (g : S' ->> T') :
-  is_sur f /\ is_sur g -> is_sur (f , g).
+  f is_surjective /\ g is_surjective -> (f \, g) is_surjective.
 Proof.
   move => [Fissur Gissur] x.
   move: (Fissur x.1) (Gissur x.2) => [c ciscode] [d discode].
@@ -69,11 +72,13 @@ Proof.
 Qed.
 
 Definition dom S T (f: S ->> T) s := exists t, f s t.
+Notation "s 'from_dom' f" := (dom f s) (at level 2).
 
-Definition is_total S T (f: S ->> T) := forall s, dom f s.
+Definition is_tot S T (f: S ->> T) := forall s, dom f s.
+Notation "f 'is_total'" := (is_tot f) (at level 2).
 
 Lemma prod_total S T S' T' (f: S ->> T) (g: S' ->> T'):
-  is_total f /\ is_total g -> is_total (f,g).
+  f is_total /\ g is_total ->(f \, g) is_total.
 Proof.
   move => [istotalf istotalg] s.
   move: (istotalf s.1) (istotalg s.2) => [t fst] [t' gst'].
