@@ -26,7 +26,10 @@ Qed.
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names can be an arbitrary type
 but will usually be something that can be computed on, i.e. Baire space or something.
-I forgot why the names have to be inherited, but I believe there was a reason. *)
+At some point I will probably change the names to be a size_type. The type of names
+must be inherited for the rather irrelevant full function-space construction to
+work. This may change depending on whether other function space constructions also
+need this or not. *)
 Structure rep_space := make_rep_space {
   space :> Type;
   elements : space -> Prop;
@@ -92,7 +95,7 @@ Definition is_mf_realizer (X Y : rep_space) (F: names X -> names Y) (f : (space 
 
 Definition is_realizer (X Y : rep_space) (F: names X -> names Y) (f : space X -> space Y) :=
   forall phi x, phi is_name_of x -> x is_element
-    -> (f x) is_element /\ (F phi) is_name_of (f x).
+    -> (F phi) is_name_of (f x).
 (* A second candidate: the total singlevalued realizable functions *)
 Notation "F 'is_realizer_of' f" := (is_realizer F f) (at level 2).
 Arguments is_realizer {X Y}.
