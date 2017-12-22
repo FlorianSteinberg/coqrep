@@ -60,16 +60,20 @@ Qed.
 Definition range S T (f: S ->> T) (t : T) := exists s, f s t.
 Notation "t 'from_range' f" := (range f t) (at level 2).
 
-Definition is_sur S T (f: S ->> T) := forall t, range f t.
+Definition is_sur S T (f: S ->> T) :=
+  forall t, range f t.
 Notation "f 'is_surjective'" := (is_sur f) (at level 2).
 
-Lemma prod_sur S S' T T' (f: S ->> T) (g : S' ->> T') :
-  f is_surjective /\ g is_surjective -> (f \, g) is_surjective.
+Lemma prod_range S S' T T' (f: S ->> T) (g : S' ->> T') :
+  forall s t, s from_range f /\ t from_range g -> (s,t) from_range (f \, g).
 Proof.
-  move => [Fissur Gissur] x.
-  move: (Fissur x.1) (Gissur x.2) => [c ciscode] [d discode].
-  by exists (pair c d).
+  move => s t.
+  move => [[s' fs's] [t' ft't]].
+  by exists (s',t').
 Qed.
+
+Definition is_sur_on S T (f: S->> T) (A: T -> Prop) :=
+  forall t, range f t -> A t.
 
 Definition dom S T (f: S ->> T) s := exists t, f s t.
 Notation "s 'from_dom' f" := (dom f s) (at level 2).

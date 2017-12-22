@@ -113,14 +113,14 @@ Proof.
   apply: pinox.
 Admitted.
 
-Lemma rep_R_is_rep: is_rep rep_R.
+Lemma rep_R_is_rep: rep_R is_representation.
 Proof.
   split.
-  - exact: rep_R_is_sur.
   - exact: rep_R_is_sing.
+  - exact: rep_R_is_sur.
 Qed.
 
-Canonical rep_space_R := @make_rep_space
+Canonical rep_space_R := @make_rep_space_from_sur
   R
   (Q -> Q)
   (fun n => Qmake Z0 xH)
