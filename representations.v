@@ -47,6 +47,7 @@ point? *)
 Notation "'rep'" := @delta (at level 2).
 Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
 Notation "x 'is_element'" := (elements x) (at level 2).
+Notation "x 'is_from' X" := (@elements X x) (at level 2).
 
 Definition make_rep_space_from_sur
   (space : Type) (names : Type) (inhe : names)

@@ -1,13 +1,14 @@
-(*This file is supposed to contain the knowledge needed about second-order
-polynomials to prove the closure of polynomial time computable operators
-under composition. It is currently a mess and needs to be cleaned up. I want
-to eventually make this another example of representations, but I do not yet
-know how to use subtypes properly. *)
+(*This file contains the knowledge needed about second-order polynomials to
+prove the closure of polynomial time computable operators under composition.
+This presents the matter in an elementary way. Many notions from computable
+analysis are spelled out again (for instance is_computable). A presentation
+relying on representations can be found in another file. *)
 
 From mathcomp Require Import all_ssreflect.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
 Definition sof:Type := (nat -> nat) -> nat -> nat.
 Module Sop.
 Inductive type:Type :=
@@ -97,15 +98,6 @@ Proof.
     by rewrite /circ /= - IHQ - IHP.
   - by rewrite /circ /= - hypF /star -IHP.
 Qed.
-Fixpoint itrd P:=
-  match P with
-    |Sop.zero=> 0
-    |Sop.one => 0
-    |Sop.sp => 0
-    |Sop.add P Q => maxn (itrd P) (itrd Q)
-    |Sop.mult P Q => maxn (itrd P) (itrd Q)
-    |Sop.appl P => (itrd P) .+1
-  end.
 
 Module Major.
 Structure type:= Pack {sort :> Type ; _ : sort -> sort -> Prop}.
@@ -128,10 +120,10 @@ Implicit Types l k : nat -> nat.
 Implicit Types n m : nat.
 Implicit Types P : sop.
 Notation "f \+ g" := (fun n => f n + g n) (at level 50, left associativity).
+Notation "f \* g" := (fun n => f n * g n) (at level 50, left associativity).
 
 Lemma majsum l k l' k':
-  major l k -> major l' k' ->
-    major (l \+ l' : nat -> nat) (k \+ k').
+  major l k -> major l' k' -> major (l \+ l' : nat -> nat) (k \+ k').
 Proof.
   move => lmajork mmajorn n0 m0 n0leqm0.
   rewrite /major /= leq_add //.
@@ -142,8 +134,7 @@ Proof.
 Qed.
 
 Lemma majmul l k l' k':
-  major l k -> major l' k' ->
-    major ((fun r => l r * l' r) : nat -> nat) (fun r => k r * k' r).
+  major l k -> major l' k' -> major (l \* l' : nat -> nat) (k \* k').
 Proof.
   move => lmajork mmajorn n0 m0 n0leqm0.
   rewrite /major /= leq_mul //.

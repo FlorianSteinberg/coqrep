@@ -136,20 +136,33 @@ construction that was introduced in the file representations.v *)
 
 Lemma triang r x y: (Rabs x) + (Rabs y) <= r -> Rabs(x + y) <= r.
 Proof.
-  move => ass.
-Admitted.
+  apply: Rle_trans.
+  apply: Rabs_triang.
+Qed.
 
 Lemma Rplus_is_computable : (fun x => Rplus (x.1) (x.2)) is_computable.
 Proof.
   Definition Rplus_realizer (phi : names rep_space_R * names rep_space_R) eps : Q :=
     (Qplus (phi.1 (Qdiv eps (1+1))) (phi.2(Qdiv eps (1+1)))).
   exists Rplus_realizer.
-  move => phi x [phi0 phi1] eps eg0.
+  move => phi x [phi0 phi1] xie eps eg0.
   rewrite /Rplus_realizer.
   rewrite plus_Q2R.
   set r := Q2R (phi.1 (Qdiv eps (1 + 1))).
   set q := Q2R (phi.2 (Qdiv eps (1 + 1))).
-  replace (x.1 + x.2 - (r + q)) with (x.1 - r + x.2 - q); last first.
+  replace (x.1 + x.2 - (r + q)) with (x.1 - r + (x.2 - q)); last first.
   - field.
-  move: Rabs_triang.
+  apply: (triang).
+  replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
+  - apply: Rplus_le_compat.
+    - apply: phi0.
+      replace 0%Q with (Qdiv 0 (1 + 1)).
+      by apply: (Qmult_lt_compat_r 0 eps (/(1+1))); last first.
+      (* I want to do this:
+        rewrite (Qmult_0_l (/(1+1))).
+      It doesn't work. I believe it is because there is something wrong with the equality? *)
+      admit.    
+    - apply: phi1.
+      admit.
+    - admit.
 Admitted.

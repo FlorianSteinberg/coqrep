@@ -1,15 +1,18 @@
-(*This file is supposed to contain the knowledge needed about second-order
-polynomials to prove the closure of polynomial time computable operators
-under composition. It is currently a mess and needs to be cleaned up. I want
-to eventually make this another example of representations, but I do not yet
-know how to use subtypes properly. *)
+(*This file contains the knowledge needed about second-order polynomials to prove
+the closure of polynomial time computable operators under composition. It is
+currently being changed to rely on representations and therefore not fully
+functional. As an example for a represented space, the second-order polynomials
+are a nice counterpoint to the real numbers because in this case the
+representation is a total mapping on the name space but it is neither injective
+nor surjective on the natural space of interpretations of the element, i.e. the
+type (nat -> nat) -> nat -> nat. *)
 
 Load representations.
 
-Require Import FunctionalExtensionality.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
 Definition sof:Type := (nat -> nat) -> nat -> nat.
 Module Sop.
 Inductive term:Type :=
@@ -43,11 +46,9 @@ Notation "''l' p" := (Sop.appl p) (format "''l'  p", at level 2): sop_scope.
 Notation eval := Sop.eval.
 
 Definition star (S T: sof) : sof := (fun l n => S l (T l n)).
-Definition star_sop (PQ: (sop*sop)) : (space sop) :=
-  star PQ.1 PQ.2.
 
 Lemma star_is_computable:
-  star_sop is_computable.
+   (fun (PQ: (sop*sop)) => (star PQ.1 PQ.2):sop) is_computable.
 Proof.
   set F := fix F t1 t2 :=
   match t1 with
@@ -58,87 +59,68 @@ Proof.
     | R * T => (F R t2) * (F T t2)
     | 'l R => 'l (F R t2)
   end%sop.
+  (* The idea, why this is inside of the proof is that its only important property
+    is that it computes the start operation. This way it is impossible for a user
+    to rely on other properties of the mapping. *)
   exists (fun PQ => F PQ.1 PQ.2).
-  move => t1t2.
-  rewrite {1}(surjective_pairing t1t2).
-  move: t1t2.1 t1t2.2 => t1 t2.
-  move: t1t2 => _.
-  move: t1 t2.
-  elim => //.
-  - move => t1 PQ [ih1 _] [_ _].
-    by rewrite /star_sop /star; rewrite -ih1.
-  - move => t1 PQ [ih1 _] [_ _].
-    by rewrite /star_sop /star; rewrite -ih1.
-  - move => t1 PQ [ih1 ih2] [_ _].
-    by rewrite /star_sop /star; rewrite -ih1 -ih2.
+  move => t; rewrite {1}(surjective_pairing t);move: t t.1 t.2=> _ /=; rewrite /F2MF.
+  (* This decodes the pair given as input into its components. *)
+  elim.
+  (* the first three cases were removed by the // when no representations where used. *)
+  - move => t1 PQ [ih1 _] [_ _]; by rewrite -ih1.
+  - move => t1 PQ [ih1 _] [_ _]; by rewrite -ih1.
+  - move => t1 PQ [ih1 ih2] [_ _]; by rewrite -ih1 -ih2.
   - move => t1 ih1 t2 ih2 t3 PQ [noP noQ] _.
-    move: (ih1 t3 (eval t1, eval t3)).
-    move: ih1 => _ ih1.
-    have: ((F t1 t3:(names sop)) is_name_of (star_sop (eval t1, eval t3))).
-    apply: ih1.
-    split => //.
-    split.
-    by exists t1.
-    by exists t3.
+    move: ih1 (ih1 t3 (eval t1, eval t3)) => _ /= ih1.
+    move: ih2 (ih2 t3 (eval t2, eval t3)) => _ /= ih2.
+    (* due to the use of representations, the induction hypothesises need some work
+      before we can actually use them. *)
+    have: ((F t1 t3:(names sop)) is_name_of (star (eval t1) (eval t3))).
+    apply: ih1 => //; split.
+    - by exists t1.
+    - by exists t3.
     move: ih1 => _.
-    move: (ih2 t3 (eval t2, eval t3)).
-    move: ih2 => _ ih2.
-    have: ((F t2 t3:(names sop)) is_name_of (star_sop (eval t2, eval t3))).
-    apply: ih2.
-    split => //.
-    split.
-    by exists t2.
-    by exists t3.
-    move: ih2 => _.
-    rewrite /= /F2MF.
-    move => ih1 ih2.
-    rewrite -/eval /=.
-    rewrite ih1 ih2.
-    rewrite /star_sop /star /=.
-    by rewrite -noP -noQ /=.
+    have: ((F t2 t3:(names sop)) is_name_of (star (eval t2) (eval t3))).
+    apply: ih2 => //; split.
+    - by exists t2.
+    - by exists t3.
+    move: ih2 => _ ih1 ih2.
+    (* The ret of the proof is similar to what had to be done without
+      representations *)
+    rewrite -/eval /= ih1 ih2 /star.
+    by rewrite -noP -noQ.
   - move => t1 ih1 t2 ih2 t3 PQ [noP noQ] _.
-    move: (ih1 t3 (eval t1, eval t3)).
-    move: ih1 => _ ih1.
-    have: ((F t1 t3:(names sop)) is_name_of (star_sop (eval t1, eval t3))).
-    apply: ih1.
-    split => //.
-    split.
-    by exists t1.
-    by exists t3.
+    move: ih1 (ih1 t3 (eval t1, eval t3)) => _ /= ih1.
+    move: ih2 (ih2 t3 (eval t2, eval t3)) => _ /= ih2.
+    have: ((F t1 t3:(names sop)) is_name_of (star (eval t1) (eval t3))).
+    apply: ih1 => //; split.
+    - by exists t1.
+    - by exists t3.
     move: ih1 => _.
-    move: (ih2 t3 (eval t2, eval t3)).
-    move: ih2 => _ ih2.
-    have: ((F t2 t3:(names sop)) is_name_of (star_sop (eval t2, eval t3))).
-    apply: ih2.
-    split => //.
-    split.
-    by exists t2.
-    by exists t3.
-    move: ih2 => _.
-    rewrite /= /F2MF.
-    move => ih1 ih2.
-    rewrite -/eval /=.
-    rewrite ih1 ih2.
-    rewrite /star_sop /star /=.
-    by rewrite -noP -noQ /=.
+    have: ((F t2 t3:(names sop)) is_name_of (star (eval t2) (eval t3))).
+    apply: ih2 => //; split.
+    - by exists t2.
+    - by exists t3.
+    move: ih2 => _ ih1 ih2.
+    rewrite -/eval /= ih1 ih2 /star.
+    by rewrite -noP -noQ.
   - move => t1 ih1 t2 PQ [noP noQ] ie.
-    move: (ih1 t2 (eval t1, eval t2)).
+    move: ih1 (ih1 t2 (eval t1, eval t2)) => _ ih1.
+    have: ((F t1 t2:(names sop)) is_name_of (star (eval t1) (eval t2))).
+    apply: ih1 => //; split.
+    - by exists t1.
+    - by exists t2.
     move: ih1 => _ ih1.
-    have: ((F t1 t2:(names sop)) is_name_of (star_sop (eval t1, eval t2))).
-    apply: ih1.
-    split => //.
-    split.
-    by exists t1.
-    by exists t2.
-    move: ih1 => _ ih1.
-    rewrite /= /F2MF.
-    rewrite -/eval /=.
-    rewrite ih1.
-    rewrite /star_sop /star /=.
+    rewrite -/eval /= ih1 /star.
     by rewrite -noP -noQ.
 Qed.
-(* This proof got considerably more complicated when I started using representations. I need to
-understand why this is so. *)
+(* When compared to the original proof in the other example file about second-order polynom-
+ials this is considerably more complicated when using representations. That is for two
+reasons: Firstly, one has to code and decode pairs to be able to use the product construction
+of representations for reasoning about multivariate functions. The second problem is that
+representations are meant to still work in a setting that is a lot more general. For instance
+it is not usually possible to evaluate the representation. This leads to additional
+bureaucracy. *)
 
 Definition circ (P Q : sop) :sop := (fun l n => P (Q l) n).
 Lemma circ_is_computable: (fun PQ => circ PQ.1 PQ.2) is_computable.
@@ -171,6 +153,8 @@ Proof.
     move: ih1 => _ ih1.
     have: (eval (G t1 t3:(names sop)) = (fun l : nat -> nat => [eta P (Q l)])).
     apply: ih1 => //.
+Admitted.
+(*
     split.
     by exists t1.
     by exists t3.
@@ -216,16 +200,15 @@ Proof.
     rewrite /star_sop /star /=.
     by rewrite -noP -noQ /=.
   - by rewrite /circ /= - hypF /star -IHP.
-Qed.
-Fixpoint itrd P:=
-  match P with
-    |Sop.zero=> 0
-    |Sop.one => 0
-    |Sop.sp => 0
-    |Sop.add P Q => maxn (itrd P) (itrd Q)
-    |Sop.mult P Q => maxn (itrd P) (itrd Q)
-    |Sop.appl P => (itrd P) .+1
-  end.
+*)
+
+(*
+Load size_types.
+The rest of this file reasons about majorization and monotonicity. The concepts it
+relies on are also provided by means of the major type from "size_types.v". Unfortunatelly
+there is a clash since both the "size_type.v" as well as "representations.v" load the
+file "functions.v". I should really get rid of the load stuff... but for now I'll just
+reintroduce the notions.  *)
 
 Module Major.
 Structure type:= Pack {sort :> Type ; _ : sort -> sort -> Prop}.
@@ -248,10 +231,9 @@ Implicit Types l k : nat -> nat.
 Implicit Types n m : nat.
 Implicit Types P : sop.
 Notation "f \+ g" := (fun n => f n + g n) (at level 50, left associativity).
-
+Notation "f \* g" := (fun n => f n * g n) (at level 50, left associativity).
 Lemma majsum l k l' k':
-  major l k -> major l' k' ->
-    major (l \+ l' : nat -> nat) (k \+ k').
+  major l k -> major l' k' -> major (l \+ l' : nat -> nat) (k \+ k').
 Proof.
   move => lmajork mmajorn n0 m0 n0leqm0.
   rewrite /major /= leq_add //.
@@ -293,9 +275,14 @@ Proof.
   exact: majmul.
 Qed.
 
-Lemma sopmon: forall (P : sop), ismon (P : sof).
+Lemma sopmon: forall P, P is_element -> ismon P.
 Proof.
-  elim => [|||P IHP Q IHQ|P IHP Q IHQ|P IHP] //= l k major_lk //=.
+  move => P [ie];rewrite /F2MF => noP.
+  rewrite -noP.
+  move: ie noP.
+  elim => inoP //.
+Admitted.
+(* [|||P IHP Q IHQ|P IHP Q IHQ|P IHP] //= l k major_lk //=.
   - apply majsum.
     - exact: IHP.
     - exact: IHQ.
@@ -303,10 +290,11 @@ Proof.
     - exact: IHP.
     - exact: IHQ.
   - by move=> n m nleqm; apply /major_lk /IHP.
-Qed.
+Qed.*)
 
-Lemma sopmonsecond P l : ismon l -> ismon (eval P l).
+Lemma sopmonsecond P l : P is_from sop -> ismon l -> ismon (P l).
 Proof.
+  move => ie.
   exact: sopmon.
 Qed.
 
@@ -327,8 +315,8 @@ Proof.
 Qed.
 
 Lemma sopmonfirst P l k n :
-  ismon l -> ismon k -> pwleq l k -> P l n <= P k n.
+  P is_from sop -> ismon l -> ismon k -> pwleq l k -> P l n <= P k n.
 Proof.
-  move => lismon kismon lsmallerk.
+  move => ie lismon kismon lsmallerk.
   by apply: sopmon => //; apply/majvspwleq.
 Qed.
