@@ -181,6 +181,7 @@ relies on are also provided by means of the major type from "size_types.v". Unfo
 there is a clash since both the "size_type.v" as well as "representations.v" load the
 file "functions.v". I should really get rid of the load stuff... but for now I'll just
 reintroduce the notions.  *)
+(* TODO: use size_types here *)
 
 Module Major.
 Structure type:= Pack {sort :> Type ; _ : sort -> sort -> Prop}.
