@@ -63,55 +63,50 @@ Proof.
     is that it computes the start operation. This way it is impossible for a user
     to rely on other properties of the mapping. *)
   exists (fun PQ => F PQ.1 PQ.2).
-  move => t; rewrite {1}(surjective_pairing t);move: t t.1 t.2=> _ /=; rewrite /F2MF.
+  move => [t1 t2] [P Q] [/= noP noQ] [_ _].
+  move: t1 t2 P Q noP noQ; rewrite /F2MF.
   (* This decodes the pair given as input into its components. *)
   elim.
   (* the first three cases were removed by the // when no representations where used. *)
-  - move => t1 PQ [ih1 _] [_ _]; by rewrite -ih1.
-  - move => t1 PQ [ih1 _] [_ _]; by rewrite -ih1.
-  - move => t1 PQ [ih1 ih2] [_ _]; by rewrite -ih1 -ih2.
-  - move => t1 ih1 t2 ih2 t3 PQ [noP noQ] _.
-    move: ih1 (ih1 t3 (eval t1, eval t3)) => _ /= ih1.
-    move: ih2 (ih2 t3 (eval t2, eval t3)) => _ /= ih2.
+  - move => t1 P Q noP; by rewrite -noP.
+  - move => t1 P Q noP; by rewrite -noP.
+  - move => t1 P Q noP; by rewrite -noP.
+  - move => t1 ih1 t2 ih2 t3 P Q noP noQ.
+    move: ih1 (ih1 t3 (eval t1) Q) => _ /= ih1.
+    move: ih2 (ih2 t3 (eval t2) Q) => _ /= ih2.
     (* due to the use of representations, the induction hypothesises need some work
       before we can actually use them. *)
-    have: ((F t1 t3:(names sop)) is_name_of (star (eval t1) (eval t3))).
-    apply: ih1 => //; split.
-    - by exists t1.
-    - by exists t3.
+    have: ((F t1 t3:(names sop)) is_name_of (star (eval t1) Q)).
+    apply: ih1 => //.
     move: ih1 => _.
-    have: ((F t2 t3:(names sop)) is_name_of (star (eval t2) (eval t3))).
-    apply: ih2 => //; split.
-    - by exists t2.
-    - by exists t3.
+    have: ((F t2 t3:(names sop)) is_name_of (star (eval t2) Q)).
+    apply: ih2 => //.
     move: ih2 => _ ih1 ih2.
-    (* The ret of the proof is similar to what had to be done without
+    (* The rest of the proof is similar to what had to be done without
       representations *)
-    rewrite -/eval /= ih1 ih2 /star.
+    rewrite ih1 ih2 /star.
     by rewrite -noP -noQ.
-  - move => t1 ih1 t2 ih2 t3 PQ [noP noQ] _.
-    move: ih1 (ih1 t3 (eval t1, eval t3)) => _ /= ih1.
-    move: ih2 (ih2 t3 (eval t2, eval t3)) => _ /= ih2.
-    have: ((F t1 t3:(names sop)) is_name_of (star (eval t1) (eval t3))).
-    apply: ih1 => //; split.
-    - by exists t1.
-    - by exists t3.
+  - move => t1 ih1 t2 ih2 t3 P Q noP noQ.
+    move: ih1 (ih1 t3 (eval t1) Q) => _ /= ih1.
+    move: ih2 (ih2 t3 (eval t2) Q) => _ /= ih2.
+    (* due to the use of representations, the induction hypothesises need some work
+      before we can actually use them. *)
+    have: ((F t1 t3:(names sop)) is_name_of (star (eval t1) Q)).
+    apply: ih1 => //.
     move: ih1 => _.
-    have: ((F t2 t3:(names sop)) is_name_of (star (eval t2) (eval t3))).
-    apply: ih2 => //; split.
-    - by exists t2.
-    - by exists t3.
+    have: ((F t2 t3:(names sop)) is_name_of (star (eval t2) Q)).
+    apply: ih2 => //.
     move: ih2 => _ ih1 ih2.
-    rewrite -/eval /= ih1 ih2 /star.
+    (* The rest of the proof is similar to what had to be done without
+      representations *)
+    rewrite ih1 ih2 /star.
     by rewrite -noP -noQ.
-  - move => t1 ih1 t2 PQ [noP noQ] ie.
-    move: ih1 (ih1 t2 (eval t1, eval t2)) => _ ih1.
-    have: ((F t1 t2:(names sop)) is_name_of (star (eval t1) (eval t2))).
-    apply: ih1 => //; split.
-    - by exists t1.
-    - by exists t2.
+  - move => t1 ih1 t2 P Q noP noQ.
+    move: ih1 (ih1 t2 (eval t1) Q) => _ ih1.
+    have: (eval(F t1 t2:(names sop)) = (star (eval t1) Q)).
+    apply: ih1 => //.
     move: ih1 => _ ih1.
-    rewrite -/eval /= ih1 /star.
+    rewrite /= ih1 /star.
     by rewrite -noP -noQ.
 Qed.
 (* When compared to the original proof in the other example file about second-order polynom-
@@ -122,12 +117,10 @@ representations are meant to still work in a setting that is a lot more general.
 it is not usually possible to evaluate the representation. This leads to additional
 bureaucracy. *)
 
-Definition circ (P Q : sop) :sop := (fun l n => P (Q l) n).
-Lemma circ_is_computable: (fun PQ => circ PQ.1 PQ.2) is_computable.
+Definition circ (P Q : sof) :sof := (fun l n => P (Q l) n).
+Lemma circ_is_computable: (fun (PQ:sop*sop) => (circ PQ.1 PQ.2):sop) is_computable.
 Proof.
-  move: star_is_computable.
-  case.
-  move => F hypF.
+  move: star_is_computable => [F] hypF.
   set G:= fix G P Q :=
   match P with
     | 0 => 0
@@ -139,68 +132,47 @@ Proof.
   end%sop.
   exists (fun PQ => G PQ.1 PQ.2).
   move => [t1 t2] [P Q] [/= noP noQ] [_ _].
-  move: t1 t2 noP noQ.
-  rewrite /circ /F2MF.
+  move: t1 t2 P Q noP noQ; rewrite /F2MF.
   elim.
-  - move => t1 ih noQ.
-    by rewrite -ih.
-  - move => t1 ih noQ.
-    by rewrite -ih.
-  - move => t1 ih noQ.
-    by rewrite -ih.
-  - move => t1 ih1 t2 ih2 t3 [noP noQ].
-    move: (ih1 t3).
-    move: ih1 => _ ih1.
-    have: (eval (G t1 t3:(names sop)) = (fun l : nat -> nat => [eta P (Q l)])).
+  - move => t1 P Q noP; by rewrite -noP.
+  - move => t1 P Q noP; by rewrite -noP.
+  - move => t1 P Q noP; by rewrite -noP.
+  - move => t1 ih1 t2 ih2 t3 P Q noP noQ.
+    move: ih1 (ih1 t3 (eval t1) Q) => _ /= ih1.
+    move: ih2 (ih2 t3 (eval t2) Q) => _ /= ih2.
+    have: ((G t1 t3:(names sop)) is_name_of (circ (eval t1) Q)).
     apply: ih1 => //.
-Admitted.
-(*
-    split.
-    by exists t1.
-    by exists t3.
     move: ih1 => _.
-    move: (ih2 t3 (eval t2, eval t3)).
-    move: ih2 => _ ih2.
-    have: ((F t2 t3:(names sop)) is_name_of (star_sop (eval t2, eval t3))).
-    apply: ih2.
-    split => //.
-    split.
-    by exists t2.
-    by exists t3.
-    move: ih2 => _.
-    rewrite /= /F2MF.
-    move => ih1 ih2.
-    rewrite -/eval /=.
-    rewrite ih1 ih2.
-    rewrite /star_sop /star /=.
-    by rewrite -noP -noQ /=.
-  - move => t1 ih1 t2 ih2 t3 PQ [noP noQ] _.
-    move: (ih1 t3 (eval t1, eval t3)).
-    move: ih1 => _ ih1.
-    have: ((F t1 t3:(names sop)) is_name_of (star_sop (eval t1, eval t3))).
-    apply: ih1.
-    split => //.
-    split.
-    by exists t1.
-    by exists t3.
+    have: ((G t2 t3:(names sop)) is_name_of (circ (eval t2) Q)).
+    apply: ih2 => //.
+    move: ih2 => _ ih1 ih2.
+    rewrite ih1 ih2 /circ.
+    by rewrite -noP -noQ.
+  - move => t1 ih1 t2 ih2 t3 P Q noP noQ.
+    move: ih1 (ih1 t3 (eval t1) Q) => _ /= ih1.
+    move: ih2 (ih2 t3 (eval t2) Q) => _ /= ih2.
+    have: ((G t1 t3:(names sop)) is_name_of (circ (eval t1) Q)).
+    apply: ih1 => //.
     move: ih1 => _.
-    move: (ih2 t3 (eval t2, eval t3)).
-    move: ih2 => _ ih2.
-    have: ((F t2 t3:(names sop)) is_name_of (star_sop (eval t2, eval t3))).
-    apply: ih2.
-    split => //.
+    have: ((G t2 t3:(names sop)) is_name_of (circ (eval t2) Q)).
+    apply: ih2 => //.
+    move: ih2 => _ ih1 ih2.
+    rewrite ih1 ih2 /circ.
+    by rewrite -noP -noQ.
+  - move => t1 ih1 t2 P Q noP noQ.
+    move: ih1 (ih1 t2 (eval t1) Q) => _ ih1.
+    have: (eval(G t1 t2:(names sop)) = (circ (eval t1) Q)).
+    apply: ih1 => //.
+    move: ih1 => _ ih1 /=.
+    have: (F (t2, (G t1 t2))) is_name_of (star Q (circ (eval t1) Q)).
+    apply (hypF (t2, (G  t1 t2)) (Q, circ (eval t1) Q)) => //=.
     split.
-    by exists t2.
-    by exists t3.
-    move: ih2 => _.
-    rewrite /= /F2MF.
-    move => ih1 ih2.
-    rewrite -/eval /=.
-    rewrite ih1 ih2.
-    rewrite /star_sop /star /=.
-    by rewrite -noP -noQ /=.
-  - by rewrite /circ /= - hypF /star -IHP.
-*)
+    - by exists t2.
+    - by exists (G t1 t2).
+    move: hypF => _ hypF.
+    rewrite hypF /circ /star.
+    by rewrite -noP -noQ.
+Qed.
 
 (*
 Load size_types.
@@ -279,18 +251,23 @@ Lemma sopmon: forall P, P is_element -> ismon P.
 Proof.
   move => P [ie];rewrite /F2MF => noP.
   rewrite -noP.
-  move: ie noP.
-  elim => inoP //.
-Admitted.
-(* [|||P IHP Q IHQ|P IHP Q IHQ|P IHP] //= l k major_lk //=.
-  - apply majsum.
-    - exact: IHP.
-    - exact: IHQ.
-  - apply majmul.
-    - exact: IHP.
-    - exact: IHQ.
-  - by move=> n m nleqm; apply /major_lk /IHP.
-Qed.*)
+  move: ie P noP.
+  elim => t1 //.
+  - by move => /=.
+  - move => ih1 t2 ih2 P noP l k lmk.
+    apply: majsum.
+    - by apply (ih1 (eval t1)).
+    - by apply (ih2 (eval t2)).
+  - move => ih1 t2 ih2 P noP l k lmk.
+    apply: majmul.
+    - by apply (ih1 (eval t1)).
+    - by apply (ih2 (eval t2)).
+  - move=> ih P noP l k lmk /= n m nmm.
+    have: (ismon (eval t1)).
+    apply (ih (eval t1)) => //.
+    move => im.
+    by apply /lmk /im.
+Qed.
 
 Lemma sopmonsecond P l : P is_from sop -> ismon l -> ismon (P l).
 Proof.
