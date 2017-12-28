@@ -4,6 +4,44 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicits Defensive.
 
+Module bound.
+Fixpoint type (n:nat) : Type :=
+match n with
+  | 0 => nat
+  | S m => (type m) -> (type m)
+end.
+
+Fixpoint rel n :(type n -> type n -> Prop) :=
+match n with
+  | 0 => (fun b b' => b <= b')
+  | S m => (fun b b' => forall k k', rel k k' -> rel (b k) (b' k'))
+end.
+
+Fixpoint zero n : type n :=
+match n with
+  | 0 => 0
+  | S m => (fun b => zero m)
+end.
+
+Fixpoint maj_max n : type n -> type n -> type n :=
+match n with
+  | 0 => (fun n m => max n m)
+  | S m => (fun l k => (fun n => maj_max (l n) (k n)))
+end.
+
+Fixpoint plus n : type n -> type n -> type n :=
+match n with
+  | 0 => (fun n m => n + m)
+  | S m => (fun l k => (fun n => plus (l n) (k n)))
+end.
+
+Fixpoint mult n : type n -> type n -> type n :=
+match n with
+  | 0 => (fun n m => n * m)
+  | S m => (fun l k => (fun n => mult (l n) (k n)))
+end.
+End bound.
+
 Module Major.
 Structure type:= Pack {
   sort :> Type;
@@ -23,7 +61,6 @@ works in a more general setting: also N->N is sometimes used to measure
 sizes. The operations are there because at some point I want to be able
 to talk about Polynomials over a Major type. Note that the Major type
 is taken from the file about second-order polynomials. *)
-Notation "b 'majorizes' a" := (major a b) (at level 2): major_scope.
 
 Canonical Major_nat := @Major.Pack nat leq 0 max plus mult.
 (* The most basic example of a Major type: the natural numbers *)
@@ -44,6 +81,12 @@ Canonical Major_arrow M1 M2 := @Major.Pack
   (fun l k => fun n => Major.mult (l n) (k n))
 .
 
+Definition const_inc_major M (b : M) := (fun (b':M) => b).
+(* I want to write this:
+Coercion const_inclusion_major: M >-> (Major_arrow M M).
+but it does not work *)
+
+Notation "b 'majorizes' a" := (major a b) (at level 2): major_scope.
 Notation "b 'is_monotone'" := (major b b) (at level 2): major_scope.
 (* In most situations it is probably enough to consider the monotone bounds. *)
 
@@ -56,6 +99,7 @@ Structure size_type := make_size_type {
 (* If there is a way to measure the size of an element by something of Major type
 then a size type can be constructed. Size types provide enough structure such
 that it is possible to form products, arrows. *)
+Notation "b 'is_size_of' s" := (is_size s b) (at level 2).
 Notation "b 'is_bound_of' s" := (forall k, is_size s k -> major k b) (at level 2).
 Notation "s 'is_bounded'" := (exists b, b is_bound_of s) (at level 2).
 
@@ -68,7 +112,7 @@ Canonical size_type_prod S T := @make_size_type
 Canonical size_type_arrow S T := @make_size_type
   (elems S -> elems T)
   (Major_arrow (bounds S) (bounds T))
-  (fun f b => forall s k, is_size s k -> is_size (f s) (b k))
+  (fun f b => forall k, exists s, k is_size_of s /\ (b k) is_size_of (f s))
   (fun s => inh T).
 
 (* It is also possible to form a list over a size type. We need the lists for
