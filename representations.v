@@ -16,6 +16,11 @@ Definition is_rep_of S T (delta: S ->> T) (elements : T -> Prop) :=
 Notation "delta 'is_representation_of' elements" := (is_rep_of delta elements) (at level 2).
 (* To make subspaces work, we allow predicates as the underlying set of a represented space. *)
 
+Definition is_rep_of_wrt S T (delta: S ->> T) (elements: T -> Prop) (eq: T-> T -> Prop) :=
+  forall s t s' t', elements t -> elements t' -> delta s t -> delta s' t' -> s = s' -> eq t t'
+    /\ forall t, elements t -> range delta t.
+(* This is to make it possible to identify elements arbirarily, i.e. make quotients work. *)
+
 Lemma sur_rep S T (delta: S ->> T) :
   delta is_representation -> delta is_representation_of (fun x => True).
 Proof.
@@ -30,60 +35,19 @@ At some point I will probably change the names to be a size_type. The type of na
 must be inherited for the rather irrelevant full function-space construction to
 work. This may change depending on whether other function space constructions also
 need this or not. *)
-Structure rep_space := make_rep_space {
-  space :> Type;
+Module rep_space.
+Structure type := make_rep_space {
+  space : Type;
   elements : space -> Prop;
+  equals : space -> space -> Prop;
   names : Type;
   inhe: names;
   delta : names ->> space;
   representation_is_valid : delta is_representation_of elements
   }.
-(* The corecion shouldn't be there anymore because of the use of subspaces: For
-instance both the real numbers and the unit interval should have the real numbers
-as space, so the structure as represented space is not determined by the space any-
-more. It is inconvenient to go without the coercion though and up unitl now it has
-not lead to problems. Maybe I have to have a structure "rep_subspace" at some
-point? *)
-Notation "'rep'" := @delta (at level 2).
-Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
-Notation "x 'is_element'" := (elements x) (at level 2).
-Notation "x 'is_from' X" := (@elements X x) (at level 2).
 
-Definition make_rep_space_from_sur
-  (space : Type) (names : Type) (inhe : names)
-  (delta : names ->> space) (representation_is_valid : is_rep delta) :=
-  @make_rep_space space (fun x=> True) names inhe delta (sur_rep representation_is_valid).
-
-Lemma fun_rep_on_range S T (f : S -> T) :
-  (F2MF f) is_representation_of (range (F2MF f)).
-Proof.
-  split.
-  - move => s t t' tfr t'fr fst fst'.
-    by rewrite -fst -fst'.
-  - by move => t tfrf.
-Qed.
-
-Definition make_rep_space_from_fun
-  (space : Type) (names : Type) (inhe:names) (delta: names -> space) :=
-    @make_rep_space space (range (F2MF delta)) names inhe
-      (F2MF delta) (fun_rep_on_range delta).
-
-Lemma single_valued_rep_on_range S T (f : S ->> T) :
-  f is_single_valued -> f is_representation_of (range f).
-Proof.
-  move => sing.
-  split.
-  - move => s t t' tfr t'fr.
-    by apply sing.
-  - done.
-Qed.
-
-Definition make_rep_space_from_mfun
-  (space: Type) (names:Type) (inhe:names) (delta: names ->> space) (sing: delta is_single_valued) :=
-    @make_rep_space space (range delta) names inhe delta (single_valued_rep_on_range sing).
-
-Lemma prod_rep (X Y : rep_space):
-  (rep X \, rep Y) is_representation_of (fun x => x.1 is_element /\ x.2 is_element).
+Lemma prod_rep (X Y : type):
+  (@delta X \, @delta Y) is_representation_of (fun x => elements x.1 /\ elements x.2).
 Proof.
   move: (representation_is_valid X) (representation_is_valid Y)
     => [issingd issurd] [issingd' issurd'].
@@ -102,13 +66,81 @@ Qed.
 
 Canonical rep_space_prod X Y := @make_rep_space
   (space X * space Y)
-  (fun x => x.1 is_element /\ x.2 is_element)
+  (fun x => elements x.1 /\ elements x.2)
+  (fun x y => x = y)
   (names X * names Y)
   (pair (inhe X) (inhe Y))
-  (rep X \, rep Y)
+  (@delta X \, @delta Y)
   (@prod_rep X Y).
 (* This is the product of represented spaces. At some point I should prove that this
 is the product in some category, but I am unsure what the morphisms are supposed to be. *)
+
+End rep_space.
+
+Notation rep_space := rep_space.type.
+Notation "'rep'" := @rep_space.delta (at level 2).
+Notation "phi 'is_name_of' x" := (rep_space.delta phi x) (at level 2).
+Notation "x 'is_element'" := (rep_space.elements x) (at level 2).
+Notation "x 'is_from' X" := (@rep_space.elements X x) (at level 2).
+Notation "x 'equal' y" := (@rep_space.equals x y) (at level 2).
+Notation names X := (rep_space.names X).
+Notation space X := (rep_space.space X).
+Notation delta X := (rep_space.delta X).
+
+
+Definition make_rep_space_from_sur
+  (space : Type) (names : Type) (inhe : names)
+  (delta : names ->> space) (representation_is_valid : is_rep delta) :=
+  @rep_space.make_rep_space space
+    (fun x=> True)
+    (fun x y => x= y)
+    names
+    inhe
+    delta
+    (sur_rep representation_is_valid)
+  .
+
+Lemma fun_rep_on_range S T (f : S -> T) :
+  (F2MF f) is_representation_of (range (F2MF f)).
+Proof.
+  split.
+  - move => s t t' tfr t'fr fst fst'.
+    by rewrite -fst -fst'.
+  - by move => t tfrf.
+Qed.
+
+Definition make_rep_space_from_fun
+  (space : Type) (names : Type) (inhe:names) (delta: names -> space) :=
+    @rep_space.make_rep_space
+      space
+      (range (F2MF delta))
+      (fun x y => x = y)
+      names
+      inhe
+      (F2MF delta)
+      (fun_rep_on_range delta)
+    .
+
+Lemma single_valued_rep_on_range S T (f : S ->> T) :
+  f is_single_valued -> f is_representation_of (range f).
+Proof.
+  move => sing.
+  split.
+  - move => s t t' tfr t'fr.
+    by apply sing.
+  - done.
+Qed.
+
+Definition make_rep_space_from_mfun
+  (space: Type) (names:Type) (inhe:names) (delta: names ->> space) (sing: delta is_single_valued) :=
+    @rep_space.make_rep_space
+      space
+      (range delta)
+      (fun x y => x = y)
+      names
+      inhe
+      delta
+      (single_valued_rep_on_range sing).
 
 Definition is_mf_realizer (X Y : rep_space) (F: names X -> names Y) (f : (space X) ->> (space Y)) :=
   forall phi x y, delta phi x -> delta (F phi) (y) -> f x y.
