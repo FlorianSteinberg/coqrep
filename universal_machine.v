@@ -65,11 +65,15 @@ Definition U (S T S' T' : Type) n (psi: S' * list T -> S + T') (phi: S -> T) a :
 U' n psi phi (a,nil).
 (* This is what I want to prove to be a universal machine. *)
 
+Require Import CassicalChoice.
+
 Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
   (exists s: S, True) -> F is_continuous ->
     exists psi, forall phi Fphi, F phi Fphi -> forall a, exists n, U n psi phi a = Some (Fphi a).
 Proof.
   move => [s _] cont.
+  move: FunctionalChoice_on_rel.
+
 Admitted.
 
 Fixpoint cons_check S T S' T' (psi : S'*list T -> S + T') (s': S') (L : list (S*T)) :=

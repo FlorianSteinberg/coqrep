@@ -40,21 +40,32 @@ about them because I needed them. *)
 Notation "f \, g" := (mf_prod f g) (at level 50).
 (*This is the notation for the tupling of multifunctions, it clashes with the pair notation *)
 
-Definition is_sing S T (f: S ->> T) :=
-  forall s t t', and (f s t) (f s t') -> t = t'.
+Definition is_sing_in S T (f: S ->> T) (P: T -> Prop) :=
+  forall s t t', P t -> P t' -> (f s t) -> (f s t') -> t = t'.
+Notation "f 'is_single_valued_in' P" := (is_sing_in f P) (at level 2).
+Definition is_sing S T (f: S ->> T) := is_sing_in f (fun s=>True).
 Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
 (* a single valued function is still a partial function *)
 
 Lemma prod_sing S S' T T' (f: S ->> T) (g : S' ->> T') :
   f is_single_valued /\ g is_single_valued -> (f \, g) is_single_valued.
 Proof.
-  move => [Fissing Gissing] a x y.
-    move => [] [a0isxname a1isxname] [a0isyname a1isyname].
+  move => [Fissing Gissing] a x y _ _.
+    move => [a0isxname a1isxname] [a0isyname a1isyname].
     apply: injective_projections.
-    - apply: (Fissing (a.1) x.1 y.1).
-      by split.
-    - apply: (Gissing (a.2) x.2 y.2).
-      by split.
+    - by apply: (Fissing (a.1) x.1 y.1).
+    - by apply: (Gissing (a.2) x.2 y.2).
+Qed.
+
+Lemma prod_sing_in S S' T T' (f:S ->> T) (g : S' ->> T') (P: T-> Prop) (Q: T' -> Prop) :
+  f is_single_valued_in P /\ g is_single_valued_in Q
+    -> (f \, g) is_single_valued_in (fun x => P x.1 /\ Q x.2).
+Proof.
+  move => [Fissing Gissing] a x y [px1 px2] [qx1 qx2].
+    move => [a0isxname a1isxname] [a0isyname a1isyname].
+    apply: injective_projections.
+    - by apply: (Fissing (a.1) x.1 y.1).
+    - by apply: (Gissing (a.2) x.2 y.2).
 Qed.
 
 Definition range S T (f: S ->> T) (t : T) := exists s, f s t.

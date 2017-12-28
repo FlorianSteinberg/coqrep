@@ -1,18 +1,28 @@
 Load representations.
+(* This stopped working when I started to allow representing subsets. *)
 
 Require Import ClassicalChoice FunctionalExtensionality.
 (* These are only needed to guarantee that it is always possible to provide a
 realizer of a function. *)
 
-Lemma is_realizer_is_rep (X Y : rep_space): is_rep (@is_realizer X Y).
+Lemma is_realizer_is_rep (X Y : rep_space):
+  (@is_realizer X Y) is_representation_of (fun f => forall x, (x is_element) -> (f x) is_element).
 Proof.
   move: (representation_is_valid X) (representation_is_valid Y)
-    => [Xsur Xsing] [Ysur Ysing].
+    => [Xsing Xsur] [Ysing Ysur].
   set C := names X.
   set D := names Y.
   split.
-  - move => f.
-    set R := fun c d => forall x, is_name c x -> is_name d (f x).
+  - move => phi f g cond cond' isnamex isnamey.
+    apply: functional_extensionality => x.
+    move: (Xsur x) => a.
+    move: cond (cond x ) cond' (cond' x ) => _ cond _ cond'.
+    apply (Ysing (phi a) (f x) (g x)).
+    split.
+    - by apply isnamex.
+    - by apply isnamey.
+  - move => phi.
+    set R := fun c d => forall x, delta c x -> delta d (f x).
     apply: (@choice (names X) (names Y) R) => c.
     case: (classic (exists x, is_name c x)).
     - move => [x xisnameofc].
@@ -29,13 +39,6 @@ Proof.
       exfalso.
       apply: assump.
       by exists x.
-  - move => phi f g [isnamex isnamey].
-    apply: functional_extensionality => x.
-    move: (Xsur x) => [a ainox].
-    apply (Ysing (phi a) (f x) (g x)).
-    split.
-    - by apply isnamex.
-    - by apply isnamey.
 Qed.
 Arguments is_realizer_is_rep {X Y}.
 

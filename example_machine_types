@@ -1,0 +1,11 @@
+
+
+Canonical machine_type_one := @make_machine_type
+  size_type_one
+  size_type_one
+  size_type_one.
+
+Canonical machine_type_nat := @make_machine_type
+  size_type_nat
+  size_type_one
+  size_type_nat.

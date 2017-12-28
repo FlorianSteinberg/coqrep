@@ -12,7 +12,7 @@ surjective and singlevalued multi-valued function. Due to delta being single-val
 this can also be phrased as a representation being a partial surjection. *)
 
 Definition is_rep_of S T (delta: S ->> T) (elements : T -> Prop) :=
-  delta is_single_valued /\ forall t, elements t -> range delta t.
+  delta is_single_valued_in elements /\ forall t, elements t -> range delta t.
 Notation "delta 'is_representation_of' elements" := (is_rep_of delta elements) (at level 2).
 (* To make subspaces work, we allow predicates as the underlying set of a represented space. *)
 
@@ -58,7 +58,7 @@ Lemma fun_rep_on_range S T (f : S -> T) :
   (F2MF f) is_representation_of (range (F2MF f)).
 Proof.
   split.
-  - move => s t t' [fst fst'].
+  - move => s t t' tfr t'fr fst fst'.
     by rewrite -fst -fst'.
   - by move => t tfrf.
 Qed.
@@ -68,13 +68,33 @@ Definition make_rep_space_from_fun
     @make_rep_space space (range (F2MF delta)) names inhe
       (F2MF delta) (fun_rep_on_range delta).
 
+Lemma single_valued_rep_on_range S T (f : S ->> T) :
+  f is_single_valued -> f is_representation_of (range f).
+Proof.
+  move => sing.
+  split.
+  - move => s t t' tfr t'fr.
+    by apply sing.
+  - done.
+Qed.
+
+Definition make_rep_space_from_mfun
+  (space: Type) (names:Type) (inhe:names) (delta: names ->> space) (sing: delta is_single_valued) :=
+    @make_rep_space space (range delta) names inhe delta (single_valued_rep_on_range sing).
+
 Lemma prod_rep (X Y : rep_space):
   (rep X \, rep Y) is_representation_of (fun x => x.1 is_element /\ x.2 is_element).
 Proof.
   move: (representation_is_valid X) (representation_is_valid Y)
     => [issingd issurd] [issingd' issurd'].
   split.
-  - by apply: prod_sing.
+  - move => s t t' [t1fr t2fr] [t'1fr t'2fr].
+    apply: prod_sing_in.
+    split.
+    apply: issingd.
+    apply: issingd'.
+    done.
+    done.
   - move => x [x1ie x2ie].
     move: (issurd x.1 x1ie) (issurd' x.2 x2ie) => x1inr x2inr.
     by apply: prod_range.
