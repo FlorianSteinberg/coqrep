@@ -24,7 +24,7 @@ Fixpoint P2R n := match n with
   | xO m => 2* P2R m
   | xI k => 2* P2R k + 1
 end.
-(* It eludes my why this function is not provided under the name IPR in the standard Library *)
+(* It eludes me why this function is not provided under the name IPR in the standard Library *)
 Fixpoint Z2R z := match z with
   | Z0 => 0
   | Zpos n => P2R n
@@ -106,11 +106,18 @@ Proof.
   move => phi x x' [pinox pinox'].
   apply: cond_eq_rat => q qg0.
   set r := Q2R (phi (Qdiv q (1+1))).
-  replace (Rabs (x - x')) with (Rabs(x - r) + Rabs(r - x')).
+  replace (x-x') with ((x-r) + (r-x')) by field.
+  apply: Rle_trans.
+  - apply: (Rabs_triang (x-r)).
   replace q with (Qplus (Qdiv q (1+1)) (Qdiv q (1+1))).
-  rewrite plus_Q2R.
-  apply: Rplus_le_compat.
-  apply: pinox.
+    - rewrite plus_Q2R.
+      apply: Rplus_le_compat.
+      - apply: pinox.
+        admit.
+      - rewrite Rabs_minus_sym.
+        apply: pinox'.
+        admit.
+      - admit.
 Admitted.
 
 Lemma rep_R_is_rep: rep_R is_representation.
@@ -142,8 +149,8 @@ Qed.
 
 Lemma Rplus_is_computable : (fun x => Rplus (x.1) (x.2)) is_computable.
 Proof.
-  Definition Rplus_realizer (phi : names rep_space_R * names rep_space_R) eps : Q :=
-    (Qplus (phi.1 (Qdiv eps (1+1))) (phi.2(Qdiv eps (1+1)))).
+  set Rplus_realizer := (fun (phi : names rep_space_R * names rep_space_R) eps =>
+    (Qplus (phi.1 (Qdiv eps (1+1))) (phi.2(Qdiv eps (1+1))))).
   exists Rplus_realizer.
   move => phi x [phi0 phi1] xie eps eg0.
   rewrite /Rplus_realizer.
@@ -161,8 +168,28 @@ Proof.
       (* I want to do this:
         rewrite (Qmult_0_l (/(1+1))).
       It doesn't work. I believe it is because there is something wrong with the equality? *)
-      admit.    
+      admit.
     - apply: phi1.
       admit.
     - admit.
+Admitted.
+
+Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) is_computable.
+Proof.
+  set rab := (fun (phi : Q -> Q) => 1# Z.to_pos (up(Rabs(Q2R(phi(1%Q)))))).
+  set four := (1 + 1 + 1 + 1)%Q.
+  set Rmult_realizer := (fun (phi : names rep_space_R * names rep_space_R) eps =>
+    ((phi.1 (eps / four /(rab phi.2)) * (phi.2(eps /four/(rab phi.1))))%Q)).
+  exists Rmult_realizer.
+  move => phi x [phi0 phi1] xie eps eg0.
+  rewrite /Rmult_realizer.
+  rewrite mul_Q2R.
+  set r := Q2R (phi.1 (eps / four /(rab phi.2))%Q).
+  set q := Q2R (phi.2 (eps / four /(rab phi.1))%Q).
+  replace (x.1 * x.2 - (r * q)) with ((x.1 - r) * x.2 + r * (x.2 - q)); last first.
+  - field.
+  apply: (triang).
+  replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
+  - rewrite Rabs_mult Rabs_mult.
+    apply: Rplus_le_compat.
 Admitted.

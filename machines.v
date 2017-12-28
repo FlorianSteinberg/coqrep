@@ -16,6 +16,11 @@ Canonical machine_type_arrow S T := @make_machine_type
   (size_type_prod (type S) (input_type T))
   (output_type T).
 
+Canonical machine_type_list S := @make_machine_type
+  (size_type_list (type S))
+  (size_type_list (input_type S))
+  (size_type_list (output_type S)).
+
 Canonical machine_type_one := @make_machine_type
   size_type_one
   size_type_one
