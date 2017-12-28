@@ -4,44 +4,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicits Defensive.
 
-Module bound.
-Fixpoint type (n:nat) : Type :=
-match n with
-  | 0 => nat
-  | S m => (type m) -> (type m)
-end.
-
-Fixpoint rel n :(type n -> type n -> Prop) :=
-match n with
-  | 0 => (fun b b' => b <= b')
-  | S m => (fun b b' => forall k k', rel k k' -> rel (b k) (b' k'))
-end.
-
-Fixpoint zero n : type n :=
-match n with
-  | 0 => 0
-  | S m => (fun b => zero m)
-end.
-
-Fixpoint maj_max n : type n -> type n -> type n :=
-match n with
-  | 0 => (fun n m => max n m)
-  | S m => (fun l k => (fun n => maj_max (l n) (k n)))
-end.
-
-Fixpoint plus n : type n -> type n -> type n :=
-match n with
-  | 0 => (fun n m => n + m)
-  | S m => (fun l k => (fun n => plus (l n) (k n)))
-end.
-
-Fixpoint mult n : type n -> type n -> type n :=
-match n with
-  | 0 => (fun n m => n * m)
-  | S m => (fun l k => (fun n => mult (l n) (k n)))
-end.
-End bound.
-
 Module Major.
 Structure type:= Pack {
   sort :> Type;
