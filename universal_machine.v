@@ -25,7 +25,7 @@ Notation "F 'is_continuous'" := (is_cont F) (at level 2).
 Require Import FunctionalExtensionality.
 Lemma cont_to_sing (S T S' T' : Type) F: @is_cont S T S' T' F -> F is_single_valued.
 Proof.
-  move => cont phi psi psi' [psivphi psi'vphi].
+  move => cont phi psi psi' _ [psivphi psi'vphi].
   apply functional_extensionality => a.
   move: cont (cont phi a) => _ [L] cont.
   have: (forall K, phi and phi coincide_on K).
@@ -65,15 +65,22 @@ Definition U (S T S' T' : Type) n (psi: S' * list T -> S + T') (phi: S -> T) a :
 U' n psi phi (a,nil).
 (* This is what I want to prove to be a universal machine. *)
 
-Require Import CassicalChoice.
+Require Import ClassicalChoice FunctionalExtensionality.
 
 Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
   (exists s: S, True) -> F is_continuous ->
     exists psi, forall phi Fphi, F phi Fphi -> forall a, exists n, U n psi phi a = Some (Fphi a).
 Proof.
   move => [s _] cont.
-  move: FunctionalChoice_on_rel.
-
+  - set R := fun p L => forall psi : S -> T,
+      (p.1) and psi coincide_on L ->
+      forall Fphi Fpsi : S' -> T',
+      F p.1 Fphi -> F psi Fpsi -> Fphi p.2 = Fpsi p.2.
+    have: forall p, exists L, R p L.
+    move => p.
+    apply: cont p.1 p.2.
+    move => cond.
+    move: ((@choice ((S->T)*S') (list(S)) R) cond) => [f] cond'.
 Admitted.
 
 Fixpoint cons_check S T S' T' (psi : S'*list T -> S + T') (s': S') (L : list (S*T)) :=
