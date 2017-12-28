@@ -4,7 +4,7 @@ and it should work for any continuous function from B -> B. Usually B is the Bai
 here, i.e. the set of all mappings from strings to strings. However, since I don't want
 to rely on a handwritten type of strings as I attempted in the file "operators.v" I use
 more generaly a space S -> T as substitute for B. *)
-Load functions.
+Load size_types.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -71,3 +71,29 @@ Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
 Proof.
   move => [s _] cont.
 Admitted.
+
+Fixpoint cons_check S T S' T' (psi : S'*list T -> S + T') (s': S') (L : list (S*T)) :=
+match L with
+  | nil =>
+  match (psi (s',nil)) with
+    | inl s => Some False
+    | inr t => None
+  end
+  | cons a K =>
+  match (psi (s',map snd K)) with
+    | inl s =>
+    match (cons_check psi s' K) with
+      | None => None
+      | Some b => Some (a.1 = s /\ b)
+    end
+    | inr t => None
+   end
+end.
+
+Canonical size_type_cont_arrow (S T S' T' : size_type) := @make_size_type
+  (elems S'*list(elems T) -> S + T')
+  (Major_arrow (bounds S') (Major_prod (bounds S) (bounds T)))
+  (fun psi b => forall s' k, k is_size_of s' -> exists L f,
+    cons_check psi s' L = None /\ consistent_with_list f L /\ b k = list_size f L )
+  (fun p => inr (inh T')).
+(* Lol... I wonder if this is right ... probably not. *)
