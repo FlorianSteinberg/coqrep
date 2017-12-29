@@ -18,6 +18,7 @@ Notation "delta 'is_representation_of' elements" := (is_rep_of delta elements) (
 
 Definition is_rep_of_wrt S T (delta: S ->> T) (elements: T -> Prop) (equals: T-> T -> Prop) :=
   (forall s t t', elements t -> elements t' -> delta s t -> delta s t' -> equals t t')
+    /\ (forall t t' s, equals t t' -> delta s t -> delta s t')
     /\ forall t, elements t -> range delta t.
 Notation "delta 'is_representation_wrt' eq 'of' elements" := 
   (is_rep_of_wrt delta elements eq) (at level 2).
@@ -51,9 +52,12 @@ Proof.
   - move => [sing sur].
     split.
     - move => s t t'.
-      apply (sing s t t').
-    - by apply sur.
-  - move => [sing sur].
+      by apply: (sing s t t').
+    - split.
+      - move => t t' s tet'.
+        by rewrite -tet'.
+      - by apply sur.
+  - move => [sing [eq sur]].
     split.
     - move => s t t'.
       apply: (sing s t t').
@@ -93,15 +97,21 @@ Lemma prod_rep (X Y : type):
     of
   (fun x => elements x.1 /\ elements x.2).
 Proof.
-  move: (@representation_is_valid X) (@representation_is_valid Y) => [xsing xsur] [ysing ysur].
+  move: (@representation_is_valid X) (@representation_is_valid Y)
+    => [xsing [xeq xsur]] [ysing [yeq ysur]].
   - split.
     - move => phi x y [iex1 iex2] [iey1 iey2] [inx1 inx2] [iny1 iny2].
       split.
       - by apply: (xsing phi.1 x.1 y.1).
       - by apply: (ysing phi.2 x.2 y.2).
-    - move => x [iex1 iex2].
-      move: (xsur x.1 iex1) (ysur x.2 iex2) => [phi in1] [psi in2].
-      by exists (phi, psi).
+    - split.
+      - move => x y phi [xey1 xey2] [inx iny].
+        split.
+        - by apply: (xeq x.1 y.1 phi.1).
+        - by apply: (yeq x.2 y.2 phi.2).
+      - move => x [iex1 iex2].
+        move: (xsur x.1 iex1) (ysur x.2 iex2) => [phi in1] [psi in2].
+        by exists (phi, psi).
 Qed.
 
 Canonical rep_space_prod X Y := @make_rep_space
@@ -126,6 +136,7 @@ Notation "x 'equal' y" := (@rep_space.equals x y) (at level 2).
 Notation names X := (rep_space.names X).
 Notation space X := (rep_space.space X).
 Notation delta X := (rep_space.delta X).
+Notation equals X := (rep_space.equals X).
 
 
 Definition make_rep_space_from_sur
@@ -137,10 +148,10 @@ Definition make_rep_space_from_sur
     names
     inhe
     delta
-    (sur_rep representation_is_valid)
+    (sur_rep_sing (sur_rep representation_is_valid))
   .
 
-Lemma fun_rep_on_range S T (f : S -> T) :
+Lemma fun_rep_on_range S X (f : S -> X) :
   (F2MF f) is_representation_of (range (F2MF f)).
 Proof.
   split.
@@ -158,7 +169,7 @@ Definition make_rep_space_from_fun
       names
       inhe
       (F2MF delta)
-      (fun_rep_on_range delta)
+      (sur_rep_sing (fun_rep_on_range delta))
     .
 
 Lemma single_valued_rep_on_range S T (f : S ->> T) :
@@ -180,15 +191,14 @@ Definition make_rep_space_from_mfun
       names
       inhe
       delta
-      (single_valued_rep_on_range sing).
+      (sur_rep_sing (single_valued_rep_on_range sing)).
 
 Definition is_mf_realizer (X Y : rep_space) (F: names X -> names Y) (f : (space X) ->> (space Y)) :=
   forall phi x y, delta phi x -> delta (F phi) (y) -> f x y.
 (* One candidate for the morphisms: The multivalued realizable functions. *)
 
 Definition is_realizer (X Y : rep_space) (F: names X -> names Y) (f : space X -> space Y) :=
-  forall phi x, phi is_name_of x -> x is_element
-    -> (F phi) is_name_of (f x).
+  forall phi x, phi is_name_of x -> x is_element -> (F phi) is_name_of (f x).
 (* A second candidate: the total singlevalued realizable functions *)
 Notation "F 'is_realizer_of' f" := (is_realizer F f) (at level 2).
 Arguments is_realizer {X Y}.
