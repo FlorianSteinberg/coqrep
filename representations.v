@@ -113,19 +113,9 @@ Proof.
         move: (xsur x.1 iex1) (ysur x.2 iex2) => [phi in1] [psi in2].
         by exists (phi, psi).
 Qed.
-
-Canonical rep_space_prod X Y := @make_rep_space
-  (space X * space Y)
-  (fun x => elements x.1 /\ elements x.2)
-  (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
-  (names X * names Y)
-  (pair (inhe X) (inhe Y))
-  (@delta X \, @delta Y)
-  (@prod_rep X Y).
+End rep_space.
 (* This is the product of represented spaces. At some point I should prove that this
 is the product in some category, but I am unsure what the morphisms are supposed to be. *)
-
-End rep_space.
 
 Notation rep_space := rep_space.type.
 Notation "'rep'" := @rep_space.delta (at level 2).
@@ -138,6 +128,14 @@ Notation space X := (rep_space.space X).
 Notation delta X := (rep_space.delta X).
 Notation equals X := (rep_space.equals X).
 
+Canonical rep_space_prod X Y := @rep_space.make_rep_space
+  (space X * space Y)
+  (fun x => x.1 is_element /\ x.2 is_element)
+  (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
+  (names X * names Y)
+  (pair (rep_space.inhe X) (rep_space.inhe Y))
+  (rep X \, rep Y)
+  (@rep_space.prod_rep X Y).
 
 Definition make_rep_space_from_sur
   (space : Type) (names : Type) (inhe : names)
