@@ -16,17 +16,57 @@ Definition is_rep_of S T (delta: S ->> T) (elements : T -> Prop) :=
 Notation "delta 'is_representation_of' elements" := (is_rep_of delta elements) (at level 2).
 (* To make subspaces work, we allow predicates as the underlying set of a represented space. *)
 
-Definition is_rep_of_wrt S T (delta: S ->> T) (elements: T -> Prop) (eq: T-> T -> Prop) :=
-  forall s t s' t', elements t -> elements t' -> delta s t -> delta s' t' -> s = s' -> eq t t'
+Definition is_rep_of_wrt S T (delta: S ->> T) (elements: T -> Prop) (equals: T-> T -> Prop) :=
+  (forall s t t', elements t -> elements t' -> delta s t -> delta s t' -> equals t t')
     /\ forall t, elements t -> range delta t.
+Notation "delta 'is_representation_wrt' eq 'of' elements" := 
+  (is_rep_of_wrt delta elements eq) (at level 2).
 (* This is to make it possible to identify elements arbirarily, i.e. make quotients work. *)
+
+Lemma sur_rep_b S T (delta: S ->> T) :
+  delta is_representation <-> delta is_representation_of (fun x => True).
+Proof.
+  split.
+  - move => [issing issur].
+    by split.
+  - move => [issing issur].
+    split.
+    - move => s.
+      by apply: (issing s).
+    - move => s.
+      by apply: (issur s).
+Qed.
 
 Lemma sur_rep S T (delta: S ->> T) :
   delta is_representation -> delta is_representation_of (fun x => True).
 Proof.
-  move => [issing issur].
-  by split.
+  move: (sur_rep_b delta) => [cond cond'].
+  exact: cond.
 Qed.
+
+Lemma sur_rep_sing_b S T (delta: S ->> T) (elements: T -> Prop) :
+  delta is_representation_of elements <-> delta is_representation_wrt (fun x y => x = y) of elements.
+Proof.
+  split.
+  - move => [sing sur].
+    split.
+    - move => s t t'.
+      apply (sing s t t').
+    - by apply sur.
+  - move => [sing sur].
+    split.
+    - move => s t t'.
+      apply: (sing s t t').
+    - done.
+Qed.
+
+Lemma sur_rep_sing S T (delta: S ->> T) (elements: T -> Prop) :
+  delta is_representation_of elements -> delta is_representation_wrt (fun x y => x = y) of elements.
+Proof.
+  move: (sur_rep_sing_b delta elements) => [cond cond'].
+  exact: cond.
+Qed.
+
 
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names can be an arbitrary type
@@ -43,31 +83,31 @@ Structure type := make_rep_space {
   names : Type;
   inhe: names;
   delta : names ->> space;
-  representation_is_valid : delta is_representation_of elements
+  representation_is_valid : delta is_representation_wrt equals of elements
   }.
 
 Lemma prod_rep (X Y : type):
-  (@delta X \, @delta Y) is_representation_of (fun x => elements x.1 /\ elements x.2).
+  (@delta X \, @delta Y)
+    is_representation_wrt
+  (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
+    of
+  (fun x => elements x.1 /\ elements x.2).
 Proof.
-  move: (representation_is_valid X) (representation_is_valid Y)
-    => [issingd issurd] [issingd' issurd'].
-  split.
-  - move => s t t' [t1fr t2fr] [t'1fr t'2fr].
-    apply: prod_sing_in.
-    split.
-    apply: issingd.
-    apply: issingd'.
-    done.
-    done.
-  - move => x [x1ie x2ie].
-    move: (issurd x.1 x1ie) (issurd' x.2 x2ie) => x1inr x2inr.
-    by apply: prod_range.
+  move: (@representation_is_valid X) (@representation_is_valid Y) => [xsing xsur] [ysing ysur].
+  - split.
+    - move => phi x y [iex1 iex2] [iey1 iey2] [inx1 inx2] [iny1 iny2].
+      split.
+      - by apply: (xsing phi.1 x.1 y.1).
+      - by apply: (ysing phi.2 x.2 y.2).
+    - move => x [iex1 iex2].
+      move: (xsur x.1 iex1) (ysur x.2 iex2) => [phi in1] [psi in2].
+      by exists (phi, psi).
 Qed.
 
 Canonical rep_space_prod X Y := @make_rep_space
   (space X * space Y)
   (fun x => elements x.1 /\ elements x.2)
-  (fun x y => x = y)
+  (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
   (names X * names Y)
   (pair (inhe X) (inhe Y))
   (@delta X \, @delta Y)
