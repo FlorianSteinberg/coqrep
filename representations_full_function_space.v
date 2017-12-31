@@ -1,7 +1,7 @@
 Load representations.
 (* This stopped working when I started to allow representing subsets. *)
 
-Require Import ClassicalChoice FunctionalExtensionality.
+Require Import ClassicalChoice.
 (* These are only needed to guarantee that it is always possible to provide a
 realizer of a function. *)
 

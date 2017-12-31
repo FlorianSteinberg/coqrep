@@ -1,8 +1,10 @@
 Load size_types.
 
 Structure dict_type := make_dict_type {
+  type : size_type;
   questions : size_type;
   answers : size_type;
+  type_check : eq (elems questions -> elems answers) (elems type)
 }.
 
 Canonical dict_type_prod S T := @make_dict_type

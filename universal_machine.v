@@ -4,7 +4,7 @@ and it should work for any continuous function from B -> B. Usually B is the Bai
 here, i.e. the set of all mappings from strings to strings. However, since I don't want
 to rely on a handwritten type of strings as I attempted in the file "operators.v" I use
 more generaly a space S -> T as substitute for B. *)
-Load size_types.
+Load machines.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

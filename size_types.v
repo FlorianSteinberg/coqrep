@@ -25,7 +25,20 @@ to talk about Polynomials over a Major type. Note that the Major type
 is taken from the file about second-order polynomials. *)
 
 Canonical Major_nat := @Major.Pack nat leq 0 max plus mult.
-(* The most basic example of a Major type: the natural numbers *)
+(* The most basic example of a Major type: the natural numbers
+Canonical Major_sum M1 M2 := @Major.Pack
+  (Major.sort M1 + Major.sort M2)
+  (fun m n => match m with
+    | inl k => match n with
+      | inl l => major k l
+      | inr l' => False
+    end
+    | inr k' => match n with
+      | inl l => False
+      | inr l' => major k l
+    end
+  end)
+  *)
 Canonical Major_prod M1 M2 := @Major.Pack
   (Major.sort M1 * Major.sort M2)
   (fun m n => major m.1 n.1 /\ major m.2 n.2)
@@ -54,8 +67,8 @@ Notation "b 'is_monotone'" := (major b b) (at level 2): major_scope.
 
 Structure size_type := make_size_type {
   elems :> Type;
-  bounds : Major.type;
-  is_size : elems ->> bounds;
+  sizes : Major.type;
+  is_size : elems ->> sizes;
   inh: elems
   }.
 (* If there is a way to measure the size of an element by something of Major type
@@ -67,13 +80,13 @@ Notation "s 'is_bounded'" := (exists b, b is_bound_of s) (at level 2).
 
 Canonical size_type_prod S T := @make_size_type
   (elems S * elems T)
-  (Major_prod (bounds S) (bounds T))
+  (Major_prod (sizes S) (sizes T))
   (fun s b => is_size s.1 b.1 /\ is_size s.2 b.2)
   (pair (inh S) (inh T) ).
 
 Canonical size_type_arrow S T := @make_size_type
   (elems S -> elems T)
-  (Major_arrow (bounds S) (bounds T))
+  (Major_arrow (sizes S) (sizes T))
   (fun f b => forall k, exists s, k is_size_of s /\ (b k) is_size_of (f s))
   (fun s => inh T).
 
@@ -85,7 +98,7 @@ Fortunatelly we are mostly interested in finite lists. So we proceed as
 follows: we say that a function f: elems S-> bounds S is consistent on a
 list if it produces the sizes of the elements of the list. *)
 
-Fixpoint consistent_with_list (S : size_type) (f: elems S -> bounds S) (L : list S) :=
+Fixpoint consistent_with_list (S : size_type) (f: elems S -> sizes S) (L : list S) :=
 match L with
   | nil => True
   | cons s K => is_size s (f s) /\ (consistent_with_list f K)
@@ -94,9 +107,9 @@ end.
 (* Next we define the size of a list to be the sum of the sizes of the elements.
 We may use any function that is consistent on the list. *)
 
-Fixpoint list_size (S : size_type) (f : elems S -> bounds S) (L : list S) :=
+Fixpoint list_size (S : size_type) (f : elems S -> sizes S) (L : list S) :=
 match L with
-  | nil => Major.zero (bounds S)
+  | nil => Major.zero (sizes S)
   | cons s K => Major.add (f s) (list_size f K)
 end.
 
@@ -104,7 +117,7 @@ end.
 
 Canonical size_type_list S := @make_size_type
   (list (elems S))
-  (bounds S)
-  (fun L b => exists (f: elems S -> bounds S),
+  (sizes S)
+  (fun L b => exists (f: elems S -> sizes S),
     consistent_with_list f L /\ b = list_size f L)
   (nil).
