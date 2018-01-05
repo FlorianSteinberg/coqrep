@@ -1,4 +1,6 @@
-Load functions.
+(* This file provides an alternative formulation of represented spaces that saves
+the input and output types of the names *)
+Load universal_machine.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -79,21 +81,29 @@ At some point I will probably change the names to be a size_type. The type of na
 must be inherited for the rather irrelevant full function-space construction to
 work. This may change depending on whether other function space constructions also
 need this or not. *)
-Module rep_space.
 Structure type := make_rep_space {
   space : Type;
   elements : space -> Prop;
   equals : space -> space -> Prop;
   questions : Type;
-  answers : Type;
-  nothing: answers;
-  delta : (questions -> answers) ->> space;
+  answer_type : Type;
+  delta : (questions -> option(answer_type)) ->> space;
   representation_is_valid : delta is_representation_wrt equals of elements
   }.
-Notation names := (questions -> answers).
+Notation answers X := (option (answer_type X)).
+Notation names X := ((questions X) -> (answers X)).
 
 Lemma prod_rep (X Y : type):
-  (@delta X \, @delta Y)
+  (fun (phipsi : (questions X + questions Y -> option(answer_type X + answer_type Y))) x =>
+      delta (fun q => match phipsi (inl q) with
+        | None => None
+        | Some (inl a) => Some a
+        | Some (inr b) => None
+      end) x.1 /\ delta (fun q => match phipsi (inr q) with
+        | None => None
+        | Some (inl a) => None
+        | Some (inr b) => Some b
+      end) x.2)
     is_representation_wrt
   (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
     of
@@ -102,38 +112,14 @@ Proof.
   move: (@representation_is_valid X) (@representation_is_valid Y)
     => [xsing [xeq xsur]] [ysing [yeq ysur]].
   - split.
-    - move => phi x y [iex1 iex2] [iey1 iey2] [inx1 inx2] [iny1 iny2].
-      split.
-      - by apply: (xsing phi.1 x.1 y.1).
-      - by apply: (ysing phi.2 x.2 y.2).
-    - split.
-      - move => x y phi [xey1 xey2] [inx iny].
-        split.
-        - by apply: (xeq x.1 y.1 phi.1).
-        - by apply: (yeq x.2 y.2 phi.2).
-      - move => x [iex1 iex2].
-        move: (xsur x.1 iex1) (ysur x.2 iex2) => [phi in1] [psi in2].
-        by exists (phi, psi).
-Qed.
-
-Lemma prod_rep_sum (X Y : type):
-  (fun phi x => @delta X (fun qx => (phi (inl qx)).1) x.1 /\ @delta Y (fun qy => (phi (inr qy)).2) x.2)
-    is_representation_wrt
-  (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
-    of
-  (fun x => elements x.1 /\ elements x.2).
-Proof.
-  move: (@representation_is_valid X) (@representation_is_valid Y)
-    => [xsing [xeq xsur]] [ysing [yeq ysur]].
-  - split.
-    - move => phi x y [xe1 xe2] [ye1 ye2] [inx1 inx2] [iny1 iny2].
+    - move => phipsi [x y] [x' y'] /= [iex iey] [iex' iey'] [inx iny] [inx' iny'].
       split.
       apply: xsing => //.
-      apply: inx1.
-      apply: iny1.
+      apply: inx.
+      apply: inx'.
       apply: ysing => //.
-      apply inx2.
-      apply iny2.
+      apply iny.
+      apply iny'.
     - split. 
       - move => x y phi [xey1 xey2] [inx iny].
         split.
@@ -142,51 +128,88 @@ Proof.
       - move => [x y] /= [iex iey].
         move: (xsur x iex) (ysur y iey) => [phi inx] [psi iny].
         exists (fun q => match q with
-          | inl qx => (phi qx, nothing Y)
-          | inr qy => (nothing X, psi qy)
+          | inl qx => match phi qx with
+            | Some a => Some (inl a)
+            | None => None
+          end
+          | inr qy => match psi qy with
+            | Some a => Some (inr a)
+            | None => None
+          end
         end).
-        by split.
+        split => /=.
+        replace (fun q : questions X =>
+        match
+         match phi q with
+          | Some a => Some (inl a)
+          | None => None
+         end
+        with
+         | Some (inl a) => Some a
+         | Some (inr _) => None
+         | None => None
+        end) with phi.
+        done.
+        apply: functional_extensionality => q.
+        elim (phi q).
+        done.
+        done.
+        replace (fun q : questions Y =>
+        match
+         match psi q with
+          | Some a => Some (inr a)
+          | None => None
+         end
+        with
+         | Some (inr a) => Some a
+         | Some (inl _) => None
+         | None => None
+        end) with psi.
+        done.
+        apply: functional_extensionality => q.
+        elim (psi q).
+        done.
+        done.
 Qed.
 
-End rep_space.
 (* This is the product of represented spaces. At some point I should prove that this
 is the product in some category, but I am unsure what the morphisms are supposed to be. *)
 
-Notation rep_space := rep_space.type.
-Notation "'rep'" := @rep_space.delta (at level 2).
-Notation "phi 'is_name_of' x" := (rep_space.delta phi x) (at level 2).
-Notation "x 'is_element'" := (rep_space.elements x) (at level 2).
-Notation "x 'is_from' X" := (@rep_space.elements X x) (at level 2).
-Notation "x 'equal' y" := (@rep_space.equals x y) (at level 2).
-Notation names := rep_space.names.
-Notation questions := rep_space.questions.
-Notation answers := rep_space.answers.
-Notation space := rep_space.space.
-Notation delta := rep_space.delta.
-Notation equals := rep_space.equals.
+Notation rep_space := type.
+Notation "'rep'" := @delta (at level 2).
+Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
+Notation "x 'is_element'" := (elements x) (at level 2).
+Notation "x 'is_from' X" := (@elements X x) (at level 2).
+Notation "x 'equal' y" := (@equals x y) (at level 2).
 
-Canonical rep_space_prod X Y := @rep_space.make_rep_space
+Canonical rep_space_prod X Y := @make_rep_space
   (space X * space Y)
   (fun x => x.1 is_element /\ x.2 is_element)
   (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
   (@questions X + @questions Y)
-  (@answers X * @answers Y)
-  (rep_space.nothing X, rep_space.nothing Y)
-  (fun phi x => delta (fun qx => (phi (inl qx)).1) x.1 /\ delta (fun qy => (phi (inr qy)).2) x.2)
-  (@rep_space.prod_rep_sum X Y).
+  (@answer_type X + @answer_type Y)
+  (fun (phipsi : (questions X + questions Y -> option(answer_type X + answer_type Y))) x =>
+      delta (fun q => match phipsi (inl q) with
+        | None => None
+        | Some (inl a) => Some a
+        | Some (inr b) => None
+      end) x.1 /\ delta (fun q => match phipsi (inr q) with
+        | None => None
+        | Some (inl a) => None
+        | Some (inr b) => Some b
+      end) x.2)
+  (@prod_rep X Y).
 
 Definition make_rep_space_from_sur
   (space : Type)
   (questions : Type)
   (answers : Type)
-  (nothing : answers)
-  (delta : (questions->answers) ->> space) (representation_is_valid : is_rep delta) :=
-  @rep_space.make_rep_space space
+  (delta : (questions->option(answers)) ->> space) (representation_is_valid : is_rep delta) :=
+  @make_rep_space space
     (fun x=> True)
     (fun x y => x= y)
     questions
     answers
-    nothing
     delta
     (sur_rep_sing (sur_rep representation_is_valid))
   .
@@ -204,15 +227,13 @@ Definition make_rep_space_from_fun
   (space : Type)
   (questions : Type)
   (answers : Type)
-  (nothing:answers)
-  (delta: (questions->answers) -> space) :=
-    @rep_space.make_rep_space
+  (delta: (questions->option answers) -> space) :=
+    @make_rep_space
       space
       (range (F2MF delta))
       (fun x y => x = y)
       questions
       answers
-      nothing
       (F2MF delta)
       (sur_rep_sing (fun_rep_on_range delta))
     .
@@ -231,16 +252,14 @@ Definition make_rep_space_from_mfun
   (space : Type)
   (questions : Type)
   (answers : Type)
-  (nothing : answers)
-  (delta: (questions -> answers) ->> space)
+  (delta: (questions -> option answers) ->> space)
   (sing: delta is_single_valued) :=
-    @rep_space.make_rep_space
+    @make_rep_space
       space
       (range delta)
       (fun x y => x = y)
       questions
       answers
-      nothing
       delta
       (sur_rep_sing (single_valued_rep_on_range sing)).
 
@@ -263,3 +282,22 @@ by a better notion of computability at some point. A candidate can be found at t
 of the functions.v file, but that candidate is not usable yet, so I will work with the
 above notion of computability for now. *)
 Notation "f 'is_computable'" := (is_comp f) (at level 2).
+
+Notation "X ~> Y" := (nat -> (names X) -> (questions Y) -> answers Y) (format "X ~> Y", at level 2).
+(* I think about this type as a type of machines: For M : B ~> B' I "read M s n = nothing" as
+"the Machine can't say anything about the return value yet" and "M s n = some t" as "after n
+steps the machine considers t to be the best answer". Since no assumption about concurrency
+have been made, in general a machine will produce an infinite list of return values. *)
+
+Definition eval (X Y : rep_space) (M : X ~> Y) : ((names X) ->> (names Y)) :=
+  fun (phi : names X) (psi : names Y) => forall (a : questions Y), exists n, M n phi a = psi a.
+(* if M is a machine then eval M is the function the machine computes. Since no assumptions
+about convergence or concurrency have been made, the computed multivalued function need
+neither be singlevalued nor total. *)
+
+Definition is_comput (X Y : rep_space) (F: (names X) ->> (names Y)):=
+  exists M, forall phi, (exists psi, F phi psi) -> forall psi, (eval M phi psi -> F phi psi).
+(* This is the best candidate for computability I have come up with so far: If there are eligible
+return values then the machine produces one of these, but if there are none, the machine may behave
+arbitrarily. I am not one hundred percent sure this is the right notion, but pretty confident. *)
+Notation "F 'is_computable'" := (is_comput F) (at level 2).

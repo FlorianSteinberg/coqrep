@@ -1,4 +1,4 @@
-Load functions.
+Load universal_machine.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -121,3 +121,11 @@ Canonical size_type_list S := @make_size_type
   (fun L b => exists (f: elems S -> sizes S),
     consistent_with_list f L /\ b = list_size f L)
   (nil).
+
+Canonical size_type_cont_arrow (S T S' T' : size_type) := @make_size_type
+  (elems S'*list(elems T) -> S + T')
+  (Major_arrow (bounds S') (Major_prod (bounds S) (bounds T)))
+  (fun psi b => forall s' k, k is_size_of s' -> exists L f,
+    cons_check psi s' L = None /\ consistent_with_list f L /\ b k = list_size f L )
+  (fun p => inr (inh T')).
+(* Lol... I wonder if this is right ... probably not. *)
