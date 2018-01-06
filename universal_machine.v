@@ -66,7 +66,7 @@ match n with
 end.
 
 Definition U (S T S' T' : Type) n (psi: S' * list (S * T) -> S + T') (phi: S -> T) a :=
-U' n psi phi (a,nil).
+U' n.+1 psi phi (a,nil).
 (* This is what I want to prove to be a universal machine. *)
 
 Require Import ClassicalChoice FunctionalExtensionality.
@@ -75,9 +75,7 @@ Inductive one := star.
 
 Local Open Scope coq_nat_scope.
 
-Definition F phi Fphi := phi (Fphi star) = 0 /\ forall m, m < Fphi star -> phi m <> 0.
-
-Lemma example: is_cont F.
+Lemma example: is_cont (fun phi Fphi => phi (Fphi star) = 0 /\ forall m, m < Fphi star -> phi m <> 0).
 Proof.
   move => phi star.
   set L := fix L m := match m with
@@ -162,10 +160,18 @@ Qed.
 (* This was a pain to prove... Why? *)
 
 Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
-  (exists t: T, True) -> (exists t':T', True) -> F is_continuous ->
-    exists psi, forall phi Fphi, F phi Fphi -> forall a, exists n, U n psi phi a = Some (Fphi a).
+  (exists cnt: nat -> S, (F2MF cnt) is_surjective) -> (exists t: T, True) -> (exists t':T', True)
+    -> F is_continuous -> exists psi, forall phi, (exists Fphi, F phi Fphi)
+      -> forall (Fphi: S'->T') a, exists n, U n psi phi a = Some (Fphi a).
 Proof.
-  move => [t _] [t' _] cont.
+  move => [cnt sur][t _] [t' _] cont.
+  set R := fun s n => cnt n = s.
+  have: forall s, exists n, R s n.
+  done.
+  move => cond.
+  move: ((@choice (S) (nat) R) cond) => [sec] issec.
+  rewrite /R /= in issec.
+  move: R cond => _ _.
   set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
   have: forall phi, exists psi, R phi psi.
   move => phi.
@@ -178,18 +184,46 @@ Proof.
   move: ((@choice ((S -> T)) (S' -> T') R) cond) => [Ff] Fprop.
   rewrite /R /= in Fprop.
   move: t' R cond => _ _ _.
-  - set R := fun p L => forall psi : S -> T,
-      (p.1) and psi coincide_on L ->
+  - set R := fun p n => forall (psi : S -> T), (forall m,
+      m < n -> (p.1) (cnt m) = psi (cnt m)) ->
       forall Fphi Fpsi : S' -> T',
       F p.1 Fphi -> F psi Fpsi -> Fphi p.2 = Fpsi p.2.
-    have: forall p, exists L, R p L.
+    have: forall p, exists n, R p n.
     move => p.
-    apply: cont p.1 p.2.
+    move: (cont p.1 p.2) => [L].
     move => cond.
-    move: ((@choice ((S->T)*S') (list(S)) R) cond) => [f] fprop.
+    set size := (fix size K := match K with
+      | nil => 0
+      | cons s K' => max ((sec s).+1) (size K')
+    end).
+    exists (size L).
+    move => psi kack Fphi Fpsi v1 v2.
+    apply (cond psi).
+    have: forall K, (forall m: nat, m < size K -> p.1 (cnt m) = psi (cnt m)) -> (p.1 and psi coincide_on K).
+    elim => //.
+    move => a K ih.
+    split; last first => //=.
+    - apply ih.
+      move => m si.
+      apply H.
+      apply (PeanoNat.Nat.lt_le_trans m (size K)).
+      done.
+      apply PeanoNat.Nat.le_max_r.
+    - replace a with (cnt (sec a)).
+      apply: (H (sec a)).
+      move: (PeanoNat.Nat.le_succ_l (sec a) ((size (a :: K)))) => [lt_max_l _].
+      apply: lt_max_l.
+      apply: (PeanoNat.Nat.le_max_l) => /=.
+      done.
+    move => Kack.
+    by apply (Kack L).
+    apply v1.
+    apply v2.
+    move => cond.
+    move: ((@choice ((S->T)*S') (nat) R) cond) => [f] fprop.
     rewrite /R /= in fprop.
     move: R cond => _ _.
-    set R := (fun (L : S*list(S * T)) (b:T) => 
+    set R := (fun (L : S*list(S * T)) (b:T) =>
       forall c, List.In (L.1,c) L.2 -> List.In (L.1,b) L.2).
     have : forall L, exists b, R L b.
     move => L.
@@ -197,44 +231,90 @@ Proof.
     - move => [c] inlist.
       by exists c.
     - move => false.
-      exists t.
+      exists (t).
       move => c inlist.
       exfalso.
       apply: false.
       by exists c.
     move => cond.
-    move: ((@choice (S*list(S * T)) (T) R) cond) => [phi'] phiprop.
+    move: ((@choice (S*list(S * T)) (T) R) cond) => [temp] tprop.
+    rewrite /R /= in tprop.
+    move: R cond => _ _.
+    set R := (fun (L : list(S * T)) (psi:S -> T) =>
+      ((exists phi Fphi, F phi Fphi /\ forall s c, List.In (s,c) L -> List.In (s,phi s) L)
+      -> (exists Fpsi, F psi Fpsi)) /\ forall s c, List.In (s,c) L -> List.In (s,psi s) L).
+    have : forall L, exists psi, R L psi.
+    move => L.
+    case: (classic (exists phi Fphi, F phi Fphi /\ forall s c, List.In (s,c) L -> List.In (s,phi s) L)).
+    - move => [psi] [Fpsi] [v prop].
+      exists psi.
+      split.
+      - move => stuff.
+        by exists Fpsi.
+      - done.
+    move => false.
+    exists (fun s => temp (s,L)).
+    split.
+    move => stuff.
+    exfalso.
+    by apply false.
+    move => s.
+    apply (tprop (s,L)).
+    move => cond.
+    move: ((@choice (list(S * T)) (S -> T) R) cond) => [phi'] phiprop.
     rewrite /R /= in phiprop.
     move: R cond => _ _.
-    set R := (fun (L : (list S) *  list(S * T)) (b : option S) =>
-      match b with
-        | None => forall c, List.In c L.1 -> List.In c (map fst L.2)
-        | Some s => List.In s L.1 /\ ~ List.In s (map fst L.2)
-      end).
-    have : forall L, exists b, R L b.
-    - move => L.
-      case: (classic (exists s, List.In s L.1 /\ ~ List.In s (map fst L.2))).
-      - move => [s] [list false].
-        exists (Some s) => //=.
-      - move => false.
-        exists None => //=.
-        move => s list.
-        apply: NNPP.
-        move => notnot.
-        apply: false.
-        by exists s.
-    move => cond.
-    move: ((@choice ((list S)*list(S * T)) (option S) R) cond) => [cf] cfprop.
-    rewrite /R /= in cfprop.
-    move: R cond => _ _.
-    set psiF := (fun L => match (cf (f (fun s => phi' (s , L.2) , L.1), L.2)) with
-      | Some s => inl s
-      | None => inr (Ff (fun s => phi' (s, L.2)) L.1)
-    end).
+    set psiF := (fun L =>
+      if
+        (ltn (f (phi' L.2 , L.1)) (length L.2))
+      then
+        (inl (cnt (f (phi' L.2 , L.1)).+1))
+      else
+        (inr (Ff (phi' L.2) L.1))).
     exists psiF.
-    move => phi Fphi v s'.
-    apply: NNPP.
-    move => false.
+    move => phi [Fphi v] Fphi' s'.
+    exists (f (phi, s')).+1.
+    have: forall m, m.+1 = (f (phi, s')).+1 -> U (m.+1) psiF phi s' = Some (Fphi s').
+    elim.
+    move => one.
+    have: f(phi,s') = 0.
+    - move: (Minus.pred_of_minus (f(phi,s')).+1) => H.
+      by rewrite -{2}one /= in H.
+    move: one => _ zero.
+    rewrite /U /U' /psiF /=.
+    replace (Ff (phi' [::]) s') with (Fphi s').
+    - done.
+    apply (fprop (phi,s') (phi' nil)).
+    rewrite zero.
+    move => m H.
+    exfalso.
+    by apply: (PeanoNat.Nat.nlt_0_r m).
+    by replace ((phi,s').1) with phi.
+    - apply: (Fprop (phi' nil)).
+      case: (classic ((exists (Fphi : S' -> T'),
+        F (phi' nil) Fphi /\
+        (forall (s : S) (c : T),
+         List.In (s, c) [::] -> List.In (s, (phi' nil) s) [::])))).
+      move => [Fpsi] [v3 c].
+      by exists Fpsi.
+      move => false.
+      exists (Fphi).
+      apply NNPP.
+      move => nv.
+      apply false.
+      exists (phi' nil).
+      exists Fphi.
+      split.
+      split; last first.
+      replace Fphi with Fpsi => //.
+      apply functional_extensionality.
+      move => x.
+      move: (cont (phi' nil) x) => [L] stuff.
+      apply (stuff (phi' nil)).
+      done.
+      move: (cont_to_sing cont) => sing.
+      move: (sing (phi' nil) Fphi Fpsi).
+      apply: cont.
 (* This is probably not true without further assumptions... also, instead of arbitrary certificates,
 the function f should probably use minimal certificates for it to work even in special cases. *)
 
