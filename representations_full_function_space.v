@@ -19,24 +19,24 @@ Proof.
   - move => phi f g [cond _] [cond' _] irx iry x y xif yif xey.
     move: (xsur x xif) => [a anx].
     apply: (ysing (phi a) (f x) (g y)).
-    - by apply: cond.
-    - by apply: cond'.
+    - - - by apply: cond.
+    - - by apply: cond'.
     - by apply: irx.
-    - apply: iry.
-      - by apply: (xeq x y a xey).
-      - done.
-  - split.
-    - move => f g F cond real phi x inx xif.
-      apply: (yeq (f x) (g x) (F phi)).
-      - apply: (cond x x) => //.
-        apply: (xsing phi x x) => //.
-      - by apply: (real phi x).
-  - move => f [cond cond'].
-    set R := fun a b => forall x, x is_element -> delta a x -> delta b (f x).
-    have: forall a, exists b, R a b.
-    move => a.
-    case: (classic (exists x, delta a x /\ x is_element)).
-    - move => [x [anx xie]].
+    apply: iry.
+    - by apply: (xeq x y a xey).
+    done.
+  split.
+  - move => f g F cond real phi x inx xif.
+    apply: (yeq (f x) (g x) (F phi)).
+    - apply: (cond x x) => //.
+      apply: (xsing phi x x) => //.
+    by apply: (real phi x).
+  move => f [cond cond'].
+  set R := fun a b => forall x, x is_element -> delta a x -> delta b (f x).
+  have: forall a, exists b, R a b.
+  move => a.
+  case: (classic (exists x, delta a x /\ x is_element)).
+  - - move => [x [anx xie]].
       move: (cond x xie) => fxie.
       move: (ysur (f x) fxie) => [b bnx].
       exists b.
@@ -46,18 +46,18 @@ Proof.
       move : (ysur (f y) fyify) => [c cnfy].
       apply: (yeq (f x) (f y) b).
       - by apply: cond'.
-      - done.
-    - move => eq.
-      exists (@rep_space.inhe Y).
-      move => y yifx any.
-      exfalso.
-      apply eq.
-      by exists y.
-  - move => fe.
-    move: (@choice (names X) (names Y) R fe) => [F Fir].
-    exists F.
-    move => a x anx xie.
-    apply: (Fir a x xie anx).
+      done.
+    move => eq.
+    exists (@rep_space.inhe Y).
+    move => y yifx any.
+    exfalso.
+    apply eq.
+    by exists y.
+  move => fe.
+  move: (@choice (names X) (names Y) R fe) => [F Fir].
+  exists F.
+  move => a x anx xie.
+  apply: (Fir a x xie anx).
 Qed.
 
 Arguments is_realizer_is_rep {X Y}.
