@@ -146,31 +146,25 @@ Proof.
       move => keq.
       by exfalso; by apply beq.
     move => eqk.
-  
+
     exists (n m m).
     split.
     - by apply (prp m).
-    move => m0 ineq eq.
-    have: m0 < m.
-    - apply: (PeanoNat.Nat.lt_le_trans m0 (n m m) m) => //.
+    move => k ineq eq.
+    have: k < m.
+    - apply: (PeanoNat.Nat.lt_le_trans k (n m m) m) => //.
       apply (eqk m m) => //.
       by apply (Plus.le_plus_l m m).
     move => ineq2.
     move: ineq.
     apply Lt.le_not_lt.
-    - - apply eqk.
+    apply eqk => //.
     - by apply PeanoNat.Nat.lt_le_incl.
-      by apply (Plus.le_plus_r m0 m).
-    done.
+    by apply (Plus.le_plus_r k m).
   move => cond.
-  move: ((@choice (S) (nat) R) cond) => [sec] issec.
+  move: (choice R cond) => [sec] issec.
   exists sec.
-  split => s.
-  - move: (issec s) => [se] _.
-    by apply se.
-  move => m.
-  move: (issec s) => [] _ se.
-  by apply se.
+  by split => s; move: (issec s) => [se1 se2].
 Qed.
 
 Definition is_min_sec S (cnt: nat -> S) (sec : S -> nat) :=
@@ -185,7 +179,6 @@ end.
 Lemma initial_segments S T (cnt: nat -> S) (phi psi : S -> T):
   forall m, (forall n, n <= m -> phi (cnt n) = psi (cnt n)) <-> phi and psi coincide_on (in_seg cnt m).
 Proof.
-  move => m.
   split; last first.
   - move: m.
     elim.
@@ -258,60 +251,54 @@ Proof.
   set cnt := (fun n:nat => n).
   set sec := (fun n:nat => n).
   set L := in_seg cnt.
+  replace Top.star with star; last first.
+  - by elim star.
   case: (classic (exists m, phi m = 0)); last first.
   - move => false.
     exists nil => psi _ fp1 [v1] cond.
     exfalso; apply false.
-    by exists (fp1 Top.star).
+    by exists (fp1 star).
   move => [m me0].
   exists (L m).
   move => psi pep.
   move: (initial_segments cnt phi psi m) => [_ cond].
   move: cond pep (cond pep) => _ _ cond Fphi [v1 c1].
-  have: m >= Fphi Top.star.
+  have: m >= Fphi star.
   - apply NNPP => ge1.
     apply (c1 m).
     - by apply Compare_dec.not_ge.
     replace (psi m) with (phi m) => //.
     by apply (cond m).
   move => ge1.
-  move: ge1 (cond (Fphi Top.star) ge1).
+  move: ge1 (cond (Fphi star) ge1).
   rewrite v1.
   move => zero1.
   split.
-  - exists (fun star => Fphi Top.star).
+  - exists (fun star => Fphi star).
     split => //.
     move => m0 co.
     replace (psi m0) with (phi m0).
     - by apply (c1 m0).
     apply (cond m0).
     apply PeanoNat.Nat.lt_le_incl.
-    by apply: (PeanoNat.Nat.lt_le_trans m0 (Fphi Top.star) m).
+    by apply: (PeanoNat.Nat.lt_le_trans m0 (Fphi star) m).
   move => Fpsi [v2 c2].
-  have: m >= Fpsi Top.star.
+  have: m >= Fpsi star.
   - apply NNPP => ge2.
     apply (c2 m);last first.
     replace (psi m) with (phi m) =>//.
     - by apply (cond m).
     by apply Compare_dec.not_ge.
   move => ge2.
-  move: ge2 (cond (Fpsi Top.star) ge2) => _.
+  move: ge2 (cond (Fpsi star) ge2) => _.
   rewrite v2 => zero2.
-  - have: (~ Fphi star > Fpsi star).
-    - move => gt1.
-      apply (c1 (Fpsi star)).
-      replace Top.star with star => //.
-      by elim star.
-    replace star with Top.star => //.
-    by elim star.
+  have: (~ Fphi star > Fpsi star).
+  - move => gt1.
+    by apply (c1 (Fpsi star)).
   move => gt1.
   have: (~ Fpsi star > Fphi star).
   - move => gt2.
-    apply (c2 (Fphi star)).
-    - replace Top.star with star => //.
-      by elim star.
-    replace star with Top.star => //.
-    by elim star.
+    by apply (c2 (Fphi star)).
   move => gt2.
   apply NNPP=> neq.
   move: (PeanoNat.Nat.lt_trichotomy (Fphi star) (Fpsi star)) => //.
@@ -334,7 +321,7 @@ Proof.
   set R := fun phi s' L => forall psi, phi and psi coincide_on L
     -> forall Fphi, F phi Fphi -> (exists Fpsi, F psi Fpsi) /\
       (forall Fpsi, F psi Fpsi -> Fphi s' = Fpsi s')
-      /\ forall K, size sec K <= size sec L.
+      /\ forall K, size sec K <= size sec L.              
   have: forall phi s', exists L, R phi s' L.
   - move => phi s'.
     move: (cont phi s') => [L] cond.
