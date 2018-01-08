@@ -159,7 +159,10 @@ Proof.
 Qed.
 
 Definition make_rep_space_from_fun
-  (space : Type) (names : Type) (inhe:names) (delta: names -> space) :=
+  (space : Type)
+  (names : Type)
+  (inhe : names)
+  (delta : names -> space) :=
     @rep_space.make_rep_space
       space
       (range (F2MF delta))
@@ -181,7 +184,11 @@ Proof.
 Qed.
 
 Definition make_rep_space_from_mfun
-  (space: Type) (names:Type) (inhe:names) (delta: names ->> space) (sing: delta is_single_valued) :=
+  (space: Type)
+  (names : Type)
+  (inhe:names)
+  (delta: names ->> space)
+  (sing: delta is_single_valued) :=
     @rep_space.make_rep_space
       space
       (range delta)
@@ -204,9 +211,7 @@ Arguments is_realizer {X Y}.
 Definition is_comp (X Y : rep_space) (f : space X -> space Y) :=
   exists F, is_realizer F f.
 (* I don't like this notion of computability as it requires the existence of a total
-realizer. I think actually the realizer will automatically be primitive recursive.
-Of course the use of mathematical functions is not debatable but I want to replace it
-by a better notion of computability at some point. A candidate can be found at the end
-of the functions.v file, but that candidate is not usable yet, so I will work with the
-above notion of computability for now. *)
+realizer. I want to replace it by a better notion of computability at some point.
+A candidate can be found at the end of the functions.v file, but that candidate is not
+usable yet, so I will work with the above notion for now. *)
 Notation "f 'is_computable'" := (is_comp f) (at level 2).
