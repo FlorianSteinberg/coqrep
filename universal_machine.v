@@ -191,7 +191,7 @@ Qed.
 
 Lemma minimal_section S (cnt : nat -> S) (equ : S -> S -> bool):
   (F2MF cnt) is_surjective -> (forall s s', is_true (equ s s') <-> (s = s'))
-    -> exists sec: S -> nat, forall s, cnt (sec s) = s /\ (forall m, m < sec s -> cnt m <> s).
+    -> exists sec: S -> nat, (forall s, cnt (sec s) = s) /\ forall s,(forall m, m < sec s -> cnt m <> s).
 Proof.
   move => sur eprop.
   set R := fun s n => cnt n = s /\ (forall m, m < n -> cnt m <> s).
@@ -278,7 +278,38 @@ Proof.
     done.
   move => cond.
   move: ((@choice (S) (nat) R) cond) => [sec] issec.
-  by exists sec.
+  exists sec.
+  split => s.
+  - move: (issec s) => [se] _.
+    by apply se.
+  move => m.
+  move: (issec s) => [] _ se.
+  by apply se.
+Qed.
+
+Fixpoint size S (sec: S -> nat) K := match K with
+  | nil => 0
+  | cons s K' => max ((sec s).+1) (size sec K')
+end.
+
+Lemma list_size S T (cnt : nat -> S) (sec: S -> nat):
+  (forall s, cnt (sec s) = s) -> forall K phi (psi : S -> T),
+    (forall m: nat, m < size sec K -> phi (cnt m) = psi (cnt m))
+      -> (phi and psi coincide_on K).
+Proof.
+  move => issec.
+  elim => //.
+  move => a K ih phi psi H.
+  split.
+  - replace a with (cnt (sec a)) by apply (issec a).
+    apply: (H (sec a)).
+    move: (PeanoNat.Nat.le_succ_l (sec a) ((size sec (a :: K)))) => [lt_max_l _].
+    apply: lt_max_l.
+    by apply: (PeanoNat.Nat.le_max_l).
+  apply ih => m si.
+  apply H.
+  apply (PeanoNat.Nat.lt_le_trans m (size sec K)) => //.
+  apply PeanoNat.Nat.le_max_r.
 Qed.
 
 Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
@@ -286,31 +317,13 @@ Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
     -> (exists equ: S -> S -> bool, forall s s', is_true (equ s s') <-> (s = s'))
     -> (exists t: T, True)
     -> (exists t':T', True)
-    -> F is_continuous -> exists psi, forall phi, (exists Fphi, F phi Fphi)
+    -> F is_continuous
+      -> exists psi, forall phi, (exists Fphi, F phi Fphi)
       -> forall (Fphi: S'->T') a, exists n, U n psi phi a = Some (Fphi a).
 Proof.
   move => [cnt sur] [equ] eprop [t _] [t' _] cont.
-
-  set size := (fix size K := match K with
-    | nil => 0
-    | cons s K' => max ((sec s).+1) (size K')
-  end).
-  have: forall K phi (psi:S -> T),
-    (forall m: nat, m < size K -> phi (cnt m) = psi (cnt m))
-      -> (phi and psi coincide_on K).
-  - elim => //.
-    move => a K ih phi psi H.
-    split.
-    - replace a with (cnt (sec a)) by apply (issec a).
-      apply: (H (sec a)).
-      move: (PeanoNat.Nat.le_succ_l (sec a) ((size (a :: K)))) => [lt_max_l _].
-      apply: lt_max_l.
-      by apply: (PeanoNat.Nat.le_max_l).
-    apply ih => m si.
-    apply H.
-    apply (PeanoNat.Nat.lt_le_trans m (size K)) => //.
-    apply PeanoNat.Nat.le_max_r.
-  move => init.
+  move: sur equ eprop (minimal_section sur eprop) => _ _ _ [] sec [] issec sprop.
+  
   set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
   have: forall phi, exists psi, R phi psi.
   - move => phi.
@@ -324,25 +337,7 @@ Proof.
   rewrite /R /= in Fprop.
   move: t' R cond => _ _ _.
 
-  set R := fun p n => forall (psi : S -> T), (forall m,
-      m < n -> (p.1) (cnt m) = psi (cnt m)) ->
-      forall Fphi : S' -> T', F p.1 Fphi -> (exists Fpsi, F p.1 Fpsi) /\
-        (forall Fpsi, F psi Fpsi -> Fphi p.2 = Fpsi p.2).
-  have: forall p, exists n, R p n.
-  - move => p.
-    move: (cont p.1 p.2) => [L] cond.
-    exists (size L).
-    move => psi kack Fpsi v1.
-    split.
-    - by exists Fpsi.
-    move => Fphi v2.
-    apply (cond psi) => //.
-    by apply (init L p.1 psi).
-    move => cond.
-    move: ((@choice ((S->T)*S') (nat) R) cond) => [f] fprop.
-    rewrite /R /= in fprop.
-    move: R cond => _ _.
-    set R := (fun (L : S*list(S * T)) (b:T) =>
+  set R := (fun (L : S*list(S * T)) (b:T) =>
       forall c, List.In (L.1,c) L.2 -> List.In (L.1,b) L.2).
     have : forall L, exists b, R L b.
     move => L.
@@ -361,7 +356,7 @@ Proof.
   move: R cond => _ _.
 
   set R := (fun (L : list(S * T)) (psi:S -> T) =>
-    ((exists phi Fphi, F phi Fphi /\ forall s c, List.In (s,c) L -> List.In (s,phi s) L)
+     ((exists phi Fphi, F phi Fphi /\ forall s c, List.In (s,c) L -> List.In (s,phi s) L)
     -> (exists Fpsi, F psi Fpsi)) /\ forall s c, List.In (s,c) L -> List.In (s,psi s) L).
   have : forall L, exists psi, R L psi.
     move => L.
@@ -384,6 +379,26 @@ Proof.
     move: ((@choice (list(S * T)) (S -> T) R) cond) => [phi'] phiprop.
     rewrite /R /= in phiprop.
     move: R cond => _ _.
+
+    set R := fun p n => forall (psi : S -> T), (forall m,
+      m < n -> (p.1) (cnt m) = psi (cnt m)) ->
+      forall Fphi : S' -> T', F p.1 Fphi -> (exists Fpsi, F p.1 Fpsi) /\
+        (forall Fpsi, F psi Fpsi -> Fphi p.2 = Fpsi p.2).
+  have: forall p, exists n, R p n.
+  - move => p.
+    move: (cont p.1 p.2) => [L] cond.
+    exists (size sec L).
+    move => psi kack Fpsi v1.
+    split.
+    - by exists Fpsi.
+    move => Fphi v2.
+    apply (cond psi) => //.
+    by apply: (@list_size S T cnt sec issec L p.1 psi).
+    move => cond.
+    move: ((@choice ((S->T)*S') (nat) R) cond) => [f] fprop.
+    rewrite /R /= in fprop.
+    move: R cond => _ _.
+
     set psiF := (fun L =>
       if
         (leq (f (phi' L.2,L.1)) (length L.2))
@@ -394,8 +409,8 @@ Proof.
     exists psiF.
     move => phi [Fphi v] Fphi' s'.
     move: (cont phi s') => [L] prop.
-    exists (size L).
-    have: forall m, m = size L -> U m psiF phi s' = Some (Fphi' s').
+    exists (size sec L).
+    have: forall m, m = size sec L -> U m psiF phi s' = Some (Fphi' s').
     elim.
     rewrite /U /U' /psiF /=.
     move => eq.
