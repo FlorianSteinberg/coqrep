@@ -82,136 +82,27 @@ U' n.+1 psi phi (a,nil).
 
 Require Import ClassicalChoice FunctionalExtensionality.
 
-Inductive one := star.
-
 Local Open Scope coq_nat_scope.
 
-Lemma example: is_cont (fun phi Fphi => phi (Fphi star) = 0 /\ forall m, m < Fphi star -> phi m <> 0).
+Lemma minimal_section (S:eqType) (cnt : nat -> S):
+  (F2MF cnt) is_surjective ->
+    exists sec: S -> nat, (forall s, cnt (sec s) = s) /\ forall s,(forall m, m < sec s -> cnt m <> s).
 Proof.
-  move => phi star.
-  set L := fix L m := match m with
-    | 0 => cons 0 nil
-    | S n => cons (S n) (L n)
-  end.
-  case: (classic (exists m, phi m = 0)); last first.
-  - move => false.
-    exists nil => psi _ fp1 [v1] cond.
-    exfalso; apply false.
-    by exists (fp1 Top.star).
-  - move => [m me0].
-    exists (L m).
-    move => psi pep.
-    have: (forall k,phi and psi coincide_on (L k) -> forall n, n <= k -> phi n = psi n).
-    elim.
-    - move => [p0 _] n nl0.
-      replace n with 0 => //.
-      by apply Le.le_n_0_eq.
-    - move => n ihn.
-      replace (L n.+1) with (cons n.+1 (L n)).
-      case.
-      move => eqp1 stuff n0.
-      move: stuff ihn (ihn stuff) => _ _ ihn nln0.
-      case: (classic (n0 = S n)).
-      move => kack.
-      by rewrite kack.
-      move => neq.
-      apply ihn.
-      apply Lt.lt_n_Sm_le.
-      move: (PeanoNat.Nat.le_neq n0 n.+1) => [_ stuff].
-      by apply stuff.
-      done.
-    - move => cond.
-      move: cond pep (cond m pep) => _ _ cond Fphi [v1 c1].
-      have: m >= Fphi Top.star.
-      - apply NNPP => ge1.
-        apply (c1 m);last first.
-        replace (psi m) with (phi m) =>//.
-        - by apply (cond m).
-        apply Compare_dec.not_ge.
-        done.
-      move => ge1.
-      move: ge1 (cond (Fphi Top.star) ge1).
-      rewrite v1.
-      move => zero1.
-      split.
-      - exists (fun star => Fphi Top.star).
-        split => //.
-        move => m0 co.
-        replace (psi m0) with (phi m0).
-        - by apply (c1 m0).
-        apply (cond m0).
-        apply PeanoNat.Nat.lt_le_incl.
-        by apply: (PeanoNat.Nat.lt_le_trans m0 (Fphi Top.star) m).
-      - move => Fpsi [v2 c2].
-      have: m >= Fpsi Top.star.
-      apply NNPP => ge2.
-      apply (c2 m);last first.
-      replace (psi m) with (phi m) =>//.
-      by apply (cond m).
-      apply Compare_dec.not_ge.
-      done.
-      move => ge2.
-      move: ge2 (cond (Fpsi Top.star) ge2) => _.
-      rewrite v2.
-      move => zero2.
-      have: (~ Fphi star > Fpsi star).
-      move => gt1.
-      apply (c1 (Fpsi star)).
-      replace Top.star with star => //.
-      by elim star.
-      replace star with Top.star => //.
-      by elim star.
-      move => gt1.
-      have: (~ Fpsi star > Fphi star).
-      move => gt2.
-      apply (c2 (Fphi star)).
-      replace Top.star with star => //.
-      by elim star.
-      replace star with Top.star => //.
-      by elim star.
-      move => gt2.
-      apply NNPP=> neq.
-      move: (PeanoNat.Nat.lt_trichotomy (Fphi star) (Fpsi star)).
-      case.
-      apply gt2.
-      case.
-      apply neq.
-      apply gt1.
-Qed.
-(* This was a pain to prove... Why? *)
-
-Lemma dec S (equ : S -> S -> bool):
-  forall s t, (equ s t = true \/ equ s t = false).
-Proof.
-  move => s t.
-  elim (equ s t).
-  by left.
-  by right.
-Qed.
-
-Lemma minimal_section S (cnt : nat -> S) (equ : S -> S -> bool):
-  (F2MF cnt) is_surjective -> (forall s s', is_true (equ s s') <-> (s = s'))
-    -> exists sec: S -> nat, (forall s, cnt (sec s) = s) /\ forall s,(forall m, m < sec s -> cnt m <> s).
-Proof.
-  move => sur eprop.
+  move => sur.
   set R := fun s n => cnt n = s /\ (forall m, m < n -> cnt m <> s).
   have: forall s, exists n, R s n.
   - move => s.
     move: (sur s) => [m] mprop.
     set n := fix n m k:= match k with
       | 0 => m
-      | S k' => if equ (cnt (m - (k'.+1))) s then (m-(k'.+1)) else n m k'
+      | S k' => if (cnt (m - (k'.+1))) == s then (m-(k'.+1)) else n m k'
     end.
 
     have: forall k, cnt (n m k) = s.
     - elim => //.
       move => n0 ih /=.
       set l:=m - n0.+1.
-      case: (dec equ (cnt l) s) => eq /=.
-      - replace (equ (cnt l) s) with true => //.
-        - move: (eprop (cnt l) s) => [temp _].
-          by rewrite (temp eq).
-      - by rewrite eq.
+      by case: ifP => /eqP.
     move => prp.
 
     have: forall k k', k'<= m -> m <= (k' + k)%coq_nat -> (cnt k' = s -> n m k <= k').
@@ -236,11 +127,8 @@ Proof.
         - by apply PeanoNat.Nat.sub_le_mono_r.
         done.
       move => k'2.
-      case (dec equ (cnt (m-k.+1)) s).
-      - move => true.
-        by rewrite true.
+      case: ifP => /eqP //.
       move => false.
-      rewrite false.
       apply ih => //.
       set l:=(m - k.+1)%coq_nat.
       have: (k' + k.+1 <> m).
@@ -248,9 +136,7 @@ Proof.
         rewrite PeanoNat.Nat.add_comm in meq.
         move: (PeanoNat.Nat.add_sub_eq_l m k.+1 k' meq) => neq.
         rewrite -neq in eq.
-        move: (eprop (cnt l) s) => [t1 t2].
-        move: (t2 eq).
-        by rewrite false.
+        by apply false.
       move: (PeanoNat.Nat.lt_eq_cases m (k'+k.+1)%coq_nat) => [te1 _] beq.
       move: (te1 k'l).
       case.
@@ -287,30 +173,183 @@ Proof.
   by apply se.
 Qed.
 
+Definition is_min_sec S (cnt: nat -> S) (sec : S -> nat) :=
+  (forall s, cnt (sec s) = s) /\ forall s,(forall m, m < sec s -> cnt m <> s).
+Notation "sec 'is_minimal_section_of' cnt" := (is_min_sec S cnt sec) (at level 2).
+
+Fixpoint in_seg S (cnt: nat -> S) m := match m with
+  | 0 => cons (cnt 0) nil
+  | S n => cons (cnt n.+1) (in_seg cnt n)
+end.
+
+Lemma initial_segments S T (cnt: nat -> S) (phi psi : S -> T):
+  forall m, (forall n, n <= m -> phi (cnt n) = psi (cnt n)) <-> phi and psi coincide_on (in_seg cnt m).
+Proof.
+  move => m.
+  split; last first.
+  - move: m.
+    elim.
+    - move => [p0 _] n nl0.
+      replace n with 0 => //.
+      by apply Le.le_n_0_eq.
+    move => n ihn.
+    replace (in_seg cnt n.+1) with (cons (cnt n.+1) (in_seg cnt n)) by trivial.
+    case.
+    move => eqp1 stuff n0.
+    move: stuff ihn (ihn stuff) => _ _ ihn nln0.
+    case: (classic (n0 = n.+1)).
+    - move => kack.
+      by rewrite kack.
+    move => neq.
+    apply ihn.
+    apply Lt.lt_n_Sm_le.
+    move: (PeanoNat.Nat.le_neq n0 n.+1) => [_ stuff].
+    by apply stuff.
+  move: m.
+  elim.
+  - move => stuff /=.
+    split; last first => //.
+    by apply: (stuff 0).
+  move => n ihn ass.
+    split.
+    - by apply (ass n.+1).
+    apply ihn => n0 ineq.
+    apply (ass n0).
+    by apply le_S.
+Qed.
+
 Fixpoint size S (sec: S -> nat) K := match K with
   | nil => 0
   | cons s K' => max ((sec s).+1) (size sec K')
 end.
 
 Lemma list_size S T (cnt : nat -> S) (sec: S -> nat):
-  (forall s, cnt (sec s) = s) -> forall K phi (psi : S -> T),
-    (forall m: nat, m < size sec K -> phi (cnt m) = psi (cnt m))
-      -> (phi and psi coincide_on K).
+  (forall s, cnt (sec s) = s)
+    -> forall K (phi psi : S -> T), phi and psi coincide_on (in_seg cnt (size sec K)) -> (phi and psi coincide_on K).
 Proof.
   move => issec.
   elim => //.
-  move => a K ih phi psi H.
+  move => a L IH phi psi ci'.
+  move: IH (IH phi psi) => _ IH.
+  move: (initial_segments cnt phi psi (size sec (cons a L))) => [_ d2].
+  move: d2 (d2 ci') => _ ci.
+  have: (sec a <= size sec (a :: L)).
+  - replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial.
+    apply: Le.le_Sn_le.
+    apply: PeanoNat.Nat.le_max_l.
+  move => ineq.
   split.
   - replace a with (cnt (sec a)) by apply (issec a).
-    apply: (H (sec a)).
-    move: (PeanoNat.Nat.le_succ_l (sec a) ((size sec (a :: K)))) => [lt_max_l _].
-    apply: lt_max_l.
-    by apply: (PeanoNat.Nat.le_max_l).
-  apply ih => m si.
-  apply H.
-  apply (PeanoNat.Nat.lt_le_trans m (size sec K)) => //.
-  apply PeanoNat.Nat.le_max_r.
+    by apply: (ci (sec a)).
+  apply (IH).
+  move: (initial_segments cnt phi psi (size sec L)) => [d1 _].
+  apply d1 => n ine.
+  apply ci.
+  apply: (PeanoNat.Nat.le_trans n (size sec L) (size sec (a :: L))) => //.
+  replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial.
+  apply: PeanoNat.Nat.le_max_r.
 Qed.
+
+Inductive one := star.
+
+Lemma example: is_cont (fun phi Fphi => phi (Fphi star) = 0 /\ forall m, m < Fphi star -> phi m <> 0).
+Proof.
+  move => phi star.
+  set cnt := (fun n:nat => n).
+  set sec := (fun n:nat => n).
+  set L := in_seg cnt.
+  case: (classic (exists m, phi m = 0)); last first.
+  - move => false.
+    exists nil => psi _ fp1 [v1] cond.
+    exfalso; apply false.
+    by exists (fp1 Top.star).
+  move => [m me0].
+  exists (L m).
+  move => psi pep.
+  move: (initial_segments cnt phi psi m) => [_ cond].
+  move: cond pep (cond pep) => _ _ cond Fphi [v1 c1].
+  have: m >= Fphi Top.star.
+  - apply NNPP => ge1.
+    apply (c1 m).
+    - by apply Compare_dec.not_ge.
+    replace (psi m) with (phi m) => //.
+    by apply (cond m).
+  move => ge1.
+  move: ge1 (cond (Fphi Top.star) ge1).
+  rewrite v1.
+  move => zero1.
+  split.
+  - exists (fun star => Fphi Top.star).
+    split => //.
+    move => m0 co.
+    replace (psi m0) with (phi m0).
+    - by apply (c1 m0).
+    apply (cond m0).
+    apply PeanoNat.Nat.lt_le_incl.
+    by apply: (PeanoNat.Nat.lt_le_trans m0 (Fphi Top.star) m).
+  move => Fpsi [v2 c2].
+  have: m >= Fpsi Top.star.
+  - apply NNPP => ge2.
+    apply (c2 m);last first.
+    replace (psi m) with (phi m) =>//.
+    - by apply (cond m).
+    by apply Compare_dec.not_ge.
+  move => ge2.
+  move: ge2 (cond (Fpsi Top.star) ge2) => _.
+  rewrite v2 => zero2.
+  - have: (~ Fphi star > Fpsi star).
+    - move => gt1.
+      apply (c1 (Fpsi star)).
+      replace Top.star with star => //.
+      by elim star.
+    replace star with Top.star => //.
+    by elim star.
+  move => gt1.
+  have: (~ Fpsi star > Fphi star).
+  - move => gt2.
+    apply (c2 (Fphi star)).
+    - replace Top.star with star => //.
+      by elim star.
+    replace star with Top.star => //.
+    by elim star.
+  move => gt2.
+  apply NNPP=> neq.
+  move: (PeanoNat.Nat.lt_trichotomy (Fphi star) (Fpsi star)) => //.
+  case => //.
+  by case.
+Qed.
+(* This was a pain to prove... Why? *)
+
+Definition is_mod S T S' T' (F:(S -> T) ->> (S' -> T')) mf :=
+  forall phi s', forall (psi : S -> T), phi and psi coincide_on (mf phi s') ->
+    forall Fphi : S' -> T', F phi Fphi -> (exists Fpsi, F psi Fpsi) /\
+      (forall Fpsi, F psi Fpsi -> Fphi s' = Fpsi s').
+Notation "mf 'is_modulus_of' F" := (is_mod F mf) (at level 2).
+
+Lemma minimal_mod_function (S:eqType) T S' T' (F: (S -> T) ->> (S' -> T')) (cnt: nat -> S) sec:
+  F is_continuous /\ (F2MF cnt) is_surjective /\ (@is_min_sec S cnt sec)
+    -> exists mf, mf is_modulus_of F /\ forall nf, nf is_modulus_of F -> forall phi s', size sec (nf phi s') <= size sec (mf phi s').
+Proof.
+  move => [cont] [sur] min_sec.
+  set R := fun phi s' L => forall psi, phi and psi coincide_on L
+    -> forall Fphi, F phi Fphi -> (exists Fpsi, F psi Fpsi) /\
+      (forall Fpsi, F psi Fpsi -> Fphi s' = Fpsi s')
+      /\ forall K, size sec K <= size sec L.
+  have: forall phi s', exists L, R phi s' L.
+  - move => phi s'.
+    move: (cont phi s') => [L] cond.
+    exists (size sec L).
+    move => psi kack Fpsi v1.
+    split.
+    - by exists Fpsi.
+    move => Fphi v2.
+    apply (cond psi) => //.
+    by apply: (@list_size S T cnt sec issec L p.1 psi).
+    move => cond.
+    move: ((@choice ((S->T)*S') (nat) R) cond) => [f] fprop.
+    rewrite /R /= in fprop.
+    move: R cond => _ _.
+
 
 Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
   (exists cnt: nat -> S, (F2MF cnt) is_surjective)
@@ -323,7 +362,7 @@ Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
 Proof.
   move => [cnt sur] [equ] eprop [t _] [t' _] cont.
   move: sur equ eprop (minimal_section sur eprop) => _ _ _ [] sec [] issec sprop.
-  
+
   set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
   have: forall phi, exists psi, R phi psi.
   - move => phi.
@@ -380,10 +419,10 @@ Proof.
     rewrite /R /= in phiprop.
     move: R cond => _ _.
 
-    set R := fun p n => forall (psi : S -> T), (forall m,
-      m < n -> (p.1) (cnt m) = psi (cnt m)) ->
-      forall Fphi : S' -> T', F p.1 Fphi -> (exists Fpsi, F p.1 Fpsi) /\
-        (forall Fpsi, F psi Fpsi -> Fphi p.2 = Fpsi p.2).
+  set R := fun p n => forall (psi : S -> T), (forall m,
+    m < n -> (p.1) (cnt m) = psi (cnt m)) ->
+    forall Fphi : S' -> T', F p.1 Fphi -> (exists Fpsi, F p.1 Fpsi) /\
+      (forall Fpsi, F psi Fpsi -> Fphi p.2 = Fpsi p.2).
   have: forall p, exists n, R p n.
   - move => p.
     move: (cont p.1 p.2) => [L] cond.
