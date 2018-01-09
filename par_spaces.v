@@ -1,6 +1,6 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
-Load universal_machine.
+Load functions.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -81,17 +81,21 @@ At some point I will probably change the names to be a size_type. The type of na
 must be inherited for the rather irrelevant full function-space construction to
 work. This may change depending on whether other function space constructions also
 need this or not. *)
-Structure type := make_rep_space {
+Structure type := make_comp_space {
   space : Type;
   elements : space -> Prop;
   equals : space -> space -> Prop;
-  questions : Type;
-  answer_type : Type;
+  questions : eqType;
+  answer_type : eqType;
   delta : (questions -> option(answer_type)) ->> space;
+  countable_questions: exists (cntq : nat -> questions), (F2MF cntq) is_surjective;
+  countable_answers: exists (cnta : nat -> questions), (F2MF cnta) is_surjective;
   representation_is_valid : delta is_representation_wrt equals of elements
   }.
 Notation answers X := (option (answer_type X)).
 Notation names X := ((questions X) -> (answers X)).
+
+Require Import FunctionalExtensionality.
 
 Lemma prod_rep (X Y : type):
   (fun (phipsi : (questions X + questions Y -> option(answer_type X + answer_type Y))) x =>
@@ -175,12 +179,55 @@ Qed.
 (* This is the product of represented spaces. At some point I should prove that this
 is the product in some category, but I am unsure what the morphisms are supposed to be. *)
 
-Notation rep_space := type.
+Notation comp_space := type.
 Notation "'rep'" := @delta (at level 2).
 Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
 Notation "x 'is_element'" := (elements x) (at level 2).
 Notation "x 'is_from' X" := (@elements X x) (at level 2).
 Notation "x 'equal' y" := (@equals x y) (at level 2).
+
+Lemma sum_is_countable S T:
+  (exists (cnt1 : nat -> S), (F2MF cnt1) is_surjective) -> (exists (cnt2 : nat -> T), (F2MF cnt2) is_surjective)
+    -> exists (cnt : nat -> S + T), (F2MF cnt) is_surjective.
+Proof.
+  move => [cnt1] sur1 [cnt2] sur2.
+  set cnt := fix cnt n := match n with
+    | 0 => inl (cnt1 0)
+    | 1 => inr (cnt2 0)
+    | S (S n') => match cnt n' with
+      | inl s => inl (cnt1 (n'))
+      | inr t => inr (cnt2 (n'+1))
+    end
+  end.
+  exists (cnt).
+  rewrite /is_sur.
+  apply sum_rect.
+  - move => s.
+    move: (sur1 s) => [n] idx.
+    exists (2*n)%coq_nat.
+    move: n s idx.
+    rewrite /F2MF.
+    elim.
+    - move => s idx.
+      by rewrite -idx.
+    move => n ih s idx.
+    replace (2 * n.+1)%coq_nat with ((2*n).+1.+1)%coq_nat.
+    rewrite -idx.
+    replace (cnt (2 * n).+2) with (@inl S T (cnt1 (2*n))).
+    have 
+ (ih (cnt1 n)).
+    have (cnt (2*n)) = inl s
+    case: ih.
+    rewrite /cnt /=.
+    by rewrite -idx.
+    replace (inl (cnt1 n.+1)) with (cnt (2*n.+1)).
+    
+    replace (cnt (2*n).+1) with (@inr S T (cnt2 n)).
+    exists cnt 
+    - rewrite -idx.
+      replace 
+      
+    
 
 Canonical rep_space_prod X Y := @make_rep_space
   (space X * space Y)
@@ -264,23 +311,16 @@ Definition make_rep_space_from_mfun
       (sur_rep_sing (single_valued_rep_on_range sing)).
 
 Definition is_mf_realizer (X Y : rep_space) F (f : (space X) ->> (space Y)) :=
-  forall phi x y, delta phi x -> delta (F phi) (y) -> f x y.
+  forall phi x y, delta phi x -> delta (F phi) y -> f x y.
 (* One candidate for the morphisms: The multivalued realizable functions. *)
 
-Definition is_realizer (X Y : rep_space) F (f: space X -> space Y) :=
-  is_mf_realizer F (F2MF f).
+Definition is_realizer (X Y : rep_space) F (f: space X -> space Y) := is_mf_realizer F (F2MF f).
 (* A second candidate: the total singlevalued realizable functions *)
 Notation "F 'is_realizer_of' f" := (is_realizer F f) (at level 2).
 Arguments is_realizer {X Y}.
 
 Definition is_comp (X Y : rep_space) (f : space X -> space Y) :=
   exists F, is_realizer F f.
-(* I don't like this notion of computability as it requires the existence of a total
-realizer. I think actually the realizer will automatically be primitive recursive.
-Of course the use of mathematical functions is not debatable but I want to replace it
-by a better notion of computability at some point. A candidate can be found at the end
-of the functions.v file, but that candidate is not usable yet, so I will work with the
-above notion of computability for now. *)
 Notation "f 'is_computable'" := (is_comp f) (at level 2).
 
 Notation "X ~> Y" := (nat -> (names X) -> (questions Y) -> answers Y) (format "X ~> Y", at level 2).
