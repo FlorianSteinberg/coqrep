@@ -48,20 +48,23 @@ Qed.
 Lemma sur_rep_sing_b S T (delta: S ->> T) (elements: T -> Prop) :
   delta is_representation_of elements <-> delta is_representation_wrt (fun x y => x = y) of elements.
 Proof.
+split.
+- move => [sing sur].
   split.
-  - move => [sing sur].
-    split.
-    - move => s t t'.
-      by apply: (sing s t t').
-    - split.
-      - move => t t' s tet'.
-        by rewrite -tet'.
-      - by apply sur.
-  - move => [sing [eq sur]].
-    split.
-    - move => s t t'.
-      apply: (sing s t t').
-    - done.
+  - move => s t t' et et' v.
+    by apply: (sing s t t' et et' v).1.
+	split.
+  - move => t t' s tet'.
+    by rewrite -tet'.
+	by apply sur.
+	move => [sing [eq sur]].
+	split.
+  - move => s t t' et et' v.
+  	split.
+    - by apply: (sing s t t' et et' v).
+    move => tet.
+    by apply: (eq t t' s).
+  done.
 Qed.
 
 Lemma sur_rep_sing S T (delta: S ->> T) (elements: T -> Prop) :
@@ -152,10 +155,13 @@ Definition make_rep_space_from_sur
 Lemma fun_rep_on_range S X (f : S -> X) :
   (F2MF f) is_representation_of (range (F2MF f)).
 Proof.
-  split.
-  - move => s t t' tfr t'fr fst fst'.
-    by rewrite -fst -fst'.
-  - by move => t tfrf.
+split.
+- move => s t t' tfr t'fr fst.
+	split.
+  	by rewrite -fst.
+  move => tet.
+  by rewrite -tet.
+by move => t tfrf.
 Qed.
 
 Definition make_rep_space_from_fun
