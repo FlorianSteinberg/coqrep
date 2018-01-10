@@ -103,21 +103,24 @@ Admitted.
 
 Lemma rep_R_is_sing: is_sing rep_R.
 Proof.
-  move => phi x x' _ [pinox pinox'].
-  apply: cond_eq_rat => q qg0.
-  set r := Q2R (phi (Qdiv q (1+1))).
-  replace (x-x') with ((x-r) + (r-x')) by field.
-  apply: Rle_trans.
-  - apply: (Rabs_triang (x-r)).
-  replace q with (Qplus (Qdiv q (1+1)) (Qdiv q (1+1))).
-    - rewrite plus_Q2R.
-      apply: Rplus_le_compat.
-      - apply: pinox.
-        admit.
-      - rewrite Rabs_minus_sym.
-        apply: pinox'.
-        admit.
-      - admit.
+move => phi x x' _ [pinox].
+split; last first.
+	by move => eq; rewrite -eq.
+move => pinox'.
+apply: cond_eq_rat => q qg0.
+set r := Q2R (phi (Qdiv q (1+1))).
+replace (x-x') with ((x-r) + (r-x')) by field.
+apply: Rle_trans.
+- apply: (Rabs_triang (x-r)).
+replace q with (Qplus (Qdiv q (1+1)) (Qdiv q (1+1))).
+  - rewrite plus_Q2R.
+    apply: Rplus_le_compat.
+    - apply: pinox.
+      admit.
+    - rewrite Rabs_minus_sym.
+      apply: pinox'.
+      admit.
+    - admit.
 Admitted.
 
 Lemma rep_R_is_rep: rep_R is_representation.
