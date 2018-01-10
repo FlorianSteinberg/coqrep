@@ -80,7 +80,7 @@ U' n.+1 psi phi (a,nil).
 (* This is what I want to prove to be a universal machine. *)
 
 From Coq.micromega Require Import Psatz.
-From mathcomp Require Import all_ssreflect.
+Open Scope coq_nat_scope.
 
 Section MINIMIZATION.
 (* The code from this section was provided by Vincent *)
@@ -114,10 +114,10 @@ elim: k.
 - move => h n /=; rewrite -(subn0 m); exact: h.
 move => k ih h n /=; case: ifP.
 - move => _; exact: h.
-move => hk; apply: ih => i /ltP hi.
+move => hk; apply: ih => i hi.
 case: (i =P m - k.+1).
 - by move ->; rewrite hk.
-move => hik; apply: h; apply/ltP; move: hi hik.
+move => hik; apply: h; move: hi hik.
 rewrite /subn /subn_rec; lia.
 Qed.
 
@@ -146,18 +146,12 @@ Proof.
 	split.
   - apply: (prop (n m m)).2 (@searchU_correct p m m ((prop m).1 Pm)).
   - have: forall k, k< n m m -> ~ p k.
-    - apply: (@searchU_minimal p m m).
-      by move => i; rewrite subnn.
-    move => neg k Pk.
-    apply NNPP => ltn.
-    Search lt le (~_).
-    apply: (neg k).
-    apply /ltP.
-    apply NNPP => ln.
-    apply: ltn.
-    apply /leP.
-    lia.
-  apply ((prop k).1 Pk).
+    apply: (@searchU_minimal p m m).
+    move => k; rewrite subnn; lia.
+  move => neg k Pk.
+  case: (leqP (n m m) k) => // /leP stuff //.
+  elim: (neg k) => //.
+  by apply ((prop k).1 Pk).
 Qed.
 
 Lemma minimal_section (cnt : nat -> Q):
@@ -194,8 +188,7 @@ Proof.
   - move: m.
     elim.
     - move => [p0 _] n nl0.
-      replace n with 0 => //.
-      by apply Le.le_n_0_eq.
+      by replace n with 0 by lia.
     move => n ihn.
     replace (in_seg cnt n.+1) with (cons (cnt n.+1) (in_seg cnt n)) by trivial.
     case.
@@ -205,10 +198,7 @@ Proof.
     - move => kack.
       by rewrite kack.
     move => neq.
-    apply ihn.
-    apply Lt.lt_n_Sm_le.
-    move: (PeanoNat.Nat.le_neq n0 n.+1) => [_ stuff].
-    by apply stuff.
+    apply ihn;lia.
   move: m.
   elim.
   - move => stuff /=.
@@ -218,8 +208,7 @@ Proof.
     split.
     - by apply (ass n.+1).
     apply ihn => n0 ineq.
-    apply (ass n0).
-    by apply le_S.
+    apply (ass n0);lia.
 Qed.
 
 Fixpoint size S (sec: S -> nat) K := match K with
@@ -238,9 +227,7 @@ Proof.
   move: (initial_segments cnt phi psi (size sec (cons a L))) => [_ d2].
   move: d2 (d2 ci') => _ ci.
   have: (sec a <= size sec (a :: L)).
-  - replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial.
-    apply: Le.le_Sn_le.
-    apply: PeanoNat.Nat.le_max_l.
+  - replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial; lia.
   move => ineq.
   split.
   - replace a with (cnt (sec a)) by apply (issec a).
@@ -250,8 +237,7 @@ Proof.
   apply d1 => n ine.
   apply ci.
   apply: (PeanoNat.Nat.le_trans n (size sec L) (size sec (a :: L))) => //.
-  replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial.
-  apply: PeanoNat.Nat.le_max_r.
+  replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial;lia.
 Qed.
 
 Inductive one := star.
@@ -262,7 +248,7 @@ Proof.
   set cnt := (fun n:nat => n).
   set sec := (fun n:nat => n).
   set L := in_seg cnt.
-  replace Top.star with star; last first.
+  replace CONTINUITY.star with star; last first.
   - by elim star.
   case: (classic (exists m, phi m = 0)); last first.
   - move => false.
@@ -290,9 +276,7 @@ Proof.
     move => m0 co.
     replace (psi m0) with (phi m0).
     - by apply (c1 m0).
-    apply (cond m0).
-    apply PeanoNat.Nat.lt_le_incl.
-    by apply: (PeanoNat.Nat.lt_le_trans m0 (Fphi star) m).
+    apply (cond m0); lia.
   move => Fpsi [v2 c2].
   have: m >= Fpsi star.
   - apply NNPP => ge2.
@@ -324,7 +308,7 @@ Definition is_mod S T S' T' (F:(S -> T) ->> (S' -> T')) mf :=
       (forall Fpsi, F psi Fpsi -> Fphi s' = Fpsi s').
 Notation "mf 'is_modulus_of' F" := (is_mod F mf) (at level 2).
 
-Lemma minimal_mod_function Q A Q' A' (F: (Q -> A) ->> (Q' -> A')) (sec : Q -> nat):
+Lemma minimal_mod_function (sec : Q -> nat):
   F is_continuous
     -> exists mf, mf is_modulus_of F /\ forall nf, nf is_modulus_of F -> forall phi q', size sec (mf phi q') <= size sec (nf phi q').
 Proof.
@@ -362,13 +346,13 @@ Proof.
  	apply: mod.
 Qed.
 
-Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
-  (exists cnt: nat -> S, (F2MF cnt) is_surjective)
-    -> (exists t: T, True)
-    -> (exists t':T', True)
+Lemma U_is_universal:
+  (exists cnt: nat -> Q, (F2MF cnt) is_surjective)
+    -> (exists a: A, True)
+    -> (exists a':A', True)
     -> F is_continuous
       -> exists psi, forall phi, (exists Fphi, F phi Fphi)
-      -> forall (Fphi: S'->T') a, exists n, U n psi phi a = Some (Fphi a).
+      -> forall (Fphi: Q'->A') a, exists n, U n psi phi a = Some (Fphi a).
 Proof.
   move => [cnt sur] [t _] [t' _] cont.
   move: sur (minimal_section sur) => _ [] sec [] issec sprop.
@@ -382,11 +366,11 @@ Proof.
     move => false.
     by exists (fun a => t').
   move => cond.
-  move: ((@choice ((S -> T)) (S' -> T') R) cond) => [Ff] Fprop.
+  move: ((@choice ((Q -> A)) (Q' -> A') R) cond) => [Ff] Fprop.
   rewrite /R /= in Fprop.
   move: t' R cond => _ _ _.
 
-  set R := (fun (L : S*list(S * T)) (b:T) =>
+  set R := (fun (L : Q*list(Q * A)) (b:A) =>
       forall c, List.In (L.1,c) L.2 -> List.In (L.1,b) L.2).
     have : forall L, exists b, R L b.
     move => L.
@@ -400,11 +384,11 @@ Proof.
     apply: false.
     by exists c.
   move => cond.
-  move: ((@choice (S*list(S * T)) (T) R) cond) => [temp] tprop.
+  move: ((@choice (Q*list(Q * A)) (A) R) cond) => [temp] tprop.
   rewrite /R /= in tprop.
   move: R cond => _ _.
 
-  set R := (fun (L : list(S * T)) (psi:S -> T) =>
+  set R := (fun (L : list(Q * A)) (psi:Q -> A) =>
      ((exists phi Fphi, F phi Fphi /\ forall s c, List.In (s,c) L -> List.In (s,phi s) L)
     -> (exists Fpsi, F psi Fpsi)) /\ forall s c, List.In (s,c) L -> List.In (s,psi s) L).
   have : forall L, exists psi, R L psi.
@@ -425,7 +409,7 @@ Proof.
     move => s.
     apply (tprop (s,L)).
     move => cond.
-    move: ((@choice (list(S * T)) (S -> T) R) cond) => [phi'] phiprop.
+    move: ((@choice (list(Q * A)) (Q -> A) R) cond) => [phi'] phiprop.
     rewrite /R /= in phiprop.
     move: R cond => _ _.
 
