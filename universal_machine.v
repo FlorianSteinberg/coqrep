@@ -10,7 +10,10 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicits Defensive.
 
-Fixpoint equal_on (S T : Type) (phi psi : S -> T) (L : list S) :=
+Section CONTINUITY.
+Context Q A Q' A' (F: (Q-> A) ->> (Q'-> A')).
+
+Fixpoint equal_on Q A (phi psi : Q -> A) L :=
   match L with
     | nil => True
     | cons s K => (phi s = psi s) /\ (equal_on phi psi K)
@@ -24,50 +27,46 @@ Definition is_cont (S T S' T' : Type) (F : (S -> T) ->> (S'-> T')) :=
 Notation "F 'is_continuous'" := (is_cont F) (at level 2).
 
 Require Import FunctionalExtensionality.
-Lemma cont_to_sing (S T S' T' : Type) F: @is_cont S T S' T' F -> F is_single_valued.
+Lemma cont_to_sing: is_cont F -> F is_single_valued.
 Proof.
   move => cont phi Fpsi Fpsi' _ [v1 v2].
   apply functional_extensionality => a.
   move: cont (cont phi a) => _ [L] cont.
-  have: (forall K, phi and phi coincide_on K).
-  by elim.
+  have: (forall K, phi and phi coincide_on K) by elim.
   move => equal.
-  move: cont (cont phi (equal L) Fpsi') => _ cond.
-  move: cond (cond v2) => _ [[Fphi]] v cond.
+  move: ((cont phi (equal L) Fpsi') v2) => [[Fphi]] v cond.
   by rewrite ((cond Fpsi) v1).
 Qed.
 
-Definition iscont (S T S' T': Type) (F: (S-> T) -> S' -> T') :=
-  forall phi (s': S'), exists (L : list S), forall psi,
-    phi and psi coincide_on L -> F phi s' = F psi s'.
+Definition iscont (G: (Q-> A) -> Q' -> A') :=
+  forall phi (q': Q'), exists (L : list Q), forall psi,
+    phi and psi coincide_on L -> G phi q' = G psi q'.
 
-Lemma continuity S T S' T' (F: (S-> T) -> S' -> T') :  iscont F <-> is_cont (F2MF F).
+Lemma continuity (G: (Q-> A) -> Q' -> A') :  iscont G <-> is_cont (F2MF G).
 Proof.
   split.
   - move => cont psi s'.
     move: cont (cont psi s') => _ [L cond].
     exists L => phi coin Fpsi iv.
     split.
-    - by exists (fun s' => F phi s').
-    - move => Fphi iv'.
-      rewrite -iv -iv'.
-      by apply (cond phi).
-  - move => cont phi s'.
-    move: cont (cont phi s') => _ [L cond].
-    exists L => psi coin.
-    move: cond (cond psi coin (F phi)) => _ cond.
-    have: forall psi', (F2MF F psi' (F psi')).
-    - done.
-    move => triv.
-    move: cond (cond (triv phi)) => _ [] [Fphi] v cond.
-    by apply: (cond (fun s' => F psi s')).
+    - by exists (fun s' => G phi s').
+    move => Fphi iv'.
+    rewrite -iv -iv'.
+    by apply (cond phi).
+  move => cont phi s'.
+  move: cont (cont phi s') => _ [L cond].
+  exists L => psi coin.
+  have: forall psi', (F2MF G psi' (G psi')) by trivial.
+  move => triv.
+  move: cond (cond psi coin (G phi) (triv phi)) => _ [] [Fphi] v cond.
+  by apply: (cond (fun s' => G psi s')).
 Qed.
 
-Fixpoint U' (S T S' T' : Type)
-  n
-  (psi: S' * list (S * T) -> S + T')
-  (phi: S -> T)
-  (L: S' * list (S * T)) :=
+Fixpoint U'
+  (n: nat)
+  (psi: Q' * list (Q * A) -> Q + A')
+  (phi: Q -> A)
+  (L: Q' * list (Q * A)) :=
 match n with
   | 0 => None
   | S n => match psi L with
@@ -76,13 +75,55 @@ match n with
   end
 end.
 
-Definition U (S T S' T' : Type) n (psi: S' * list (S * T) -> S + T') (phi: S -> T) a :=
+Definition U n psi phi a :=
 U' n.+1 psi phi (a,nil).
 (* This is what I want to prove to be a universal machine. *)
 
-Require Import ClassicalChoice FunctionalExtensionality.
+From Coq.micromega Require Import Psatz.
+From mathcomp Require Import all_ssreflect.
 
-Local Open Scope coq_nat_scope.
+Section MINIMIZATION.
+(* The code from this section was provided by Vincent *)
+Context (p: nat -> bool) (bound: nat) (bound_ok: p bound).
+
+Fixpoint searchU m k : nat :=
+  match k with
+  | 0 => m
+  | k'.+1 => let n := m - k in if p n then n else searchU m k'
+  end.
+
+Lemma searchU_correct m k :
+  p m -> p (searchU m k).
+Proof.
+move => hm.
+by elim: k => // n ih /=; case: ifP.
+Qed.
+
+Lemma searchU_le m k :
+  le (searchU m k) m.
+Proof.
+elim: k => // n ih /=; case: ifP => // _.
+rewrite /subn /subn_rec; lia.
+Qed.
+
+Lemma searchU_minimal m k :
+  (forall n, n < m - k -> ~ p n) ->
+  forall n, n < searchU m k -> ~ p n.
+Proof.
+elim: k.
+- move => h n /=; rewrite -(subn0 m); exact: h.
+move => k ih h n /=; case: ifP.
+- move => _; exact: h.
+move => hk; apply: ih => i /ltP hi.
+case: (i =P m - k.+1).
+- by move ->; rewrite hk.
+move => hik; apply: h; apply/ltP; move: hi hik.
+rewrite /subn /subn_rec; lia.
+Qed.
+
+End MINIMIZATION.
+
+Require Import ClassicalChoice.
 
 Lemma well_order_nat (P : nat -> Prop):
 	(exists n, P n) -> exists n, P n /\ forall m, P m -> n <= m.
@@ -98,80 +139,28 @@ Proof.
 	move => cond.
 	move: cond (choice R cond) => _ [p] prop.
 	rewrite /R in prop;move: R => _.
-	set n := fix n m k:= match k with
-    | 0 => m
-    | S k' => if (p (m-S k')) then (m-S k') else n m k'
-  end.
+  set n := searchU p.
 	move => [m] Pm.
   exists (n m m).
 
-  have: forall k, P (n m k).
-  - elim => //.
-    move => n0 ih /=.
-    case: ifP => //.
-    apply prop.
-  move => prp.
-
 	split.
-	- apply prp.
-
-  have: forall k k', k'<= m -> m <= (k' + k)%coq_nat -> (P k' -> n m k <= k').
-  - elim.
-    - move =>k' k'u k'l eq.
-      rewrite (PeanoNat.Nat.add_0_r k') in k'l.
-      case: (PeanoNat.Nat.eq_dec m 0).
-      - move => me0.
-        rewrite me0 /=.
-        apply le_0_n.
-      move => neq.
-      move: (PeanoNat.Nat.zero_or_succ m).
-      case.
-      - move => a.
-        by exfalso.
-      by move => [] k succ.
-    move => k ih k' k'u k'l eq /=.
-    have: (m - k.+1)%coq_nat <= k'.
-    - rewrite -(PeanoNat.Nat.add_0_r k').
-      rewrite (Minus.minus_diag_reverse k.+1).
-      rewrite (PeanoNat.Nat.add_sub_assoc).
-      - by apply PeanoNat.Nat.sub_le_mono_r.
-      done.
-    move => k'2.
-    case: ifP => //.
-    move => fls.
-    apply ih => //.
-    set l:=(m - k.+1)%coq_nat.
-    have: (k' + k.+1 <> m).
-      move => meq.
-      rewrite PeanoNat.Nat.add_comm in meq.
-      move: (PeanoNat.Nat.add_sub_eq_l m k.+1 k' meq) => neq.
-      rewrite -neq in eq.
-      move: (prop l) => [pr _].
-      rewrite fls in pr.
-      by move: (pr eq).
-    move: (PeanoNat.Nat.lt_eq_cases m (k'+k.+1)%coq_nat) => [te1 _] beq.
-    move: (te1 k'l).
-    case.
-    - move => ineq.
-      rewrite -plus_n_Sm in ineq.
-      by apply Lt.lt_n_Sm_le.
-    move => keq.
-    by exfalso; by apply beq.
-  move => eqk.
-
-  move => k.
-  case (classic (k <= m)) => km.
-  apply eqk => //.
-  by apply (Plus.le_plus_r k m).
-  move => pk.
-  apply: (PeanoNat.Nat.le_trans (n m m) m k).
-  - apply (eqk m m) => //.
-    by apply (Plus.le_plus_l m m).
-  apply: PeanoNat.Nat.lt_le_incl.
-  by apply PeanoNat.Nat.Private_Tac.not_ge_lt.
+  - apply: (prop (n m m)).2 (@searchU_correct p m m ((prop m).1 Pm)).
+  - have: forall k, k< n m m -> ~ p k.
+    - apply: (@searchU_minimal p m m).
+      by move => i; rewrite subnn.
+    move => neg k Pk.
+    apply NNPP => ltn.
+    Search lt le (~_).
+    apply: (neg k).
+    apply /ltP.
+    apply NNPP => ln.
+    apply: ltn.
+    apply /leP.
+    lia.
+  apply ((prop k).1 Pk).
 Qed.
 
-Lemma minimal_section Q (cnt : nat -> Q):
+Lemma minimal_section (cnt : nat -> Q):
   (F2MF cnt) is_surjective ->
     exists sec, (forall s, cnt (sec s) = s) /\ forall s,(forall m, cnt m = s -> sec s <= m).
 Proof.
