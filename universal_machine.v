@@ -84,87 +84,109 @@ Require Import ClassicalChoice FunctionalExtensionality.
 
 Local Open Scope coq_nat_scope.
 
-Lemma minimal_section (S:eqType) (cnt : nat -> S):
+Lemma well_order_nat (P : nat -> Prop):
+	(exists n, P n) -> exists n, P n /\ forall m, P m -> n <= m.
+Proof.
+	set R:= fun n b => P n <-> is_true b.
+	have: forall n, exists b, R n b.
+	-	move => n.
+		case: (classic (P n)) => pn.
+		exists true.
+		by split.
+		exists false.
+		by split.
+	move => cond.
+	move: cond (choice R cond) => _ [p] prop.
+	rewrite /R in prop;move: R => _.
+	set n := fix n m k:= match k with
+    | 0 => m
+    | S k' => if (p (m-S k')) then (m-S k') else n m k'
+  end.
+	move => [m] Pm.
+  exists (n m m).
+
+  have: forall k, P (n m k).
+  - elim => //.
+    move => n0 ih /=.
+    case: ifP => //.
+    apply prop.
+  move => prp.
+
+	split.
+	- apply prp.
+
+  have: forall k k', k'<= m -> m <= (k' + k)%coq_nat -> (P k' -> n m k <= k').
+  - elim.
+    - move =>k' k'u k'l eq.
+      rewrite (PeanoNat.Nat.add_0_r k') in k'l.
+      case: (PeanoNat.Nat.eq_dec m 0).
+      - move => me0.
+        rewrite me0 /=.
+        apply le_0_n.
+      move => neq.
+      move: (PeanoNat.Nat.zero_or_succ m).
+      case.
+      - move => a.
+        by exfalso.
+      by move => [] k succ.
+    move => k ih k' k'u k'l eq /=.
+    have: (m - k.+1)%coq_nat <= k'.
+    - rewrite -(PeanoNat.Nat.add_0_r k').
+      rewrite (Minus.minus_diag_reverse k.+1).
+      rewrite (PeanoNat.Nat.add_sub_assoc).
+      - by apply PeanoNat.Nat.sub_le_mono_r.
+      done.
+    move => k'2.
+    case: ifP => //.
+    move => fls.
+    apply ih => //.
+    set l:=(m - k.+1)%coq_nat.
+    have: (k' + k.+1 <> m).
+      move => meq.
+      rewrite PeanoNat.Nat.add_comm in meq.
+      move: (PeanoNat.Nat.add_sub_eq_l m k.+1 k' meq) => neq.
+      rewrite -neq in eq.
+      move: (prop l) => [pr _].
+      rewrite fls in pr.
+      by move: (pr eq).
+    move: (PeanoNat.Nat.lt_eq_cases m (k'+k.+1)%coq_nat) => [te1 _] beq.
+    move: (te1 k'l).
+    case.
+    - move => ineq.
+      rewrite -plus_n_Sm in ineq.
+      by apply Lt.lt_n_Sm_le.
+    move => keq.
+    by exfalso; by apply beq.
+  move => eqk.
+
+  move => k.
+  case (classic (k <= m)) => km.
+  apply eqk => //.
+  by apply (Plus.le_plus_r k m).
+  move => pk.
+  apply: (PeanoNat.Nat.le_trans (n m m) m k).
+  - apply (eqk m m) => //.
+    by apply (Plus.le_plus_l m m).
+  apply: PeanoNat.Nat.lt_le_incl.
+  by apply PeanoNat.Nat.Private_Tac.not_ge_lt.
+Qed.
+
+Lemma minimal_section Q (cnt : nat -> Q):
   (F2MF cnt) is_surjective ->
-    exists sec: S -> nat, (forall s, cnt (sec s) = s) /\ forall s,(forall m, m < sec s -> cnt m <> s).
+    exists sec, (forall s, cnt (sec s) = s) /\ forall s,(forall m, cnt m = s -> sec s <= m).
 Proof.
   move => sur.
-  set R := fun s n => cnt n = s /\ (forall m, m < n -> cnt m <> s).
+  set R := fun s n => cnt n = s /\ (forall m, cnt m = s -> n <= m).
   have: forall s, exists n, R s n.
   - move => s.
-    move: (sur s) => [m] mprop.
-    set n := fix n m k:= match k with
-      | 0 => m
-      | S k' => if (cnt (m - (k'.+1))) == s then (m-(k'.+1)) else n m k'
-    end.
-
-    have: forall k, cnt (n m k) = s.
-    - elim => //.
-      move => n0 ih /=.
-      set l:=m - n0.+1.
-      by case: ifP => /eqP.
-    move => prp.
-
-    have: forall k k', k'<= m -> m <= (k' + k)%coq_nat -> (cnt k' = s -> n m k <= k').
-    - elim.
-      - move =>k' k'u k'l eq.
-        rewrite (PeanoNat.Nat.add_0_r k') in k'l.
-        case: (PeanoNat.Nat.eq_dec m 0).
-        - move => me0.
-          rewrite me0 /=.
-          apply le_0_n.
-        move => neq.
-        move: (PeanoNat.Nat.zero_or_succ m).
-        case.
-        - move => a.
-          by exfalso.
-        by move => [] k succ.
-      move => k ih k' k'u k'l eq /=.
-      have: (m - k.+1)%coq_nat <= k'.
-      - rewrite -(PeanoNat.Nat.add_0_r k').
-        rewrite (Minus.minus_diag_reverse k.+1).
-        rewrite (PeanoNat.Nat.add_sub_assoc).
-        - by apply PeanoNat.Nat.sub_le_mono_r.
-        done.
-      move => k'2.
-      case: ifP => /eqP //.
-      move => false.
-      apply ih => //.
-      set l:=(m - k.+1)%coq_nat.
-      have: (k' + k.+1 <> m).
-        move => meq.
-        rewrite PeanoNat.Nat.add_comm in meq.
-        move: (PeanoNat.Nat.add_sub_eq_l m k.+1 k' meq) => neq.
-        rewrite -neq in eq.
-        by apply false.
-      move: (PeanoNat.Nat.lt_eq_cases m (k'+k.+1)%coq_nat) => [te1 _] beq.
-      move: (te1 k'l).
-      case.
-      - move => ineq.
-        rewrite -plus_n_Sm in ineq.
-        by apply Lt.lt_n_Sm_le.
-      move => keq.
-      by exfalso; by apply beq.
-    move => eqk.
-
-    exists (n m m).
-    split.
-    - by apply (prp m).
-    move => k ineq eq.
-    have: k < m.
-    - apply: (PeanoNat.Nat.lt_le_trans k (n m m) m) => //.
-      apply (eqk m m) => //.
-      by apply (Plus.le_plus_l m m).
-    move => ineq2.
-    move: ineq.
-    apply Lt.le_not_lt.
-    apply eqk => //.
-    - by apply PeanoNat.Nat.lt_le_incl.
-    by apply (Plus.le_plus_r k m).
+  	move: (@well_order_nat (fun n => cnt n = s) (sur s)) => [] n [np1 np2].
+  	by exists n.
   move => cond.
-  move: (choice R cond) => [sec] issec.
+  move: (choice R cond) => [sec] sprop.
   exists sec.
-  by split => s; move: (issec s) => [se1 se2].
+  split => s.
+  	by move: (sprop s) => [a _].
+	by move: (sprop s) => [ _ a].
 Qed.
 
 Definition is_min_sec S (cnt: nat -> S) (sec : S -> nat) :=
@@ -313,42 +335,54 @@ Definition is_mod S T S' T' (F:(S -> T) ->> (S' -> T')) mf :=
       (forall Fpsi, F psi Fpsi -> Fphi s' = Fpsi s').
 Notation "mf 'is_modulus_of' F" := (is_mod F mf) (at level 2).
 
-Lemma minimal_mod_function (S:eqType) T S' T' (F: (S -> T) ->> (S' -> T')) (cnt: nat -> S) sec:
-  F is_continuous /\ (F2MF cnt) is_surjective /\ (@is_min_sec S cnt sec)
-    -> exists mf, mf is_modulus_of F /\ forall nf, nf is_modulus_of F -> forall phi s', size sec (nf phi s') <= size sec (mf phi s').
+Lemma minimal_mod_function Q A Q' A' (F: (Q -> A) ->> (Q' -> A')) (sec : Q -> nat):
+  F is_continuous
+    -> exists mf, mf is_modulus_of F /\ forall nf, nf is_modulus_of F -> forall phi q', size sec (mf phi q') <= size sec (nf phi q').
 Proof.
-  move => [cont] [sur] min_sec.
-  set R := fun phi s' L => forall psi, phi and psi coincide_on L
-    -> forall Fphi, F phi Fphi -> (exists Fpsi, F psi Fpsi) /\
-      (forall Fpsi, F psi Fpsi -> Fphi s' = Fpsi s')
-      /\ forall K, size sec K <= size sec L.              
-  have: forall phi s', exists L, R phi s' L.
-  - move => phi s'.
-    move: (cont phi s') => [L] cond.
-    exists (size sec L).
-    move => psi kack Fpsi v1.
-    split.
-    - by exists Fpsi.
-    move => Fphi v2.
-    apply (cond psi) => //.
-    by apply: (@list_size S T cnt sec issec L p.1 psi).
-    move => cond.
-    move: ((@choice ((S->T)*S') (nat) R) cond) => [f] fprop.
-    rewrite /R /= in fprop.
-    move: R cond => _ _.
-
+  move => cont.
+  set P := fun phiq L => forall psi, phiq.1 and psi coincide_on L
+    -> forall Fphi, F phiq.1 Fphi -> (exists Fpsi, F psi Fpsi) /\
+      (forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2).
+  set R := fun phiq L => P phiq L /\ forall K, P phiq K -> size sec L <= size sec K.
+  have: forall phiq, exists L, R phiq L.
+  - move => phiq.
+  	have: exists n, exists L, P phiq L/\ size sec L = n.
+  		move: (cont phiq.1 phiq.2) => [L] Lprop.
+  		exists (size sec L).
+  		by exists L.
+  	move => cond.
+  	move: (@well_order_nat (fun n => exists L, P phiq L/\ size sec L = n) cond) => [n] [ [L] [Lprop Leqn]] nprop.
+  	exists L.
+  	split.
+  		apply: Lprop.
+  	rewrite -Leqn in nprop.
+  	move => K Pfi.
+ 		apply: (nprop (size sec K)).
+ 		by exists K.
+ 	move => cond.
+ 	move: (@choice ((Q -> A)*Q') (list Q) R cond) => [mf] mfprop.
+ 	rewrite /R in mfprop.
+ 	move: R cond => _ _.
+ 	exists (fun phi q' => mf (phi, q')).
+ 	split.
+ 		move => phi q' psi.
+ 		apply (mfprop (phi, q')).
+ 	move => nf mod phi q'.
+ 	move: (mfprop (phi,q')) => [_ b].
+ 	apply: (b (nf phi q')).
+ 	apply: mod.
+Qed.
 
 Lemma U_is_universal S T S' T' (F:(S -> T) ->> (S' -> T')):
   (exists cnt: nat -> S, (F2MF cnt) is_surjective)
-    -> (exists equ: S -> S -> bool, forall s s', is_true (equ s s') <-> (s = s'))
     -> (exists t: T, True)
     -> (exists t':T', True)
     -> F is_continuous
       -> exists psi, forall phi, (exists Fphi, F phi Fphi)
       -> forall (Fphi: S'->T') a, exists n, U n psi phi a = Some (Fphi a).
 Proof.
-  move => [cnt sur] [equ] eprop [t _] [t' _] cont.
-  move: sur equ eprop (minimal_section sur eprop) => _ _ _ [] sec [] issec sprop.
+  move => [cnt sur] [t _] [t' _] cont.
+  move: sur (minimal_section sur) => _ [] sec [] issec sprop.
 
   set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
   have: forall phi, exists psi, R phi psi.
@@ -406,41 +440,22 @@ Proof.
     rewrite /R /= in phiprop.
     move: R cond => _ _.
 
-  set R := fun p n => forall (psi : S -> T), (forall m,
-    m < n -> (p.1) (cnt m) = psi (cnt m)) ->
-    forall Fphi : S' -> T', F p.1 Fphi -> (exists Fpsi, F p.1 Fpsi) /\
-      (forall Fpsi, F psi Fpsi -> Fphi p.2 = Fpsi p.2).
-  have: forall p, exists n, R p n.
-  - move => p.
-    move: (cont p.1 p.2) => [L] cond.
-    exists (size sec L).
-    move => psi kack Fpsi v1.
-    split.
-    - by exists Fpsi.
-    move => Fphi v2.
-    apply (cond psi) => //.
-    by apply: (@list_size S T cnt sec issec L p.1 psi).
-    move => cond.
-    move: ((@choice ((S->T)*S') (nat) R) cond) => [f] fprop.
-    rewrite /R /= in fprop.
-    move: R cond => _ _.
-
+		move: (minimal_mod_function sec cont) => [mf] mprop.
     set psiF := (fun L =>
       if
-        (leq (f (phi' L.2,L.1)) (length L.2))
+        (leq (size sec (mf (phi' L.2) L.1)) (length L.2))
       then
         (inr (Ff (phi' L.2) L.1))
       else
         (inl (cnt (length L.2).+1))).
     exists psiF.
-    move => phi [Fphi v] Fphi' s'.
-    move: (cont phi s') => [L] prop.
-    exists (size sec L).
-    have: forall m, m = size sec L -> U m psiF phi s' = Some (Fphi' s').
+    move => phi [Fphi v] Fphi' q'.
+    exists (size sec (mf phi q')).
+    have: forall m, m = size sec (mf phi q') -> U m psiF phi q' = Some (Fphi' q').
     elim.
     rewrite /U /U' /psiF /=.
     move => eq.
-    have: f(phi' nil, s') <= 0.
+    have: (size sec (mf (phi' [::]) q') <= 0).
     move: (fprop (phi, s') (phi' nil)).
     replace (Ff (phi' [::]) s') with (Fphi' s') => //.
       have: f (phi' nil, s') = 0.
