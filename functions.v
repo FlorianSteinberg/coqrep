@@ -12,10 +12,11 @@ Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 Definition F2MF S T (f : S -> T) s t := f s = t.
 (* I'd like this to be a Coercion but it won't allow me to do so. *)
 
-Definition mf_concat (R S T : Type) (f : R ->> S) (g : S ->> T) : R ->> T :=
-  fun r t => forall s, f r s -> g s t.
+Definition mf_concat (R S T : Type) (f : S ->> T) (g : R ->> S) : R ->> T :=
+  fun r t => forall s, g r s -> f s t.
 (* Eventhough multivalued functions are relations, this is different from the relational
 composition which would read "fun r t => exists s, f r s -> g s t." *)
+Notation "f 'o' g" := (mf_concat f g) (at level 2).
 
 Definition mf_sum (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') : (S + S') ->> (T + T') :=
   fun c x => match c with
