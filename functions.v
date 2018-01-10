@@ -39,7 +39,7 @@ Definition mf_prod (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') : (S * S') -
 about them because I needed them. *)
 
 Notation "f \, g" := (mf_prod f g) (at level 50).
-(*This is the notation for the tupling of multifunctions, it clashes with the pair notation *)
+(*This is the notation for the tupling of multifunctions*)
 
 Definition is_sing_in S T (f: S ->> T) (P: T -> Prop) :=
   forall s t t', P t -> P t' -> (f s t) -> (f s t') -> t = t'.
