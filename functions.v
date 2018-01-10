@@ -42,42 +42,31 @@ Notation "f \, g" := (mf_prod f g) (at level 50).
 (*This is the notation for the tupling of multifunctions*)
 
 Definition is_sing_in S T (f: S ->> T) (P: T -> Prop) :=
-  forall s t t', P t -> P t' -> (f s t) -> (f s t') <-> t = t'.
+  forall s t t', P t -> P t' -> (f s t) -> (f s t') -> t = t'.
 Notation "f 'is_single_valued_in' P" := (is_sing_in f P) (at level 2).
 Definition is_sing S T (f: S ->> T) := is_sing_in f (fun s=>True).
 Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
 (* a single valued function is still a partial function *)
 
-Require Import Classical.
 Lemma prod_sing S S' T T' (f: S ->> T) (g : S' ->> T') :
   f is_single_valued /\ g is_single_valued -> (f \, g) is_single_valued.
 Proof.
-have: True => //.
-move => true.
-move => [Fissing Gissing] a x y _ _ [a0isxname a1isxname].
-split.
-  move => [a0isyname a1isyname].
-  apply: injective_projections.
-  - by apply: (Fissing (a.1) x.1 y.1 true true (a0isxname)).1.
-  by apply: (Gissing (a.2) x.2 y.2 true true (a1isxname)).1.
-split.
-	by apply: ((Fissing (a.1) x.1 y.1 true true (a0isxname)).2); rewrite H.
-by apply: ((Gissing (a.2) x.2 y.2 true true (a1isxname)).2); rewrite H.
+  move => [Fissing Gissing] a x y _ _.
+    move => [a0isxname a1isxname] [a0isyname a1isyname].
+    apply: injective_projections.
+    - by apply: (Fissing (a.1) x.1 y.1).
+    - by apply: (Gissing (a.2) x.2 y.2).
 Qed.
 
 Lemma prod_sing_in S S' T T' (f:S ->> T) (g : S' ->> T') (P: T-> Prop) (Q: T' -> Prop) :
   f is_single_valued_in P /\ g is_single_valued_in Q
     -> (f \, g) is_single_valued_in (fun x => P x.1 /\ Q x.2).
 Proof.
-move => [Fissing Gissing] a x y [px1 qx2] [py1 qy2] [a0isxname a1isxname].
-split.
-	move => [a0isyname a1isyname].
-  apply: injective_projections.
-  - by apply: (Fissing (a.1) x.1 y.1 px1 py1 a0isxname).1.
-  by apply: (Gissing (a.2) x.2 y.2 qx2 qy2 a1isxname).1.
-split.
-- by apply: (Fissing (a.1) x.1 y.1 px1 py1 a0isxname).2;rewrite H.
-by apply: (Gissing (a.2) x.2 y.2 qx2 qy2 a1isxname).2;rewrite H.
+  move => [Fissing Gissing] a x y [px1 px2] [qx1 qx2].
+    move => [a0isxname a1isxname] [a0isyname a1isyname].
+    apply: injective_projections.
+    - by apply: (Fissing (a.1) x.1 y.1).
+    - by apply: (Gissing (a.2) x.2 y.2).
 Qed.
 
 Definition range S T (f: S ->> T) (t : T) := exists s, f s t.
