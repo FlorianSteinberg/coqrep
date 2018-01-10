@@ -48,7 +48,7 @@ Notation eval := Sop.eval.
 Definition star (S T: sof) : sof := (fun l n => S l (T l n)).
 
 Lemma star_is_computable:
-   (fun (PQ: (sop*sop)) => (star PQ.1 PQ.2):sop) is_computable.
+   (fun (PQ: space (rep_space_prod sop sop)) => (star PQ.1 PQ.2):(space sop)) is_computable.
 Proof.
   set F := fix F t1 t2 :=
   match t1 with
@@ -118,7 +118,7 @@ it is not usually possible to evaluate the representation. This leads to additio
 bureaucracy. *)
 
 Definition circ (P Q : sof) :sof := (fun l n => P (Q l) n).
-Lemma circ_is_computable: (fun (PQ:sop*sop) => (circ PQ.1 PQ.2):sop) is_computable.
+Lemma circ_is_computable: (fun (PQ:space (rep_space_prod sop sop)) => (circ PQ.1 PQ.2):space sop) is_computable.
 Proof.
   move: star_is_computable => [F] hypF.
   set G:= fix G P Q :=
@@ -202,7 +202,7 @@ Canonical Major_prod M1 M2 := @Major.Pack
 
 Implicit Types l k : nat -> nat.
 Implicit Types n m : nat.
-Implicit Types P : sop.
+Implicit Types P : space sop.
 Notation "f \+ g" := (fun n => f n + g n) (at level 50, left associativity).
 Notation "f \* g" := (fun n => f n * g n) (at level 50, left associativity).
 Lemma majsum l k l' k':
