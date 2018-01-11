@@ -176,8 +176,6 @@ Admitted.
 Lemma rep_R_is_sing: is_sing rep_R.
 Proof.
 move => phi x x' _ [pinox].
-split; last first.
-	by move => eq; rewrite -eq.
 move => pinox'.
 apply: cond_eq_rat => q qg0.
 set r := Q2R (phi (Qdiv q (1+1))).

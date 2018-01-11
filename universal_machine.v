@@ -20,9 +20,15 @@ Fixpoint equal_on Q A (phi psi : Q -> A) L :=
   end.
 Notation "phi 'and' psi 'coincide_on' L" := (equal_on phi psi L) (at level 2).
 
+Lemma coin_ref Q A (phi: Q -> A):
+	forall L, phi and phi coincide_on L.
+Proof.
+	by elim.
+Qed.
+
 Definition is_cont (Q A Q' A' : Type) (F : (Q -> A) ->> (Q'-> A')) :=
-  forall phi q', exists (L : list Q), forall psi, phi and psi coincide_on L ->
-    forall Fphi, F phi Fphi -> forall Fpsi, (F psi Fpsi -> Fphi q' = Fpsi q').
+  forall phi q', exists (L : list Q), forall psi, phi and psi coincide_on L -> forall Fphi, F phi Fphi ->
+    ((exists Fpsi, F psi Fpsi) /\ forall Fpsi, (F psi Fpsi -> Fphi q' = Fpsi q')).
 Notation "F 'is_continuous'" := (is_cont F) (at level 2).
 
 Require Import FunctionalExtensionality.
@@ -34,12 +40,12 @@ apply functional_extensionality => a.
 move: cont (cont phi a) => _ [L] cont.
 have: (forall K, phi and phi coincide_on K) by elim.
 move => equal.
-by rewrite -((cont phi (equal L) Fpsi') v2).
+by rewrite -((cont phi (equal L) Fpsi') v2).2.
 Qed.
 
 Definition is_mod Q A Q' A' (F:(Q -> A) ->> (Q' -> A')) mf :=
   forall phi q', forall (psi : Q -> A), phi and psi coincide_on (mf phi q') ->
-    forall Fphi : Q' -> A', F phi Fphi -> (forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q').
+  	forall Fphi : Q' -> A', F phi Fphi -> (forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q').
 Notation "mf 'is_modulus_of' F" := (is_mod F mf) (at level 2).
 
 Require Import ClassicalChoice.
@@ -48,12 +54,13 @@ Lemma exists_modulus Q A Q' A' (F: (Q-> A) ->> (Q'-> A')):
 	F is_continuous -> exists mf, mf is_modulus_of F.
 Proof.
 move => cont.
-set R:= fun phiq L => forall psi, phiq.1 and psi coincide_on L ->
-    forall Fphi, F phiq.1 Fphi -> (forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2).
+set R:= fun phiq L => forall psi, phiq.1 and psi coincide_on L -> forall Fphi, F phiq.1 Fphi -> 
+	((exists Fpsi, F psi Fpsi) /\ (forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2)).
 have: forall phiq, exists L, R phiq L.
 	move => [phi q'].
 	move: (cont phi q') => [L] prop.
-	by exists L.
+	exists L.
+	by split; apply (prop psi H Fphi).
 move => cond.
 move: cond (choice R cond) => _ [mf] cond.
 exists (fun phi q => mf (phi, q)).
@@ -61,34 +68,96 @@ move => phi q.
 by apply (cond (phi, q)).
 Qed.
 
-Lemma continuous_composition Q A Q' A' (F: (Q-> A) ->> (Q'-> A')) Q'' A'' (G: (Q' -> A') ->> (Q'' -> A'')):
-	F is_continuous -> G is_continuous -> G o F is_continuous.
+Lemma app_coincide Q A (L K: list Q) (phi psi: Q -> A):
+	phi and psi coincide_on (L ++ K) <-> (phi and psi coincide_on L /\ phi and psi coincide_on K).
 Proof.
-move => Fcont Gcont.
+split.
+	move: L.
+	elim.
+		by replace (nil ++ K) with (K); split.
+	move => a L ih.
+	replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
+	rewrite -(List.app_comm_cons L K a).
+	move => [ass1 ass2].
+	split; try apply ih; try apply ass2.
+	by split => //; apply ih; apply ass2.
+move: L.
+elim.
+	move => [_ coin].
+	by replace (nil ++ K) with (K).
+move => a L ih [[ass1 ass2] ass3].
+replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
+rewrite -(List.app_comm_cons L K a).
+by split; try apply ih; try apply ass2.
+Qed.
+
+Lemma continuous_composition Q A Q' A' (F: (Q-> A) ->> (Q'-> A')) Q'' A'' (G: (Q' -> A') ->> (Q'' -> A'')):
+	(exists q': Q', True) -> F is_continuous -> G is_continuous -> G o F is_continuous.
+Proof.
+move => [q'] _ Fcont Gcont.
 move: (cont_to_sing Fcont) (cont_to_sing Gcont) => Fsing Gsing.
 move => phi q''.
-case (classic (exists s, F phi s)); last first.
-	move => false.
-	exists nil.
-	move => psi _ GFphi [[Fpsi] [FphiFpsi GFpsiGFphi]] cont.
-	exfalso; apply false.
-	by exists Fpsi.
-move => [s] Fphis.
-move: (Gcont s q'') => [L] Lprop.
 move: (exists_modulus Fcont) => [mf] ismod.
+case (classic (exists Fphi, F phi Fphi)).
+move => [] Fphi FphiFphi.
+move: (ismod phi q' phi (coin_ref phi (mf phi q')) Fphi FphiFphi) => [] [] _ _ prop.
 set gather := fix gather K := match K with
 	| nil => nil
 	| cons q' K' => app (mf phi q') (gather K')
 end.
+move: (Gcont Fphi q'') => [L] Lprop.
 exists (gather L).
-move => psi coin GFphi [][]Fphi []FphiFphi GFphiGFphi _.
-move => GFpsi [][]Fpsi []FpsiFpsi GFpsiGFpsi cond.
-have: Fphi and Fpsi coincide_on L.
-move: L Lprop coin.
-elim=> //.
-move => a L ih assump coin /=.
+move => psi coin GFphi [][]Fphi' [] FphiFphi' GFphi'GFphi prope.
 split.
-	move: (assump Fpsi).
+	exists GFphi.
+	split.
+		exists Fphi.
+		split => //.
+move: (ismod psi q' psi (coin_ref psi (mf psi q'))).1 => []Fpsi FpsiFpsi.
+have: Fphi and Fpsi coincide_on L.
+	move: L Fphi FphiFphi Lprop coin.
+	elim=> //.
+	move => a L ih Fphi FphiFphi assump.
+	replace (gather (a :: L)) with (app (mf phi a) (gather L)) by trivial.
+	split => //.
+		move: coin ((app_coincide (mf phi a) (gather L) phi psi).1 coin) => _ [coin1 coin2].
+		by apply: (ismod phi a psi coin1).2.
+	move: coin ((app_coincide (mf phi a) (gather L) phi psi).1 coin) => _ [coin1 coin2].
+	apply: ih => // Fpsi' coin.
+	split.
+			apply: (Gcont).
+				
+		move: (assump Fpsi).
+	apply: ih => //.
+	move => Fpsi' coin'2.
+	split.
+		move: (Gcont Fpsi' q'') => [] K cont.
+		move: (cont Fpsi' (coin_ref Fpsi' K)).1 => [] GFpsi' GFpsi'GFpsi'.
+		by exists GFpsi'.
+	move => GFphi GFphiGFphi GFpsi' GFpsi'GFpsi'.
+	move: (ismod phi a psi coin1).2 => stuff.
+	move: (stuff Fphi FphiFphi Fpsi FpsiFpsi) => eoa.
+	have: Fphi and Fpsi' coincide_on (cons a L).
+		split.
+			apply eoa.
+			apply coin'2.
+	move: (assump Fpsi' coin).2.
+	apply 
+		move => Fs coin Gs GsGs GFs GFsGFs.
+		apply: (assump Fs) => //.
+		split => //.
+		apply: (ismod phi a psi coin1) => //.
+		rewrite (Fsing psi Fs Fpsi) => //.
+	move: (ismod phi q''). psi coin1 Fphi FphiFphi Fpsi).
+	move: (ismod phi a psi coin1 Fphi FphiFphi Fpsi).
+
+split.
+	move: (Lprop Fpsi (coin_ref Fpsi L)) => [][]GFpsi GFpsiGFpsi cond.
+	exists GFphi.
+	split.
+		exists Fphi.
+		split=> //.
+	
 Admitted.
 
 Definition iscont Q A Q' A' (G: (Q-> A) -> Q' -> A') :=
@@ -272,7 +341,8 @@ end.
 
 Lemma list_size S T (cnt : nat -> S) (sec: S -> nat):
   (forall s, cnt (sec s) = s)
-    -> forall K (phi psi : S -> T), phi and psi coincide_on (in_seg cnt (size sec K)) -> (phi and psi coincide_on K).
+    -> forall K (phi psi : S -> T), phi and psi coincide_on (in_seg cnt (size sec K))
+    -> (phi and psi coincide_on K).
 Proof.
   move => issec.
   elim => //.
