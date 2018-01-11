@@ -12,12 +12,6 @@ Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 Definition F2MF S T (f : S -> T) s t := f s = t.
 (* I'd like this to be a Coercion but it won't allow me to do so. *)
 
-Definition mf_concat (R S T : Type) (f : S ->> T) (g : R ->> S) : R ->> T :=
-  fun r t => forall s, g r s -> f s t.
-(* Eventhough multivalued functions are relations, this is different from the relational
-composition which would read "fun r t => exists s, f r s -> g s t." *)
-Notation "f 'o' g" := (mf_concat f g) (at level 2).
-
 Definition mf_sum (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') : (S + S') ->> (T + T') :=
   fun c x => match c with
     | inl a => match x with
@@ -85,12 +79,13 @@ Proof.
 Qed.
 
 Definition is_sur_on S T (f: S->> T) (A: T -> Prop) :=
-  forall t, range f t -> A t.
+  forall t,  A t <-> range f t.
+Notation "f 'is_surjective_on' A" := (is_sur_on f A) (at level 2).
 
 Definition dom S T (f: S ->> T) s := exists t, f s t.
 Notation "s 'from_dom' f" := (dom f s) (at level 2).
 
-Definition is_tot S T (f: S ->> T) := forall s, dom f s.
+Definition is_tot S T (f: S ->> T) := forall s, s from_dom f.
 Notation "f 'is_total'" := (is_tot f) (at level 2).
 
 Lemma prod_total S T S' T' (f: S ->> T) (g: S' ->> T'):
@@ -99,4 +94,40 @@ Proof.
   move => [istotalf istotalg] s.
   move: (istotalf s.1) (istotalg s.2) => [t fst] [t' gst'].
   by exists (pair t t').
+Qed.
+
+Definition mf_composition (R S T : Type) (f : S ->> T) (g : R ->> S) : R ->> T :=
+  fun r t => (exists s, g r s /\ f s t) /\ (forall s, g r s -> s from_dom f).
+(* Eventhough multivalued functions are relations, this is different from the relational
+composition which would read "fun r t => exists s, f r s /\ g s t." *)
+Notation "f 'o' g" := (mf_composition f g) (at level 2).
+
+Lemma single_valued_composition R S T (f: S ->> T) (g : R ->> S) :
+	f is_single_valued -> g is_single_valued_in (dom f) -> f o g is_single_valued.
+Proof.
+move => fsing gsing r t t' _ _ [[s] [grs fst]] prop [[s'] [grs' fs't'] ] _.
+	apply: (fsing s t t') => //.
+have: s = s'.
+	apply: (gsing r s s') => //.
+by apply (prop s).
+by apply (prop s').
+move => eq.
+by rewrite eq.
+Qed.
+
+Lemma surjective_composition R S T (f: S ->> T) (g : R ->> S):
+	f is_surjective -> g is_surjective_on (dom f) -> f o g is_surjective.
+Proof.
+move => fsur gsur t.
+move: (fsur t) => [s] fst.
+have: s from_range g.
+	apply gsur.
+	by exists t.
+move => [r] grs.
+exists r.
+split.
+	by exists s.
+move => s0 grs0.
+apply (gsur s0).
+by exists r.
 Qed.

@@ -11,7 +11,7 @@ Unset Strict Implicit.
 Unset Printing Implicits Defensive.
 
 Section CONTINUITY.
-Context Q A Q' A' (F: (Q-> A) ->> (Q'-> A')).
+(* Context Q A Q' A' (F: (Q-> A) ->> (Q'-> A')). *)
 
 Fixpoint equal_on Q A (phi psi : Q -> A) L :=
   match L with
@@ -20,49 +20,103 @@ Fixpoint equal_on Q A (phi psi : Q -> A) L :=
   end.
 Notation "phi 'and' psi 'coincide_on' L" := (equal_on phi psi L) (at level 2).
 
-Definition is_cont (S T S' T' : Type) (F : (S -> T) ->> (S'-> T')) :=
-      forall phi (s': S'), exists (L : list S), forall psi, phi and psi coincide_on L ->
-          forall Fphi : S' -> T', F phi Fphi -> ((exists Fpsi, F psi Fpsi) /\
-            forall Fpsi, (F psi Fpsi -> Fphi s' = Fpsi s')).
+Definition is_cont (Q A Q' A' : Type) (F : (Q -> A) ->> (Q'-> A')) :=
+  forall phi q', exists (L : list Q), forall psi, phi and psi coincide_on L ->
+    forall Fphi, F phi Fphi -> forall Fpsi, (F psi Fpsi -> Fphi q' = Fpsi q').
 Notation "F 'is_continuous'" := (is_cont F) (at level 2).
 
 Require Import FunctionalExtensionality.
-Lemma cont_to_sing: is_cont F -> F is_single_valued.
+Lemma cont_to_sing Q A Q' A' (F: (Q-> A) ->> (Q'-> A')):
+	F is_continuous -> F is_single_valued.
 Proof.
-  move => cont phi Fpsi Fpsi' _ [v1 v2].
-  apply functional_extensionality => a.
-  move: cont (cont phi a) => _ [L] cont.
-  have: (forall K, phi and phi coincide_on K) by elim.
-  move => equal.
-  move: ((cont phi (equal L) Fpsi') v2) => [[Fphi]] v cond.
-  by rewrite ((cond Fpsi) v1).
+move => cont phi Fpsi Fpsi' _ [v1 v2].
+apply functional_extensionality => a.
+move: cont (cont phi a) => _ [L] cont.
+have: (forall K, phi and phi coincide_on K) by elim.
+move => equal.
+by rewrite -((cont phi (equal L) Fpsi') v2).
 Qed.
 
-Definition iscont (G: (Q-> A) -> Q' -> A') :=
+Definition is_mod Q A Q' A' (F:(Q -> A) ->> (Q' -> A')) mf :=
+  forall phi q', forall (psi : Q -> A), phi and psi coincide_on (mf phi q') ->
+    forall Fphi : Q' -> A', F phi Fphi -> (forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q').
+Notation "mf 'is_modulus_of' F" := (is_mod F mf) (at level 2).
+
+Require Import ClassicalChoice.
+
+Lemma exists_modulus Q A Q' A' (F: (Q-> A) ->> (Q'-> A')):
+	F is_continuous -> exists mf, mf is_modulus_of F.
+Proof.
+move => cont.
+set R:= fun phiq L => forall psi, phiq.1 and psi coincide_on L ->
+    forall Fphi, F phiq.1 Fphi -> (forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2).
+have: forall phiq, exists L, R phiq L.
+	move => [phi q'].
+	move: (cont phi q') => [L] prop.
+	by exists L.
+move => cond.
+move: cond (choice R cond) => _ [mf] cond.
+exists (fun phi q => mf (phi, q)).
+move => phi q.
+by apply (cond (phi, q)).
+Qed.
+
+Lemma continuous_composition Q A Q' A' (F: (Q-> A) ->> (Q'-> A')) Q'' A'' (G: (Q' -> A') ->> (Q'' -> A'')):
+	F is_continuous -> G is_continuous -> G o F is_continuous.
+Proof.
+move => Fcont Gcont.
+move: (cont_to_sing Fcont) (cont_to_sing Gcont) => Fsing Gsing.
+move => phi q''.
+case (classic (exists s, F phi s)); last first.
+	move => false.
+	exists nil.
+	move => psi _ GFphi [[Fpsi] [FphiFpsi GFpsiGFphi]] cont.
+	exfalso; apply false.
+	by exists Fpsi.
+move => [s] Fphis.
+move: (Gcont s q'') => [L] Lprop.
+move: (exists_modulus Fcont) => [mf] ismod.
+set gather := fix gather K := match K with
+	| nil => nil
+	| cons q' K' => app (mf phi q') (gather K')
+end.
+exists (gather L).
+move => psi coin GFphi [][]Fphi []FphiFphi GFphiGFphi _.
+move => GFpsi [][]Fpsi []FpsiFpsi GFpsiGFpsi cond.
+have: Fphi and Fpsi coincide_on L.
+move: L Lprop coin.
+elim=> //.
+move => a L ih assump coin /=.
+split.
+	move: (assump Fpsi).
+Admitted.
+
+Definition iscont Q A Q' A' (G: (Q-> A) -> Q' -> A') :=
   forall phi (q': Q'), exists (L : list Q), forall psi,
     phi and psi coincide_on L -> G phi q' = G psi q'.
 
-Lemma continuity (G: (Q-> A) -> Q' -> A') :  iscont G <-> is_cont (F2MF G).
+Lemma continuity Q A Q' A' (F: (Q-> A) -> Q' -> A'):
+	iscont F <-> is_cont (F2MF F).
 Proof.
   split.
   - move => cont psi s'.
     move: cont (cont psi s') => _ [L cond].
     exists L => phi coin Fpsi iv.
     split.
-    - by exists (fun s' => G phi s').
+    - by exists (fun s' => F phi s').
     move => Fphi iv'.
     rewrite -iv -iv'.
     by apply (cond phi).
   move => cont phi s'.
   move: cont (cont phi s') => _ [L cond].
   exists L => psi coin.
-  have: forall psi', (F2MF G psi' (G psi')) by trivial.
+  have: forall psi', (F2MF F psi' (F psi')) by trivial.
   move => triv.
-  move: cond (cond psi coin (G phi) (triv phi)) => _ [] [Fphi] v cond.
-  by apply: (cond (fun s' => G psi s')).
+  move: cond (cond psi coin (F phi) (triv phi)) => _ [] [Fphi] v cond.
+  by apply: (cond (fun s' => F psi s')).
 Qed.
 
-Fixpoint U'
+Fixpoint U' Q A Q' A'
   (n: nat)
   (psi: Q' * list (Q * A) -> Q + A')
   (phi: Q -> A)
@@ -75,7 +129,7 @@ match n with
   end
 end.
 
-Definition U n psi phi a :=
+Definition U Q A Q' A' n (psi: Q'* list(Q*A) -> Q + A') phi a :=
 U' n.+1 psi phi (a,nil).
 (* This is what I want to prove to be a universal machine. *)
 
@@ -154,7 +208,7 @@ Proof.
   by apply ((prop k).1 Pk).
 Qed.
 
-Lemma minimal_section (cnt : nat -> Q):
+Lemma minimal_section Q (cnt : nat -> Q):
   (F2MF cnt) is_surjective ->
     exists sec, (forall s, cnt (sec s) = s) /\ forall s,(forall m, cnt m = s -> sec s <= m).
 Proof.
@@ -302,15 +356,10 @@ Proof.
 Qed.
 (* This was a pain to prove... Why? *)
 
-Definition is_mod S T S' T' (F:(S -> T) ->> (S' -> T')) mf :=
-  forall phi s', forall (psi : S -> T), phi and psi coincide_on (mf phi s') ->
-    forall Fphi : S' -> T', F phi Fphi -> (exists Fpsi, F psi Fpsi) /\
-      (forall Fpsi, F psi Fpsi -> Fphi s' = Fpsi s').
-Notation "mf 'is_modulus_of' F" := (is_mod F mf) (at level 2).
-
-Lemma minimal_mod_function (sec : Q -> nat):
+Lemma minimal_mod_function Q A Q' A' (F: (Q -> A) ->> (Q' -> A')) (sec : Q -> nat):
   F is_continuous
-    -> exists mf, mf is_modulus_of F /\ forall nf, nf is_modulus_of F -> forall phi q', size sec (mf phi q') <= size sec (nf phi q').
+    -> exists mf, mf is_modulus_of F /\ forall nf, nf is_modulus_of F
+    -> forall phi q', size sec (mf phi q') <= size sec (nf phi q').
 Proof.
   move => cont.
   set P := fun phiq L => forall psi, phiq.1 and psi coincide_on L
