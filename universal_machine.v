@@ -92,8 +92,10 @@ rewrite -(List.app_comm_cons L K a).
 by split; try apply ih; try apply ass2.
 Qed.
 
-Lemma continuous_composition Q A Q' A' (F: (Q-> A) ->> (Q'-> A')) Q'' A'' (G: (Q' -> A') ->> (Q'' -> A'')):
-	F is_continuous -> G is_continuous -> G o F is_continuous.
+Lemma continuous_composition
+	Q A Q' A' (F: (Q-> A) ->> (Q'-> A'))
+	Q'' A'' (G: (Q' -> A') ->> (Q'' -> A'')):
+		F is_continuous -> G is_continuous -> G o F is_continuous.
 Proof.
 move => Fcont Gcont.
 move => phi q''.
@@ -275,36 +277,34 @@ Definition is_min_sec S (cnt: nat -> S) (sec : S -> nat) :=
 Notation "sec 'is_minimal_section_of' cnt" := (is_min_sec S cnt sec) (at level 2).
 
 Fixpoint in_seg S (cnt: nat -> S) m := match m with
-  | 0 => cons (cnt 0) nil
-  | S n => cons (cnt n.+1) (in_seg cnt n)
+  | 0 => nil
+  | S n => cons (cnt n) (in_seg cnt n)
 end.
 
 Lemma initial_segments S T (cnt: nat -> S) (phi psi : S -> T):
-  forall m, (forall n, n <= m -> phi (cnt n) = psi (cnt n)) <-> phi and psi coincide_on (in_seg cnt m).
+  forall m, (forall n, n < m -> phi (cnt n) = psi (cnt n)) <-> phi and psi coincide_on (in_seg cnt m).
 Proof.
   split; last first.
   - move: m.
     elim.
-    - move => [p0 _] n nl0.
-      by replace n with 0 by lia.
+    - move => coin n false.
+    	exfalso; lia.
     move => n ihn.
-    replace (in_seg cnt n.+1) with (cons (cnt n.+1) (in_seg cnt n)) by trivial.
-    case.
-    move => eqp1 stuff n0.
-    move: stuff ihn (ihn stuff) => _ _ ihn nln0.
-    case: (classic (n0 = n.+1)).
-    - move => kack.
-      by rewrite kack.
+    replace (in_seg cnt n.+1) with (cons (cnt n) (in_seg cnt n)) by trivial.
+    move => coin n0 ltn.
+    case: (classic (n0 = n)).
+    	move => eq.
+    	rewrite eq.
+    	apply coin.1.
     move => neq.
-    apply ihn;lia.
+    apply ihn.
+    	apply coin.2.
+    lia.
   move: m.
-  elim.
-  - move => stuff /=.
-    split; last first => //.
-    by apply: (stuff 0).
+  elim => //.
   move => n ihn ass.
     split.
-    - by apply (ass n.+1).
+    - by apply (ass n).
     apply ihn => n0 ineq.
     apply (ass n0);lia.
 Qed.
@@ -325,7 +325,7 @@ Proof.
   move: IH (IH phi psi) => _ IH.
   move: (initial_segments cnt phi psi (size sec (cons a L))) => [_ d2].
   move: d2 (d2 ci') => _ ci.
-  have: (sec a <= size sec (a :: L)).
+  have: (sec a < size sec (a :: L)).
   - replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial; lia.
   move => ineq.
   split.
@@ -335,13 +335,13 @@ Proof.
   move: (initial_segments cnt phi psi (size sec L)) => [d1 _].
   apply d1 => n ine.
   apply ci.
-  apply: (PeanoNat.Nat.le_trans n (size sec L) (size sec (a :: L))) => //.
-  replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial;lia.
+  apply: (PeanoNat.Nat.lt_le_trans n (size sec L) (size sec (a :: L))) => //.
+  replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial; lia.
 Qed.
 
 Inductive one := star.
 
-Lemma example: is_cont (fun phi Fphi => phi (Fphi star) = 0 /\ forall m, m < Fphi star -> phi m <> 0).
+Lemma example: is_cont (fun phi Fphi => phi (Fphi star) = 0 /\ forall m, phi m = 0 -> m > Fphi star).
 Proof.
   move => phi star.
   set cnt := (fun n:nat => n).
@@ -356,52 +356,23 @@ Proof.
     by exists (fp1 star).
   move => [m me0].
   exists (L m).
-  move => psi pep.
+  move => psi coin.
   move: (initial_segments cnt phi psi m) => [_ cond].
-  move: cond pep (cond pep) => _ _ cond Fphi [v1 c1].
-  have: m >= Fphi star.
-  - apply NNPP => ge1.
-    apply (c1 m).
-    - by apply Compare_dec.not_ge.
-    replace (psi m) with (phi m) => //.
-    by apply (cond m).
-  move => ge1.
-  move: ge1 (cond (Fphi star) ge1).
-  rewrite v1.
-  move => ge1 zero1 Fpsi [v2 c2].
-  have: m >= Fpsi star.
-  - apply NNPP => ge2.
-    apply (c2 m);last first.
-    replace (psi m) with (phi m) =>//.
-    - by apply (cond m).
-    by apply Compare_dec.not_ge.
-  move => ge2.
-  move: ge2 (cond (Fpsi star) ge2) => _.
-  rewrite v2 => zero2.
-  have: (~ Fphi star > Fpsi star).
-  - move => gt1.
-    by apply (c1 (Fpsi star)).
-  move => gt1.
-  have: (~ Fpsi star > Fphi star).
-  - move => gt2.
-    by apply (c2 (Fphi star)).
-  move => gt2.
-  apply NNPP=> neq.
-  move: (PeanoNat.Nat.lt_trichotomy (Fphi star) (Fpsi star)) => //.
-  case => //.
-  by case.
+  move: cond coin (cond coin) => _ _ cond Fphi [v1 c1].
+  move: v1 c1 (c1 (Fphi star) v1) => _ _ ge1.
+  exfalso; lia.
 Qed.
-(* This was a pain to prove... Why? *)
 
 Lemma minimal_mod_function Q A Q' A' (F: (Q -> A) ->> (Q' -> A')) (sec : Q -> nat):
   F is_continuous
-    -> exists mf, mf is_modulus_of F /\ forall nf, nf is_modulus_of F
-    -> forall phi q', size sec (mf phi q') <= size sec (nf phi q').
+    -> exists mf, mf is_modulus_of F /\ (forall phi q' K, (forall psi, phi and psi coincide_on K
+    -> forall Fphi, F phi Fphi -> forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q') ->
+     size sec (mf phi q') <= size sec K).
 Proof.
   move => cont.
   set P := fun phiq L => forall psi, phiq.1 and psi coincide_on L
     -> forall Fphi, F phiq.1 Fphi -> forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2.
-  set R := fun phiq L => P phiq L /\ forall K, P phiq K -> size sec L <= size sec K.
+  set R := fun phiq L => P phiq L /\ (forall K, P phiq K -> size sec L <= size sec K).
   have: forall phiq, exists L, R phiq L.
   - move => phiq.
   	have: exists n, exists L, P phiq L/\ size sec L = n.
@@ -425,13 +396,14 @@ Proof.
  	split.
  		move => phi q' psi.
  		apply (mfprop (phi, q')).
- 	move => nf mod phi q'.
+ 	move => phi q' K mod.
  	move: (mfprop (phi,q')) => [_ b].
- 	apply: (b (nf phi q')).
- 	apply: mod.
+ 	apply: (b K).
+ 	move => psi coin Fphi FphiFphi Fpsi FpsiFpsi.
+ 	apply: (mod psi) =>//.
 Qed.
 
-Lemma U_is_universal:
+Lemma U_is_universal Q A Q' A' (F:(Q -> A) ->> (Q' -> A')):
   (exists cnt: nat -> Q, (F2MF cnt) is_surjective)
     -> (exists a: A, True)
     -> (exists a':A', True)
@@ -510,11 +482,25 @@ Proof.
     move => phi [Fphi v] Fphi' q'.
     exists (size sec (mf phi q')).
     have: forall m, m = size sec (mf phi q') -> U m psiF phi q' = Some (Fphi' q').
-    elim.
-    rewrite /U /U' /psiF /=.
-    move => eq.
-    have: (size sec (mf (phi' [::]) q') <= 0).
-    move: (fprop (phi, s') (phi' nil)).
+    	elim.
+    	rewrite /U /U' /psiF /=.
+    	move => eq.
+    	have: forall psi Fphi Fpsi, F (phi' nil) Fphi -> F psi Fpsi ->
+    		(phi' nil) and psi coincide_on nil -> Fphi q' = Fpsi q'.
+    		move => psi a b c d e.
+    		apply: (mprop.1 (phi' nil) q' psi) => //.
+    	have: (size sec (mf (phi' [::]) q') <= 0).
+    		rewrite eq.
+    		apply mprop.2 => //.
+    		move => psi _ Fphi'nil Fphi'nilFphi'nil Fpsi FpsiFpsi.
+    		apply: (mprop.1 (phi' nil) q' (psi)) => //.
+    		apply: (@list_size Q A cnt sec issec (mf (phi' nil) q')).
+    		rewrite -eq //.
+    		have: F (phi' nil) Fphi.
+    		move: (mprop.1).
+    		split.
+    		have: (mf (phi' nil) q') = nil.
+    			move: (fprop (phi, s') (phi' nil)).
     replace (Ff (phi' [::]) s') with (Fphi' s') => //.
       have: f (phi' nil, s') = 0.
       case: (classic (exists Fpsi, F (phi' nil) Fpsi)).
