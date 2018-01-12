@@ -32,10 +32,11 @@ Definition is_cont (Q A Q' A' : Type) (F : (Q -> A) ->> (Q'-> A')) :=
 Notation "F 'is_continuous'" := (is_cont F) (at level 2).
 
 Require Import FunctionalExtensionality.
+
 Lemma cont_to_sing Q A Q' A' (F: (Q-> A) ->> (Q'-> A')):
 	F is_continuous -> F is_single_valued.
 Proof.
-move => cont phi Fpsi Fpsi' _ [v1 v2].
+move => cont phi Fpsi Fpsi' v1 v2.
 apply functional_extensionality => a.
 move: cont (cont phi a) => _ [L] cont.
 have: (forall K, phi and phi coincide_on K) by elim.
