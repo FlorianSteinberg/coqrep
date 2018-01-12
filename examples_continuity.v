@@ -31,7 +31,7 @@ Proof.
   set cnt := (fun n:nat => n).
   set sec := (fun n:nat => n).
   set L := in_seg cnt.
-  replace CONTINUITY.star with star; last first.
+  replace Top.star with star; last first.
   - by elim star.
   case: (classic (exists m, phi m = 0)); last first.
   - move => false.
