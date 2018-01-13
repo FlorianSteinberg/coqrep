@@ -110,24 +110,91 @@ Qed.
 
 Inductive one := star.
 
-Lemma example: is_cont (fun phi Fphi => phi (Fphi star) = 0 /\ forall m, phi m = 0 -> m > Fphi star).
+(*To have function from baire space to natural numbers, we identify nat with one -> nat.*)
+Definition F phi n := phi (n star) = 0 /\ forall m, phi m = 0 -> n star <= m.
+(*This is a partial function: if phi is never zero, the right hand side is always false and
+phi is not assinged any value. On the other hand the function is single valued, as only
+the smalles number where phi is zero allowed as return value. More generally, the function
+is continuous:*)
+
+Lemma F_is_continuous: F is_continuous.
 Proof.
   move => phi star.
   set cnt := (fun n:nat => n).
   set sec := (fun n:nat => n).
   set L := in_seg cnt.
-  replace Top.star with star; last first.
-  - by elim star.
   case: (classic (exists m, phi m = 0)); last first.
-  - move => false.
+  	move => false.
     exists nil => psi _ fp1 [v1] cond.
     exfalso; apply false.
-    by exists (fp1 star).
+    by exists (fp1 Top.star).
   move => [m me0].
-  exists (L m).
-  move => psi coin.
-  move: (initial_segments cnt phi psi m) => [_ cond].
-  move: cond coin (cond coin) => _ _ cond Fphi [v1 c1].
-  move: v1 c1 (c1 (Fphi star) v1) => _ _ ge1.
-  exfalso; lia.
+  exists (L m.+1).
+  move => psi pep.
+  move: ((initial_segments cnt phi psi m.+1).2 pep).
+  move => cond Fphi [v1 c1].
+  have: Fphi Top.star <= m by apply (c1 m); lia.
+  move => le1.
+  move => Fpsi [v2 c2].
+	have: Fpsi Top.star <= m.
+		apply: (c2 m).
+    replace (psi m) with (phi m) => //.
+    by apply (cond m).
+  move => leq2.
+  have: Fpsi Top.star < m.+1 by lia.
+  move => l2.
+	rewrite -(cond (Fpsi Top.star) l2) in v2.
+  have: Fphi Top.star < m.+1 by lia.
+  move => l1.
+	rewrite (cond (Fphi Top.star) l1) in v1.
+	move: (c1 (Fpsi Top.star) v2) (c2 (Fphi Top.star) v1) => ieq1 ieq2.
+  replace star with Top.star.
+  lia.
+by elim star.
+Qed.
+
+Lemma F_is_single_valued: F is_single_valued.
+Proof.
+	exact: cont_to_sing F_is_continuous.
+Qed.
+
+Lemma no_extension :
+	~ exists G, (forall phi n, F phi n -> G phi = n) /\ (F2MF G) is_continuous.
+Proof.
+move => [] G [] cond cont.
+set psi := fun n:nat => 1.
+move: (cont psi star) => []L Lprop.
+set sL := size id L.
+set m := (max ((G psi) star).+1 sL).
+set psi' := fun n => if (leq m n) then 0 else 1.
+have: psi and psi' coincide_on init_seg sL.
+	apply: (initial_segments id psi psi' sL).1.
+	move => n nls.
+	rewrite /psi /psi'.
+	case_eq (leq m n); intros hyp_ab => //.
+	have: m <= n by apply /leP.
+	rewrite /m; lia.
+move => coin.
+have: psi and psi' coincide_on L.
+	have: forall (n: nat), id id n = n by trivial.
+	move => true.
+	apply: (list_size true coin).
+move: coin => _ coin.
+have: forall psi', (F2MF G psi' (G psi')) by trivial.
+move => triv.
+have: (G psi') = fun star => m.
+	apply: (cond psi' (fun star => m)).
+ 	rewrite /F.
+	split.
+		rewrite /psi'.
+		replace (leq m m) with true => //.
+		by have: (leq m m) by apply /leP; lia.
+	move => m0.
+	rewrite /psi'.
+	case_eq (leq m m0); intros hyp_ab => // wahr.
+	by apply /leP; rewrite hyp_ab.
+move => neq.
+move: (Lprop psi' coin (G psi) (triv psi) (G psi') (triv psi')).
+rewrite neq /m.
+lia.
 Qed.
