@@ -13,7 +13,7 @@ a function should be understood as the set of all elements t such that f s t is 
 Definition F2MF S T (f : S -> T) s t := f s = t.
 (* I'd like this to be a Coercion but it won't allow me to do so. *)
 
-Definition mf_sum (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') : (S + S') ->> (T + T') :=
+Definition mf_sum (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') :=
   fun c x => match c with
     | inl a => match x with
       | inl y => f a y
@@ -24,14 +24,17 @@ Definition mf_sum (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') : (S + S') ->
       | inr z => g b z
     end
   end.
-(* the sum of multivalued functions is not used anywhere so far. Probably because it the use of
-sums is rather unusual for represented spaces. While infinite coproducts show up for some weird
-spaces like polynomials or analytic functions, I have not seen finite coproducts very often. *)
+(* the sum of multivalued functions is not used anywhere so far. Probably because
+it the use of sums is rather unusual for represented spaces. While infinite co-
+products show up for some weird spaces like polynomials or analytic functions, I
+have not seen finite coproducts very often. *)
 
-Definition mf_prod (S S' T T' : Type) (f : S ->> T) (g : S' ->> T') : (S * S') ->> (T * T') :=
-  fun c x => f c.1 x.1 /\ g c.2 x.2.
-(* in contrast to coproducts, products are very common and I have already included several lemmas
-about them because I needed them. *)
+Definition mf_prod (S S' T T' : Type)
+	(f : S ->> T)
+	(g : S' ->> T') :=
+  	fun c x => f c.1 x.1 /\ g c.2 x.2.
+(* in contrast to coproducts, products are very common and I have already included
+several lemmas about them because I needed them. *)
 
 Notation "f \, g" := (mf_prod f g) (at level 50).
 (*This is the notation for the tupling of multifunctions*)
@@ -39,11 +42,18 @@ Notation "f \, g" := (mf_prod f g) (at level 50).
 Definition is_sing_wrt S T (f: S ->> T) (R: T -> T -> Prop) :=
   forall s t t', (f s t) -> (f s t') -> R t t'.
 Notation "f 'is_single_valued_wrt' P" := (is_sing_wrt f P) (at level 2).
-(* To understand why this is called "single valued" see the special case that R is the equality
-relation below. More generally, this means that f factors through the relation R. *)
+(* To understand why this is called "single valued" see the special case that R i
+the equality relation below. More generally, this means that f factors through the
+relation R. *)
 Definition is_sing S T (f: S ->> T) := is_sing_wrt f (fun s t=> s = t).
 Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
 (* a single valued function is still a partial function *)
+
+Lemma fun_to_sing S T (f: S-> T):
+	(F2MF f) is_single_valued.
+Proof.
+by move => s t t' fst fst';rewrite -fst -fst'.
+Qed.
 
 Lemma prod_sing_wrt S S' T T' (f: S ->> T) (g : S' ->> T') R R' :
   f is_single_valued_wrt R /\ g is_single_valued_wrt R'
@@ -92,6 +102,34 @@ values are from X or that none is. *)
 
 Definition dom S T (f: S ->> T) s := exists t, f s t.
 Notation "s 'from_dom' f" := (dom f s) (at level 2).
+
+Definition exte S T (f: S ->> T) (g: S ->> T) :=
+	forall s, (exists t, f s t) -> (exists t, g s t) /\ forall t, g s t -> f s t.
+Notation "g 'extends' f" := (exte f g) (at level 2).
+
+(* This reduces to the usual notion of extension for single valued functions: *)
+Lemma single_valued_extension S T (f: S ->> T) g:
+	f is_single_valued -> g extends f -> forall s t, f s t -> g s t.
+Proof.
+move => fsing gef s t fst.
+move: (gef s) => [].
+	by exists t.
+move => [] t' gst' cond.
+rewrite (fsing s t t') => //.
+by apply (cond t').
+Qed.
+
+Lemma extension_of_single_valued S T (f: S ->> T) g:
+	g is_single_valued -> (forall s t, f s t -> g s t) -> g extends f.
+Proof.
+move => gsing gef s [] t fst.
+split.
+	exists t.
+	by apply: (gef s t).
+move => t' gst'.
+rewrite -(gsing s t t') => //.
+by apply gef.
+Qed.
 
 Definition is_tot S T (f: S ->> T) := forall s, s from_dom f.
 Notation "f 'is_total'" := (is_tot f) (at level 2).
