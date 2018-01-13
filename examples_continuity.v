@@ -202,3 +202,9 @@ move: (Lprop psi' coin (G psi) (triv psi) (G psi') (triv psi')).
 rewrite neq /m.
 lia.
 Qed.
+
+(* Since classically, any multi function can be extended to a total multi function,
+we get the following when using classical reasoning:
+Lemma no_extension':
+	~ exists G, G extends F /\ G is_continuous /\ G is_total.
+But I don't feel like proving that now. *)

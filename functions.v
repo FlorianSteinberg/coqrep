@@ -106,8 +106,13 @@ Notation "s 'from_dom' f" := (dom f s) (at level 2).
 Definition exte S T (f: S ->> T) (g: S ->> T) :=
 	forall s, (exists t, f s t) -> (exists t, g s t) /\ forall t, g s t -> f s t.
 Notation "g 'extends' f" := (exte f g) (at level 2).
-
-(* This reduces to the usual notion of extension for single valued functions: *)
+(* The next two lemmas together prove, that the above definition of an extension
+reduces to the usual notion of extension for single valued functions, namely a function
+g extends f a function f if "forall s, (exists t, f(s) = t) -> g(s) = f(s)" which can
+be rewriten as "forall s t, f(s) = t -> g(s) = t".
+The generalization makes sense: for instance a Choice function of a multi valued funtion
+is an extension of that funciton. Some people talk about tightenings for this reason
+and to avoid confusion. *)
 Lemma extension_of_single_valued S T (f: S ->> T) g:
 	f is_single_valued -> g extends f -> forall s t, f s t -> g s t.
 Proof.
