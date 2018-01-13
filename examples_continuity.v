@@ -165,7 +165,7 @@ Lemma no_extension :
 	~ exists G, (F2MF G) extends F /\ (F2MF G) is_continuous.
 Proof.
 move => [] G [] ext cont.
-move: ext (@single_valued_extension B N (F) (F2MF G) F_is_single_valued ext) => _ ext.
+move: ext (@extension_of_single_valued B N (F) (F2MF G) F_is_single_valued ext) => _ ext.
 set psi := fun n:nat => 1.
 move: (cont psi star) => []L Lprop.
 set sL := size id L.

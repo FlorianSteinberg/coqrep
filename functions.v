@@ -108,7 +108,7 @@ Definition exte S T (f: S ->> T) (g: S ->> T) :=
 Notation "g 'extends' f" := (exte f g) (at level 2).
 
 (* This reduces to the usual notion of extension for single valued functions: *)
-Lemma single_valued_extension S T (f: S ->> T) g:
+Lemma extension_of_single_valued S T (f: S ->> T) g:
 	f is_single_valued -> g extends f -> forall s t, f s t -> g s t.
 Proof.
 move => fsing gef s t fst.
@@ -119,7 +119,7 @@ rewrite (fsing s t t') => //.
 by apply (cond t').
 Qed.
 
-Lemma extension_of_single_valued S T (f: S ->> T) g:
+Lemma single_valued_extension S T (f: S ->> T) g:
 	g is_single_valued -> (forall s t, f s t -> g s t) -> g extends f.
 Proof.
 move => gsing gef s [] t fst.
