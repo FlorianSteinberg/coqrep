@@ -44,10 +44,11 @@ rewrite -(List.app_comm_cons L K a).
 by split; try apply ih; try apply ass2.
 Qed.
 
-
 Definition is_cont (Q A Q' A' : Type) (F : (Q -> A) ->> (Q'-> A')) :=
-  forall phi q', exists (L : list Q), forall psi, phi and psi coincide_on L -> forall Fphi, F phi Fphi ->
-    forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q'.
+  forall phi q', exists (L : list Q),
+  	forall psi, phi and psi coincide_on L ->
+  	 forall Fphi, F phi Fphi -> forall Fpsi, F psi Fpsi ->
+  	 	Fphi q' = Fpsi q'.
 Notation "F 'is_continuous'" := (is_cont F) (at level 2).
 
 Require Import FunctionalExtensionality.
@@ -67,6 +68,20 @@ Definition is_mod Q A Q' A' (F:(Q -> A) ->> (Q' -> A')) mf :=
   forall phi q', forall (psi : Q -> A), phi and psi coincide_on (mf phi q') ->
   	forall Fphi : Q' -> A', F phi Fphi -> (forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q').
 Notation "mf 'is_modulus_of' F" := (is_mod F mf) (at level 2).
+
+Require Import Classical.
+
+Lemma continuous_extension Q A Q' A' (F: (Q -> A) ->> (Q' -> A')) G:
+	G extends F -> G is_continuous -> F is_single_valued -> F is_continuous.
+Proof.
+move => GeF Gcont Fsing phi q'.
+move: (Gcont phi q') => [] L Lprop.
+exists L => psi pep Fphi FphiFphi Fpsi FpsiFpsi.
+move: GeF (@extension_of_single_valued (Q->A) (Q'->A') F G Fsing GeF) => _ GeF.
+apply: (Lprop psi pep Fphi _ Fpsi _).
+	by apply: (GeF phi Fphi).
+by apply: (GeF psi Fpsi).
+Qed.
 
 Require Import ClassicalChoice.
 
@@ -88,6 +103,7 @@ exists (fun phi q => mf (phi, q)).
 move => phi q.
 by apply (cond (phi, q)).
 Qed.
+
 
 Lemma continuous_composition
 	Q A Q' A' (F: (Q-> A) ->> (Q'-> A'))
