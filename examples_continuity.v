@@ -158,10 +158,14 @@ Proof.
 	exact: cont_to_sing F_is_continuous.
 Qed.
 
+Notation N := (one -> nat).
+Notation B := (nat -> nat).
+
 Lemma no_extension :
-	~ exists G, (forall phi n, F phi n -> G phi = n) /\ (F2MF G) is_continuous.
+	~ exists G, (F2MF G) extends F /\ (F2MF G) is_continuous.
 Proof.
-move => [] G [] cond cont.
+move => [] G [] ext cont.
+move: ext (@single_valued_extension B N (F) (F2MF G) F_is_single_valued ext) => _ ext.
 set psi := fun n:nat => 1.
 move: (cont psi star) => []L Lprop.
 set sL := size id L.
@@ -183,7 +187,7 @@ move: coin => _ coin.
 have: forall psi', (F2MF G psi' (G psi')) by trivial.
 move => triv.
 have: (G psi') = fun star => m.
-	apply: (cond psi' (fun star => m)).
+	apply: (ext psi' (fun star => m)).
  	rewrite /F.
 	split.
 		rewrite /psi'.
