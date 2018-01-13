@@ -74,9 +74,13 @@ Proof.
   by apply ((prop k).1 Pk).
 Qed.
 
+Definition is_min_sec S (cnt: nat -> S) (sec : S -> nat) :=
+  (forall s, cnt (sec s) = s) /\ forall s,(forall m, cnt m = s -> sec s <= m).
+Notation "sec 'is_minimal_section_of' cnt" := (is_min_sec cnt sec) (at level 2).
+
 Lemma minimal_section Q (cnt : nat -> Q):
   (F2MF cnt) is_surjective ->
-    exists sec, (forall s, cnt (sec s) = s) /\ forall s,(forall m, cnt m = s -> sec s <= m).
+    exists sec, sec is_minimal_section_of cnt.
 Proof.
   move => sur.
   set R := fun s n => cnt n = s /\ (forall m, cnt m = s -> n <= m).
@@ -92,17 +96,14 @@ Proof.
 	by move: (sprop s) => [ _ a].
 Qed.
 
-Definition is_min_sec S (cnt: nat -> S) (sec : S -> nat) :=
-  (forall s, cnt (sec s) = s) /\ forall s,(forall m, m < sec s -> cnt m <> s).
-Notation "sec 'is_minimal_section_of' cnt" := (is_min_sec S cnt sec) (at level 2).
-
 Fixpoint in_seg S (cnt: nat -> S) m := match m with
   | 0 => nil
   | S n => cons (cnt n) (in_seg cnt n)
 end.
 
 Lemma initial_segments S T (cnt: nat -> S) (phi psi : S -> T):
-  forall m, (forall n, n < m -> phi (cnt n) = psi (cnt n)) <-> phi and psi coincide_on (in_seg cnt m).
+  forall m, (forall n, n < m -> phi (cnt n) = psi (cnt n))
+  	<-> phi and psi coincide_on (in_seg cnt m).
 Proof.
   split; last first.
   - move: m.
@@ -131,8 +132,36 @@ Qed.
 
 Fixpoint size S (sec: S -> nat) K := match K with
   | nil => 0
-  | cons s K' => max ((sec s).+1) (size sec K')
+  | cons s K' => max (sec s).+1 (size sec K')
 end.
+
+Lemma size_app S (sec: S -> nat):
+	forall L K, size sec (L ++ K) = max (size sec L) (size sec K).
+Proof.
+elim => //.
+move => a L ih K.
+replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
+rewrite -List.app_comm_cons.
+replace (size sec (a :: (L ++ K)%list))
+	with (max ((sec a).+1) (size sec (L ++ K))) by trivial.
+rewrite (ih K).
+apply: PeanoNat.Nat.max_assoc.
+Qed.
+
+Lemma size_in_seg S (cnt: nat -> S) (sec: S -> nat):
+	is_min_sec cnt sec -> forall n, size sec (in_seg cnt n) <= n.
+Proof.
+move => [issec min].
+elim => //.
+move => n ih.
+replace (in_seg cnt n.+1) with (cons (cnt n) (in_seg cnt n)) by trivial.
+replace (size sec (cnt n :: in_seg cnt n))
+	with (max (sec (cnt n)).+1 (size sec (in_seg cnt n))) by trivial.
+	have: (cnt n = cnt n) by trivial.
+	move => eq.
+	move: (min (cnt n) n eq) => leq.
+	lia.
+Qed.
 
 Lemma list_size S T (cnt : nat -> S) (sec: S -> nat):
   (forall s, cnt (sec s) = s)
