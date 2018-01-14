@@ -148,8 +148,32 @@ Qed.
 function of a multi valued funtion is a thightening of that funciton. *)
 Notation "g 'is_choice_for' f" := ((F2MF g) tightens f) (at level 2).
 
+Lemma tight_ref S T (f: S ->> T):
+	f tightens f.
+Proof.
+done.
+Qed.
+
+Lemma tight_trans S T (f g h: S ->> T):
+	f tightens g -> g tightens h -> f tightens h.
+Proof.
+move => ftg gth s eh.
+split.
+	apply: (ftg s (gth s eh).1).1.
+move => t fst.
+apply: ((gth s eh).2 t).
+by apply: ((ftg s (gth s eh).1).2 t).
+Qed.
+
 Definition is_tot S T (f: S ->> T) := forall s, s from_dom f.
 Notation "f 'is_total'" := (is_tot f) (at level 2).
+
+Lemma fun_total S T (f: S -> T):
+	(F2MF f) is_total.
+Proof.
+move => s.
+	by exists (f s).
+Qed.
 
 Lemma prod_total S T S' T' (f: S ->> T) (g: S' ->> T'):
   f is_total /\ g is_total ->(f \, g) is_total.
