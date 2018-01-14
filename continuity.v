@@ -90,12 +90,12 @@ by split; try apply ih; try apply ass2.
 Qed.
 
 Lemma continuous_extension (F G: B ->> B'):
-	G extends F -> G is_continuous -> F is_single_valued -> F is_continuous.
+	G tightens F -> G is_continuous -> F is_single_valued -> F is_continuous.
 Proof.
 move => GeF Gcont Fsing phi q'.
 move: (Gcont phi q') => [] L Lprop.
 exists L => psi pep Fphi FphiFphi Fpsi FpsiFpsi.
-move: GeF (@extension_of_single_valued B B' F G Fsing GeF) => _ GeF.
+move: GeF (@tightening_of_single_valued B B' F G Fsing GeF) => _ GeF.
 apply: (Lprop psi pep Fphi _ Fpsi _).
 	by apply: (GeF phi Fphi).
 by apply: (GeF psi Fpsi).
