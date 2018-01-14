@@ -90,7 +90,7 @@ Proof.
   by exists (s',t').
 Qed.
 
-Definition is_sur_wrt S T (f: S->> T) (A: T -> Prop) :=
+Definition is_sur_wrt S T (f: S ->> T) (A: T -> Prop) :=
   forall t,  A t -> (exists s, f s t /\ forall s t', f s t -> f s t' -> A t').
 Notation "f 'is_surjective_wrt' A" := (is_sur_wrt f A) (at level 2).
 (* This says: a multivalued function is said to be surjective on a set X if whenever
@@ -100,21 +100,21 @@ as defined below. It does kind of make sense if the value set is interpreted as 
 set of "acceptable return values": It should either be the case that all acceptable
 values are from X or that none is. *)
 
-Definition dom S T (f: S ->> T) s := exists t, f s t.
+Definition dom S T (f: S ->> T) s := (exists t, f s t).
 Notation "s 'from_dom' f" := (dom f s) (at level 2).
 
-Definition exte S T (f: S ->> T) (g: S ->> T) :=
+Definition tight S T (f: S ->> T) (g: S ->> T) :=
 	forall s, (exists t, f s t) -> (exists t, g s t) /\ forall t, g s t -> f s t.
-Notation "g 'extends' f" := (exte f g) (at level 2).
-(* The next two lemmas together prove, that the above definition of an extension
-reduces to the usual notion of extension for single valued functions, namely a function
-g extends f a function f if "forall s, (exists t, f(s) = t) -> g(s) = f(s)" which can
-be rewriten as "forall s t, f(s) = t -> g(s) = t".
-The generalization makes sense: for instance a Choice function of a multi valued funtion
-is an extension of that funciton. Some people talk about tightenings for this reason
-and to avoid confusion. *)
-Lemma extension_of_single_valued S T (f: S ->> T) g:
-	f is_single_valued -> g extends f -> forall s t, f s t -> g s t.
+Notation "g 'tightens' f" := (tight f g) (at level 2).
+(* A thightening is a generalization of an extension of a single-valued function
+to multivalued functions. It reduces to the usual notion of extension for single valued
+functions: A single valued function g tightens a single valued function f if and only
+if "forall s, (exists t, f(s) = t) -> g(s) = f(s)". This formula can also be written as
+"forall s t, f(s) = t -> g(s) = t" and the equivalence is proven in the next lemmas.*)
+Notation "g 'extends' f" := (forall s t, f s t -> g s t) (at level 2).
+
+Lemma tightening_of_single_valued S T (f: S ->> T) g:
+	f is_single_valued -> g tightens f -> g extends f.
 Proof.
 move => fsing gef s t fst.
 move: (gef s) => [].
@@ -124,8 +124,8 @@ rewrite (fsing s t t') => //.
 by apply (cond t').
 Qed.
 
-Lemma single_valued_extension S T (f: S ->> T) g:
-	g is_single_valued -> (forall s t, f s t -> g s t) -> g extends f.
+Lemma single_valued_tightening S T (f: S ->> T) g:
+	g is_single_valued -> g extends f -> g tightens f.
 Proof.
 move => gsing gef s [] t fst.
 split.
@@ -135,6 +135,18 @@ move => t' gst'.
 rewrite -(gsing s t t') => //.
 by apply gef.
 Qed.
+
+Lemma extension_and_tightening S T (f: S ->> T) g:
+	f is_single_valued -> g is_single_valued -> (g extends f <-> g tightens f).
+Proof.
+split.
+	exact: single_valued_tightening.
+exact: tightening_of_single_valued.
+Qed.
+
+(* To extend to tightenings for multivalued functions makes sense: for instance a Choice
+function of a multi valued funtion is a thightening of that funciton. *)
+Notation "g 'is_choice_for' f" := ((F2MF g) tightens f) (at level 2).
 
 Definition is_tot S T (f: S ->> T) := forall s, s from_dom f.
 Notation "f 'is_total'" := (is_tot f) (at level 2).
