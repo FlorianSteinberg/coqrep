@@ -24,6 +24,27 @@ Fixpoint equal_on (phi psi: B) L :=
     | cons s K => (phi s = psi s) /\ (equal_on phi psi K)
   end.
 Notation "phi 'and' psi 'coincide_on' L" := (equal_on phi psi L) (at level 2).
+Lemma coin_to_list_in (phi psi: B):
+	forall L, phi and psi coincide_on L <-> (forall q, List.In q L -> phi q = psi q).
+Proof.
+elim=>//.
+move => q L [] ih1 ih2.
+split.
+	move => ass q' listin.
+	case listin.
+		move => eq.
+		rewrite -eq.
+		by apply: ass.1.
+	move => inlist.
+	apply: (ih1) => //.
+	by apply ass.2.
+move => ass.
+split.
+	by apply ass;left.
+apply ih2.
+move => q' listin.
+by apply ass; right.
+Qed.
 
 (* The set of meaningful conversations in a language is a subset of the Baire space corre-
 sponding to that language. For instance if one is given a dictionary, that asigns to each
