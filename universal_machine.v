@@ -225,6 +225,10 @@ have: forall phi L,
 move => phi'prop'.
 have: forall phi q'' psi, phi and psi coincide_on (mf phi q'') ->
 	size sec (mf psi q'') <= size sec (mf phi q'').
+move => phi q'' psi coin.
+apply mprop.
+move => psi' coin'.
+apply: (mprop.1 psi q'' psi').
 
 set psiF := (fun L =>
   if
