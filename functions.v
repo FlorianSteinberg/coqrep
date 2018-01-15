@@ -4,7 +4,7 @@ From mathcomp Require Import all_ssreflect.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
-Unset Printing Implicits Defensive.
+Unset Printing Implicit Defensive.
 
 Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 (*This is the notation I use for multivalued functions. The value f(s) of such
