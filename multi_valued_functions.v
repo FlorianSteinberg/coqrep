@@ -90,16 +90,6 @@ Proof.
   by exists (s',t').
 Qed.
 
-Definition is_sur_wrt S T (f: S ->> T) (A: T -> Prop) :=
-  forall t,  A t -> (exists s, f s t /\ forall s t', f s t -> f s t' -> A t').
-Notation "f 'is_surjective_wrt' A" := (is_sur_wrt f A) (at level 2).
-(* This says: a multivalued function is said to be surjective on a set X if whenever
-one of its value sets f(s) has a nonempty intersection with X, then it is already
-included in X. This notion has to be more elaborate to work well with composition
-as defined below. It does kind of make sense if the value set is interpreted as the
-set of "acceptable return values": It should either be the case that all acceptable
-values are from X or that none is. *)
-
 Definition dom S T (f: S ->> T) s := (exists t, f s t).
 Notation "s 'from_dom' f" := (dom f s) (at level 2).
 
@@ -147,6 +137,31 @@ Qed.
 (* To extend to tightenings for multivalued functions makes sense: for instance a Choice
 function of a multi valued funtion is a thightening of that funciton. *)
 Notation "g 'is_choice_for' f" := ((F2MF g) tightens f) (at level 2).
+
+Require Import ClassicalChoice.
+
+Lemma exists_choice S T (f: S ->> T):
+	(exists (t:T), True) -> exists F, F is_choice_for f.
+Proof.
+move => [] t _.
+set R := fun s t => s from_dom f -> f s t.
+have: forall s, exists t, R s t.
+	move => s.
+	case: (classic (s from_dom f)).
+		by move => [] t' fst; exists t'.
+	move => false.
+	exists t.
+	move => sfd.
+	by exfalso.
+move => cond.
+move: (choice R cond) => [] F prop.
+exists F.
+move => s sfd.
+split.
+	by exists (F s).
+move => t0 Fst0.
+by rewrite -Fst0; apply (prop s sfd).
+Qed.
 
 Lemma tight_ref S T (f: S ->> T):
 	f tightens f.
@@ -210,6 +225,56 @@ move: (fsing s t t') => eq'.
 rewrite eq' => //.
 by rewrite eq.
 Qed.
+
+Definition is_really_sur_wrt S T (f: S ->> T) (A: T -> Prop) :=
+	exists F, F is_choice_for f /\ forall t, (exists s, s from_dom f /\ F s = t).
+(* Due to choice functions being involved, this notion is not nice to work with.
+Since we are mostly interested in the case where the function is single valued,
+we use the following notion instead, that can be proven equivalent in this case: *)
+
+Definition is_sur_wrt S T (f: S ->> T) (A: T -> Prop) :=
+  forall t,  A t -> (exists s, f s t /\ forall s t', f s t -> f s t' -> A t').
+Notation "f 'is_surjective_wrt' A" := (is_sur_wrt f A) (at level 2).
+(* This says: a multivalued function is said to be surjective on a set X if whenever
+one of its value sets f(s) has a nonempty intersection with X, then it is already
+included in X. This notion has to be more elaborate to work well with composition
+as defined below. It does kind of make sense if the value set is interpreted as the
+set of "acceptable return values": It should either be the case that all acceptable
+values are from X or that none is. *)
+
+Lemma sur_and_really_sur S T (f: S ->> T) (P: T -> Prop):
+	(exists (t: T), True) -> f is_single_valued -> (is_really_sur_wrt f P <-> is_sur_wrt f P).
+Proof.
+move => e sing.
+split.
+	move => []F [] icf prop t Pt.
+	move: prop (prop t) => _ [] s [] sfd Fst.
+	exists (s).
+	split.
+		by apply (icf s sfd).
+	move => s0 t' fs0t fs0t'.
+	move: (sing s0 t t' fs0t fs0t') => eq.
+	by rewrite eq in Pt.
+move => sur.
+set R := fun s t => P t -> (f s t /\ forall s t', f s t -> f s t' -> P t').
+have: forall s, exists t, R s t.
+	move => s.
+	case: (classic (exists t, f s t /\ P t)).
+		move => [] t []fst Pt.
+		exists t.
+		split => //.
+		move => s' t' fs't fs't'.
+		move: (sing s' t t' fs't fs't') => eq.
+		by rewrite -eq.
+	move: e => [] t _ false.
+	exists t => Pt.
+	move: (sur t Pt) => [] s' [] fs't prop.
+	exfalso
+
+	split.
+	
+	
+
 
 Lemma surjective_composition_wrt R S T (f: S ->> T) (g : R ->> S):
 	f is_surjective -> g is_surjective_wrt (dom f) -> f o g is_surjective.

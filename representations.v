@@ -65,6 +65,23 @@ Proof.
   exact: cond.
 Qed.
 
+Lemma equivalence_relation S T (delta: S ->> T) (R: T -> T -> Prop):
+	delta is_representation_wrt (R) of (fun t => R t t) ->
+		(forall t t', (R t t -> R t' t' -> (R t t' <-> R t' t))
+			/\ forall t'',(R t t -> R t' t' -> R t'' t'' -> (R t t' -> R t' t'' -> R t t''))).
+Proof.
+move => [sing sur].
+split.
+	move => Rtt Rt't'.
+	split.
+	move: (sur t Rtt) => [s] [dst] _ Rtt'.
+	move: (sur t' Rt't') => [s'] [ds't'] ass.
+	move: (ass s' t'
+	
+	
+	move: (sur t).
+
+
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names can be an arbitrary type
 but will usually be something that can be computed on, i.e. Baire space or something.
