@@ -86,6 +86,13 @@ Qed.
 Lemma minus_Q2R r1 r2 : Q2R (r1 - r2) = Q2R r1 - Q2R r2.
 Proof. rewrite plus_Q2R opp_Q2R; lra. Qed.
 
+Lemma inv_Q2R r : Q2R (/ r) = / (Q2R r).
+Proof.
+Admitted.
+
+Lemma div_Q2R r1 r2 : Q2R (r1 / r2) = (Q2R r1) / (Q2R r2).
+Proof. by rewrite mul_Q2R inv_Q2R. Qed.
+
 Lemma le0_Q2R r : (0 <= r)%Q -> 0 <= Q2R r.
 Proof.
 rewrite /Qle /= Z.mul_1_r => /IZR_le /= H.
@@ -116,7 +123,7 @@ suff: 0 < Q2R (r2 - r1) by rewrite minus_Q2R; lra.
 apply: lt0_Q2R; lra.
 Qed.
 
-Definition Q2Rt := (minus_Q2R, opp_Q2R, mul_Q2R, plus_Q2R, Q2R_make1, Q2R_make).
+Definition Q2Rt := (minus_Q2R, opp_Q2R, mul_Q2R, inv_Q2R, div_Q2R, plus_Q2R, Q2R_make1, Q2R_make).
 (* \end{usefulllemmas} *)
 
 Definition rep_R : (Q -> Q) -> R -> Prop :=
@@ -233,18 +240,16 @@ Proof.
   - field.
   apply: (triang).
   replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
-  - apply: Rplus_le_compat.
-    - apply: phi0.
-      replace 0%Q with (Qdiv 0 (1 + 1)).
+  have exp2_pos : (0 < eps / (1 + 1))%Q.
+    rewrite (_ : 0 == 0 / (1 + 1))%Q.
       by apply: (Qmult_lt_compat_r 0 eps (/(1+1))); last first.
-      (* I want to do this:
-        rewrite (Qmult_0_l (/(1+1))).
-      It doesn't work. I believe it is because there is something wrong with the equality? *)
-      admit.
-    - apply: phi1.
-      admit.
-    - admit.
-Admitted.
+    by field.
+  - apply: Rplus_le_compat.
+    - by apply: phi0.
+    - by apply: phi1.
+  - rewrite !Q2Rt /=.
+    field.
+Qed.
 
 Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) is_computable.
 Proof.
