@@ -47,7 +47,7 @@ move => q' listin.
 by apply ass; right.
 Qed.
 
-Lemma coin_ref phi psi L:
+Lemma coin_sym phi psi L:
 	phi and psi coincide_on L <-> psi and phi coincide_on L.
 Proof.
 move: L.
