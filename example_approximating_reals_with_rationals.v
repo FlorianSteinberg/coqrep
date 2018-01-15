@@ -86,12 +86,33 @@ Qed.
 Lemma minus_Q2R r1 r2 : Q2R (r1 - r2) = Q2R r1 - Q2R r2.
 Proof. rewrite plus_Q2R opp_Q2R; lra. Qed.
 
-Lemma inv_Q2R r : Q2R (/ r) = / (Q2R r).
+Add Morphism Q2R with signature Qeq ==> eq as Q2R_comp.
 Proof.
-Admitted.
+case=> n1 d1.
+case=> n2 d2.
+rewrite /Qeq /Q2R /= => H.
+apply: Rminus_diag_uniq.
+rewrite !INR_IZR_INZ /= !positive_nat_Z.
+have F1 : IZR (' d1) <> 0 by move=> /eq_IZR_R0.
+have F2 : IZR (' d2) <> 0 by move=> /eq_IZR_R0.
+field_simplify=> //.
+rewrite -!mult_IZR H !mult_IZR.
+by field.
+Qed.
 
-Lemma div_Q2R r1 r2 : Q2R (r1 / r2) = (Q2R r1) / (Q2R r2).
-Proof. by rewrite mul_Q2R inv_Q2R. Qed.
+Lemma inv_Q2R r : Q2R r <> 0 -> Q2R (/ r) = / (Q2R r).
+Proof.
+move=> Q2R_neq0.
+apply: Rmult_eq_reg_l (Q2R_neq0).
+rewrite -mul_Q2R Qmult_inv_r.
+  by rewrite Q2R1; field.
+contradict Q2R_neq0.
+rewrite -Q2R0.
+by apply: Q2R_comp.
+Qed.
+
+Lemma div_Q2R r1 r2 : Q2R r2 <> 0 -> Q2R (r1 / r2) = (Q2R r1) / (Q2R r2).
+Proof. by move=> r2_neq0; rewrite mul_Q2R inv_Q2R. Qed.
 
 Lemma le0_Q2R r : (0 <= r)%Q -> 0 <= Q2R r.
 Proof.
@@ -247,8 +268,7 @@ Proof.
   - apply: Rplus_le_compat.
     - by apply: phi0.
     - by apply: phi1.
-  - rewrite !Q2Rt /=.
-    field.
+  - by rewrite !Q2Rt /=; lra.
 Qed.
 
 Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) is_computable.
