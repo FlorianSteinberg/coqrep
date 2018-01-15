@@ -223,7 +223,8 @@ have: forall phi L,
 	apply: (coin_choice_flst (phi' (flst phi L)) phi L).1.
 	apply phi'prop.
 move => phi'prop'.
-have: forall phi q'' psi, phi and psi coincide_on (mf phi q'') -> mf (phi q'') = 
+have: forall phi q'' psi, phi and psi coincide_on (mf phi q'') ->
+	size sec (mf psi q'') <= size sec (mf phi q'').
 
 set psiF := (fun L =>
   if
