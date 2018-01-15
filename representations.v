@@ -1,5 +1,5 @@
-Load functions.
-
+From mathcomp Require Import all_ssreflect.
+Require Import multi_valued_functions.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicits Defensive.

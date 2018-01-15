@@ -1,0 +1,11 @@
+multi_valued_functions.v
+representations.v
+continuity.v
+example_approximating_reals_with_rationals.v
+example_second_order_polynomials_using_representations.v
+example_second_order_polynomials_without_representations.v
+example_size_types.v
+example_continuity.v
+initial_segments.v
+par_spaces.v
+universal_machine.v

@@ -7,7 +7,8 @@ representation is a total mapping on the name space but it is neither injective
 nor surjective on the natural space of interpretations of the element, i.e. the
 type (nat -> nat) -> nat -> nat. *)
 
-Load representations.
+From mathcomp Require Import all_ssreflect.
+Require Import multi_valued_functions representations.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

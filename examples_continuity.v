@@ -1,7 +1,7 @@
 (*This file considers Baire space nat->nat as example for
 a space that can be thought about continuity on. *)
-
-Load initial_segments.
+From mathcomp Require Import all_ssreflect.
+Require Import functions continuity initial_segments.
 
 Notation "'init_seg' phi" := (in_seg id phi) (at level 2).
 

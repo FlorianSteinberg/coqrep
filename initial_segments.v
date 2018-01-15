@@ -1,6 +1,10 @@
-Load continuity.
 From Coq.micromega Require Import Psatz.
+From mathcomp Require Import all_ssreflect.
+Require Import multi_valued_functions continuity.
 Open Scope coq_nat_scope.
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 Section MINIMIZATION.
 (* The code from this section was provided by Vincent *)
@@ -74,7 +78,7 @@ Proof.
   by apply ((prop k).1 Pk).
 Qed.
 
-Definition is_min_sec S (cnt: nat -> S) (sec : S -> nat) :=
+Definition is_min_sec Q (cnt: nat -> Q) (sec : Q -> nat) :=
   (forall s, cnt (sec s) = s) /\ forall s,(forall m, cnt m = s -> sec s <= m).
 Notation "sec 'is_minimal_section_of' cnt" := (is_min_sec cnt sec) (at level 2).
 
@@ -188,11 +192,15 @@ Proof.
   replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial; lia.
 Qed.
 
+Definition is_min_mod Q A Q' A' (sec: Q -> nat) (F: (Q -> A) ->> (Q' -> A')) mf :=
+	forall phi q' K, (forall psi, phi and psi coincide_on K
+    -> forall Fphi, F phi Fphi -> forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q') ->
+     size sec (mf phi q') <= size sec K .
+(*       /\ forall q, List.In q K -> List.In q (mf phi q'). *)
+
 Lemma minimal_mod_function Q A Q' A' (F: (Q -> A) ->> (Q' -> A')) (sec : Q -> nat):
   F is_continuous
-    -> exists mf, mf is_modulus_of F /\ (forall phi q' K, (forall psi, phi and psi coincide_on K
-    -> forall Fphi, F phi Fphi -> forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q') ->
-     size sec (mf phi q') <= size sec K).
+    -> exists mf, mf is_modulus_of F /\ is_min_mod sec F mf.
 Proof.
   move => cont.
   set P := fun phiq L => forall psi, phiq.1 and psi coincide_on L

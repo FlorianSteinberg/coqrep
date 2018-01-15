@@ -5,14 +5,13 @@ that approac in the other example file "example_approximating_reals_with_integer
 to extensive additional work so Igave up at some point. I feel that the approach in the present
 file is more appropriate. *)
 
-Load representations.
-
-From mathcomp Require Import ssrnat.
+From mathcomp Require Import all_ssreflect.
+Require Import multi_valued_functions representations.
 Require Import Reals Lra Classical ClassicalFacts Psatz.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
-Unset Printing Implicits Defensive.
+Unset Printing Implicit Defensive.
 
 Local Open Scope Z_scope.
 Import QArith.

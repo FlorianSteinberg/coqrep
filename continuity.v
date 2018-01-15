@@ -1,10 +1,11 @@
 (* This file provides a definition of continuity of functions between spaces of the form
 Q -> A for some arbitrary types Q and A. It also proves some basic Lemmas about this notion.*)
-Load functions.
+From mathcomp Require Import all_ssreflect.
+Require Import functions.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
-Unset Printing Implicits Defensive.
+Unset Printing Implicit Defensive.
 
 Section CONTINUITY_DEFINITION.
 Context (Q I Q' I' : Type).

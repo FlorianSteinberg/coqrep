@@ -6,6 +6,11 @@ to rely on a handwritten type of strings as I attempted in the file "operators.v
 more generaly a space S -> T as substitute for B. *)
 Load initial_segments.
 
+Check exists_modulus.
+Print Assumptions exists_modulus.
+Print Assumptions minimal_mod_function.
+Print Assumptions well_order_nat.
+
 Section UNIVERSAL_MACHINE.
 
 Context (Q I Q' I' : Type).
@@ -137,6 +142,8 @@ move: ((coin_and_list_in phi psi (q::L)).1 coin q' listin2) => eq'.
 by rewrite eq'; apply: (function_list_in psi).
 Qed.
 
+About function_list_in.
+
 (*This should at some point go into an appropriate section: *)
 Lemma extend_list:
 	exists listf, forall (L: list (Q * A)), (listf L) is_choice_for (L2MF L).
@@ -229,6 +236,7 @@ move => phi q'' psi coin.
 apply mprop.
 move => psi' coin'.
 apply: (mprop.1 psi q'' psi').
+apply: (@list_size Q A cnt sec issec (mf psi q'') psi psi').
 
 set psiF := (fun L =>
   if
@@ -259,6 +267,7 @@ have: size sec (mf (phi' (QA (size sec (mf phi q')))) q') <= size sec (mf phi q'
   		rewrite /U_step.
   		rewrite /psiF /=.
   		replace (QA 0) with (@nil (Q*A)).
+
 
 (* This is probably not true without further assumptions... also, instead of arbitrary
 certificates, the function f should probably use minimal certificates for it to work

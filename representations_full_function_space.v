@@ -1,4 +1,5 @@
-Load representations.
+From mathcomp Require Import all_ssreflect.
+Require Import representations.
 (* This stopped working when I started to allow representing subsets. *)
 
 Require Import ClassicalChoice.
@@ -14,7 +15,7 @@ Lemma is_realizer_is_rep (X Y : rep_space):
      /\ forall x y, equals x y -> equals (f x) (f y)).
 Proof.
   move: (@rep_space.representation_is_valid X) (@rep_space.representation_is_valid Y)
-    => [xsing [xeq xsur]] [ysing [yeq ysur]].
+    => [xsing xsur] [ysing ysur].
   split.
   - move => phi f g [cond _] [cond' _] irx iry x y xif yif xey.
     move: (xsur x xif) => [a anx].
