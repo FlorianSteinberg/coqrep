@@ -1,7 +1,7 @@
 (* This file provides a definition of continuity of functions between spaces of the form
 Q -> A for some arbitrary types Q and A. It also proves some basic Lemmas about this notion.*)
 From mathcomp Require Import all_ssreflect.
-Require Import functions.
+Require Import multi_valued_functions.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
