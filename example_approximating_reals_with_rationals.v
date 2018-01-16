@@ -143,6 +143,24 @@ suff: 0 < Q2R (r2 - r1) by rewrite minus_Q2R; lra.
 apply: lt0_Q2R; lra.
 Qed.
 
+Lemma Q2R_le0 r : 0 <= Q2R r -> (0 <= r)%Q.
+Proof.
+case: (Qlt_le_dec r 0) => // /lt_Q2R.
+rewrite Q2R0; lra.
+Qed.
+
+Lemma Q2R_le r1 r2 : Q2R r1 <= Q2R r2 -> (r1 <= r2)%Q.
+Proof. by case: (Qlt_le_dec r2 r1) => // /lt_Q2R; lra. Qed.
+
+Lemma Q2R_lt0 r : 0 < Q2R r -> (0 < r)%Q.
+Proof.
+case: (Qlt_le_dec 0 r) => // /le_Q2R.
+rewrite Q2R0; lra.
+Qed.
+
+Lemma Q2R_lt r1 r2 : Q2R r1 < Q2R r2 -> (r1 < r2)%Q.
+Proof. by case: (Qlt_le_dec r1 r2) => // /le_Q2R; lra. Qed.
+
 Definition Q2Rt := (minus_Q2R, opp_Q2R, mul_Q2R, inv_Q2R, div_Q2R, plus_Q2R, Q2R_make1, Q2R_make).
 (* \end{usefulllemmas} *)
 
@@ -229,16 +247,19 @@ set r := Q2R (phi (Qdiv q (1+1))).
 replace (x-x') with ((x-r) + (r-x')) by field.
 apply: Rle_trans.
 - apply: (Rabs_triang (x-r)).
-replace q with (Qplus (Qdiv q (1+1)) (Qdiv q (1+1))).
-  - rewrite plus_Q2R.
-    apply: Rplus_le_compat.
-    - apply: pinox.
-      admit.
-    - rewrite Rabs_minus_sym.
-      apply: pinox'.
-      admit.
-    - admit.
-Admitted.
+rewrite (_ : q == q / (1 + 1) + q / (1 + 1))%Q; last first.
+  by field.
+rewrite plus_Q2R.
+have q2_pos : (0 < q / (1 + 1))%Q.
+  rewrite (_ : 0 == 0 / (1 + 1))%Q; last by field.
+  apply: (Qmult_lt_compat_r 0 q (/(1+1))) => //.
+  by apply: Q2R_lt0; lra.
+apply: Rplus_le_compat.
+- by apply: pinox.
+- replace (Rabs (r - x')) with (Rabs (x' - r)).
+    by apply: pinox'.
+by split_Rabs; lra.
+Qed.
 
 Lemma rep_R_is_rep: rep_R is_representation.
 Proof.
