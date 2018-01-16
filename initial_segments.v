@@ -44,7 +44,6 @@ case: (i =P m - k.+1).
 move => hik; apply: h; move: hi hik.
 rewrite /subn /subn_rec; lia.
 Qed.
-
 End MINIMIZATION.
 
 Require Import ClassicalChoice.
@@ -193,19 +192,20 @@ Proof.
 Qed.
 
 Definition is_min_mod Q A Q' A' (sec: Q -> nat) (F: (Q -> A) ->> (Q' -> A')) mf :=
-	forall phi q' K, (forall psi, phi and psi coincide_on K
+	mf is_modulus_of F /\ forall phi q' K, (forall psi, phi and psi coincide_on K
     -> forall Fphi, F phi Fphi -> forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q') ->
-     size sec (mf phi q') <= size sec K .
-(*       /\ forall q, List.In q K -> List.In q (mf phi q'). *)
+     size sec (mf phi q') <= size sec K.
 
-Lemma minimal_mod_function Q A Q' A' (F: (Q -> A) ->> (Q' -> A')) (sec : Q -> nat):
-  F is_continuous
-    -> exists mf, mf is_modulus_of F /\ is_min_mod sec F mf.
+Notation "mf 'is_minimal_modulus_of' F 'wrt' sec" := (is_min_mod sec F mf) (at level 2).
+
+Lemma minimal_mod_function Q A Q' A' (F: (Q -> A) ->> (Q' -> A')) (sec: Q -> nat):
+  F is_continuous -> exists mf, mf is_minimal_modulus_of F wrt sec.
 Proof.
   move => cont.
   set P := fun phiq L => forall psi, phiq.1 and psi coincide_on L
     -> forall Fphi, F phiq.1 Fphi -> forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2.
-  set R := fun phiq L => P phiq L /\ (forall K, P phiq K -> size sec L <= size sec K).
+  set R := fun phiq L => P phiq L /\
+  	(forall K, P phiq K -> size sec L <= size sec K).
   have: forall phiq, exists L, R phiq L.
   - move => phiq.
   	have: exists n, exists L, P phiq L/\ size sec L = n.
@@ -213,14 +213,15 @@ Proof.
   		exists (size sec L).
   		by exists L.
   	move => cond.
-  	move: (@well_order_nat (fun n => exists L, P phiq L/\ size sec L = n) cond) => [n] [ [L] [Lprop Leqn]] nprop.
+  	move: (@well_order_nat (fun n => exists L, P phiq L
+  		/\ size sec L = n) cond) => [n] [ [L] [Lprop Leqn]] nprop.
   	exists L.
   	split.
   		apply: Lprop.
   	rewrite -Leqn in nprop.
   	move => K Pfi.
- 		apply: (nprop (size sec K)).
- 		by exists K.
+		apply: (nprop (size sec K)).
+		by exists K.
  	move => cond.
  	move: (@choice ((Q -> A)*Q') (list Q) R cond) => [mf] mfprop.
  	rewrite /R in mfprop.
