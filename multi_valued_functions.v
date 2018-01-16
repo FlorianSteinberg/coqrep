@@ -226,14 +226,16 @@ rewrite eq' => //.
 by rewrite eq.
 Qed.
 
-Definition is_really_sur_wrt S T (f: S ->> T) (A: T -> Prop) :=
-	exists F, F is_choice_for f /\ forall t, (exists s, s from_dom f /\ F s = t).
+Notation "f 'restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
+
+Definition is_really_sur_wrt S T (f: S ->> T) (P: T -> Prop):=
+	exists F, F is_choice_for f /\ forall t, (P t -> exists s, s from_dom f /\ F s = t).
 (* Due to choice functions being involved, this notion is not nice to work with.
 Since we are mostly interested in the case where the function is single valued,
 we use the following notion instead, that can be proven equivalent in this case: *)
 
-Definition is_sur_wrt S T (f: S ->> T) (A: T -> Prop) :=
-  forall t,  A t -> (exists s, f s t /\ forall s t', f s t -> f s t' -> A t').
+Definition is_sur_wrt S T (f: S ->> T) (P: T -> Prop) :=
+  forall t,  P t -> (exists s, f s t /\ forall s t', f s t -> f s t' -> P t').
 Notation "f 'is_surjective_wrt' A" := (is_sur_wrt f A) (at level 2).
 (* This says: a multivalued function is said to be surjective on a set X if whenever
 one of its value sets f(s) has a nonempty intersection with X, then it is already
@@ -242,54 +244,40 @@ as defined below. It does kind of make sense if the value set is interpreted as 
 set of "acceptable return values": It should either be the case that all acceptable
 values are from X or that none is. *)
 
-Lemma sur_and_really_sur S T (f: S ->> T) (P: T -> Prop):
-	(exists (t: T), True) -> f is_single_valued -> (is_really_sur_wrt f P <-> is_sur_wrt f P).
+Lemma sur_and_really_sur S T (f: S ->> T) P:
+	(exists (t: T), True) -> f is_single_valued ->
+		(is_really_sur_wrt f P <-> f is_surjective_wrt P).
 Proof.
 move => e sing.
 split.
 	move => []F [] icf prop t Pt.
-	move: prop (prop t) => _ [] s [] sfd Fst.
-	exists (s).
-	split.
-		by apply (icf s sfd).
+	move: prop (prop t Pt) => _ [] s [] sfd Fst.
+	exists (s); split.
+		by apply: ((icf s sfd).2 t).
 	move => s0 t' fs0t fs0t'.
-	move: (sing s0 t t' fs0t fs0t') => eq.
-	by rewrite eq in Pt.
-move => sur.
-set R := fun s t => P t -> (f s t /\ forall s t', f s t -> f s t' -> P t').
-have: forall s, exists t, R s t.
-	move => s.
-	case: (classic (exists t, f s t /\ P t)).
-		move => [] t []fst Pt.
-		exists t.
-		split => //.
-		move => s' t' fs't fs't'.
-		move: (sing s' t t' fs't fs't') => eq.
-		by rewrite -eq.
-	move: e => [] t _ false.
-	exists t => Pt.
-	move: (sur t Pt) => [] s' [] fs't prop.
-	exfalso
-
-	split.
-	
-	
-
+	by rewrite (sing s0 t t' fs0t fs0t') in Pt.
+move: (exists_choice f e) => [] F prop sur.
+exists F; split => //.
+move => t Pt.
+move: (sur t Pt) => [] s [] fst cond.
+exists s; split.
+	by exists t.
+have ex: (exists t, f s t) by exists t.
+move: (prop s ex) => [] [] t' Fst' cond'.
+move: (cond' t' Fst') => fst'.
+by rewrite (sing s t t' fst fst').
+Qed.
 
 Lemma surjective_composition_wrt R S T (f: S ->> T) (g : R ->> S):
 	f is_surjective -> g is_surjective_wrt (dom f) -> f o g is_surjective.
 Proof.
 move => fsur gsur t.
 move: (fsur t) => [s] fst.
-have: s from_dom f.
-	by exists t.
-move => sdomf.
+have sdomf: s from_dom f by exists t.
 move: (gsur s sdomf) => [] r [] grs cond.
-exists r.
-split.
+exists r; split.
 	by exists s.
-move => s'.
-by apply: (cond r s').
+by move => s'; apply: (cond r s').
 Qed.
 
 (* Due to the definition of the composition there is no Lemma for surjectivity that
