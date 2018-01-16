@@ -193,12 +193,33 @@ Proof.
   apply (approx' (x * /eps)).
 Qed.
 
-(* The following is admitted here. However, it can probably be easily deduced from
-the lemma cond_eq_nat that is proven in "example_approximating_reals_with_integers.v"
-the biggest problem is type conversion... again. I'd prefer an independet and shorter proof. *)
-Lemma cond_eq_rat : forall x y, (forall q, Q2R q > 0 -> Rabs (x - y) <= Q2R q) -> x = y.
-Admitted.
-(* TODO: give a proof of this. *)
+Lemma Q_accumulates_to_zero r : 0 < r -> exists q : Q, 0 < Q2R q < r.
+Proof.
+move=> rPos.
+have ir_Pos : 0 < /r by apply: Rinv_0_lt_compat.
+pose z := up (/ r).
+have irLz : / r < IZR z by rewrite /z; have := archimed (/ r); lra.
+have zPos : 0 < IZR z by lra.
+pose p := Z.to_pos z.
+have pE : (' p)%Z = z by rewrite Z2Pos.id //; apply: lt_0_IZR.
+exists (1 # p).
+rewrite /Q2R /= INR_IZR_INZ positive_nat_Z pE [1 / _]Rmult_1_l.
+split; first by apply: Rinv_0_lt_compat.
+rewrite -(Rinv_involutive r); try lra.
+apply: Rinv_lt_contravar; try nra.
+Qed.
+
+Lemma cond_eq_rat x y : (forall q, Q2R q > 0 -> Rabs (x - y) <= Q2R q) -> x = y.
+Proof.
+wlog: x y / y <= x => [Hw Hp|xLy Hp].
+  have [/Hw->//|yLx] := Rle_dec y x.
+  apply/sym_equal/Hw; try lra.
+  by move=> q; rewrite Rabs_minus_sym; apply: Hp.
+have [//|xDy] := Req_dec x y.
+have /Q_accumulates_to_zero[q Hq] : 0 < x - y by lra.
+have : Rabs (x - y) <= Q2R q by apply: Hp; lra.
+rewrite Rabs_pos_eq; lra.
+Qed.
 
 Lemma rep_R_is_sing: is_sing rep_R.
 Proof.
