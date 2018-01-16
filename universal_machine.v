@@ -6,11 +6,6 @@ to rely on a handwritten type of strings as I attempted in the file "operators.v
 more generaly a space S -> T as substitute for B. *)
 Load initial_segments.
 
-Check exists_modulus.
-Print Assumptions exists_modulus.
-Print Assumptions minimal_mod_function.
-Print Assumptions well_order_nat.
-
 Section UNIVERSAL_MACHINE.
 
 Context (Q I Q' I' : Type).
@@ -142,8 +137,6 @@ move: ((coin_and_list_in phi psi (q::L)).1 coin q' listin2) => eq'.
 by rewrite eq'; apply: (function_list_in psi).
 Qed.
 
-About function_list_in.
-
 (*This should at some point go into an appropriate section: *)
 Lemma extend_list:
 	exists listf, forall (L: list (Q * A)), (listf L) is_choice_for (L2MF L).
@@ -205,9 +198,25 @@ Lemma U_is_universal:
   	exists psi, forall phi, (exists Fphi, F phi Fphi) ->
     forall (Fphi: Q'->A') a, exists n, U n psi phi a = Some (Fphi a).
 Proof.
-  move => [cnt sur] cont.
-  move: sur (minimal_section sur) => _ [] sec [] issec smin.
-  set init_seg := fun m => in_seg cnt m.
+move => [cnt sur] cont.
+move: sur (minimal_section sur) => _ [] sec [] issec ismin.
+set init_seg := fun m => in_seg cnt m.
+set size := Top.size sec.
+move: (minimal_mod_function sec cont) => [mf'] mprop.
+set mf := fun phi q' => init_seg (size (mf' phi q')).
+move: (continuous_lists cont) => [] phi' phi'prop.
+have: forall phi q'' psi, phi and psi coincide_on (mf phi q'') ->
+	size (mf psi q'') <= size (mf phi q'').
+move => phi q'' psi coin.
+move: list_size.
+
+have: forall phi L,
+	(phi' (flst phi L)) and phi coincide_on L.
+	move => phi L.
+	apply: (coin_choice_flst (phi' (flst phi L)) phi L).1.
+	apply phi'prop.
+move => phi'prop'.
+
 
   set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
   have: forall phi, exists psi, R phi psi.
@@ -222,18 +231,6 @@ Proof.
   rewrite /R /= in Fprop.
   move: R cond => _ _.
 
-move: (minimal_mod_function sec cont) => [mf] mprop.
-move: (continuous_lists cont) => [] phi' phi'prop.
-have: forall phi L,
-	(phi' (flst phi L)) and phi coincide_on L.
-	move => phi L.
-	apply: (coin_choice_flst (phi' (flst phi L)) phi L).1.
-	apply phi'prop.
-move => phi'prop'.
-have: forall phi q'' psi, phi and psi coincide_on (mf phi q'') ->
-	size sec (mf psi q'') <= size sec (mf phi q'').
-move => phi q'' psi coin.
-apply mprop.
 move => psi' coin'.
 apply: (mprop.1 psi q'' psi').
 apply: (@list_size Q A cnt sec issec (mf psi q'') psi psi').
