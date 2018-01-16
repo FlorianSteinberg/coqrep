@@ -1,8 +1,19 @@
 (*This file considers Baire space nat->nat as example for
 a space that can be thought about continuity on. *)
+From Coq.micromega Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
-Require Import functions continuity initial_segments.
+Require Import multi_valued_functions continuity initial_segments Classical.
 
+Open Scope coq_nat_scope.
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
+Section BAIRE_SPACE.
+Context (Q A Q' A': Type).
+Inductive one := star.
+Notation B := (nat -> nat).
+Notation N := (one -> nat).
 Notation "'init_seg' phi" := (in_seg id phi) (at level 2).
 
 Lemma min_sec: @is_min_sec nat id id.
@@ -30,7 +41,7 @@ Definition is_cont1 (G: (nat -> nat) -> nat -> nat) :=
 It is equivalent to the corresponding multifunction being continuous
 in the sense of "continuity.v" *)
 
-Lemma continuity1 (F: (nat -> nat) -> nat -> nat):
+Lemma continuity1 (F: B -> B):
 	is_cont1 F <-> is_cont (F2MF F).
 Proof.
 split.
@@ -85,11 +96,11 @@ Qed.
 it can be recovered for arbitrary countable types. I mean: it is always possible to use a
 bijection with nat, right? Anyway, the following uses lists for regular functions and
 is easier to prove equal to the continuity from "continuity.v" *)
-Definition is_cont2 Q A Q' A' (G: (Q-> A) -> Q' -> A') :=
+Definition is_cont2 (G: (Q-> A) -> Q' -> A') :=
   forall phi (q': Q'), exists (L : list Q), forall psi,
     phi and psi coincide_on L -> G phi q' = G psi q'.
 
-Lemma continuity2 Q A Q' A' (F: (Q-> A) -> Q' -> A'):
+Lemma continuity2 (F: (Q-> A) -> Q' -> A'):
 	is_cont2 F <-> is_cont (F2MF F).
 Proof.
   split.
@@ -108,8 +119,6 @@ Proof.
   by apply: (cond (fun s' => F psi s')).
 Qed.
 
-Inductive one := star.
-
 (*To have function from baire space to natural numbers, we identify nat with one -> nat.*)
 Definition F phi n := phi (n star) = 0 /\ forall m, phi m = 0 -> n star <= m.
 (*This is a partial function: if phi is never zero, the right hand side is always false and
@@ -117,9 +126,10 @@ phi is not assinged any value. On the other hand the function is single valued, 
 the smalles number where phi is zero allowed as return value. More generally, the function
 is continuous:*)
 
+
 Lemma F_is_continuous: F is_continuous.
 Proof.
-  move => phi star.
+  move => phi str.
   set cnt := (fun n:nat => n).
   set sec := (fun n:nat => n).
   set L := in_seg cnt.
@@ -127,30 +137,30 @@ Proof.
   	move => false.
     exists nil => psi _ fp1 [v1] cond.
     exfalso; apply false.
-    by exists (fp1 Top.star).
+    by exists (fp1 star).
   move => [m me0].
   exists (L m.+1).
   move => psi pep.
   move: ((initial_segments cnt phi psi m.+1).2 pep).
   move => cond Fphi [v1 c1].
-  have: Fphi Top.star <= m by apply (c1 m); lia.
+  have: Fphi star <= m by apply (c1 m); lia.
   move => le1.
   move => Fpsi [v2 c2].
-	have: Fpsi Top.star <= m.
+	have: Fpsi star <= m.
 		apply: (c2 m).
     replace (psi m) with (phi m) => //.
     by apply (cond m).
   move => leq2.
-  have: Fpsi Top.star < m.+1 by lia.
+  have: Fpsi star < m.+1 by lia.
   move => l2.
-	rewrite -(cond (Fpsi Top.star) l2) in v2.
-  have: Fphi Top.star < m.+1 by lia.
+	rewrite -(cond (Fpsi star) l2) in v2.
+  have: Fphi star < m.+1 by lia.
   move => l1.
-	rewrite (cond (Fphi Top.star) l1) in v1.
-	move: (c1 (Fpsi Top.star) v2) (c2 (Fphi Top.star) v1) => ieq1 ieq2.
-  replace star with Top.star.
+	rewrite (cond (Fphi star) l1) in v1.
+	move: (c1 (Fpsi star) v2) (c2 (Fphi star) v1) => ieq1 ieq2.
+  replace str with star.
   lia.
-by elim star.
+by elim str.
 Qed.
 
 Lemma F_is_single_valued: F is_single_valued.
@@ -158,14 +168,10 @@ Proof.
 	exact: cont_to_sing F_is_continuous.
 Qed.
 
-Notation N := (one -> nat).
-Notation B := (nat -> nat).
-
 Lemma no_extension :
 	~ exists G, (F2MF G) extends F /\ (F2MF G) is_continuous.
 Proof.
 move => [] G [] ext cont.
-move: ext (@extension_of_single_valued B N (F) (F2MF G) F_is_single_valued ext) => _ ext.
 set psi := fun n:nat => 1.
 move: (cont psi star) => []L Lprop.
 set sL := size id L.
@@ -208,3 +214,4 @@ we get the following when using classical reasoning:
 Lemma no_extension':
 	~ exists G, G extends F /\ G is_continuous /\ G is_total.
 But I don't feel like proving that now. *)
+End BAIRE_SPACE.
