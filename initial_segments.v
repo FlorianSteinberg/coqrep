@@ -191,38 +191,39 @@ Proof.
   replace (size sec (a :: L)) with (max (sec a).+1 (size sec L)) by trivial; lia.
 Qed.
 
-Definition is_min_mod Q A Q' A' (sec: Q -> nat) (F: (Q -> A) ->> (Q' -> A')) mf :=
+Definition is_min_mod Q A Q' A' (cnt: nat -> Q) (sec: Q -> nat) (F: (Q -> A) ->> (Q' -> A')) mf :=
 	mf is_modulus_of F /\ forall phi q' K, (forall psi, phi and psi coincide_on K
     -> forall Fphi, F phi Fphi -> forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q') ->
-     size sec (mf phi q') <= size sec K.
+     exists m, m <= size sec K /\ mf phi q'= in_seg cnt m.
 
-Notation "mf 'is_minimal_modulus_of' F 'wrt' sec" := (is_min_mod sec F mf) (at level 2).
-
-Lemma minimal_mod_function Q A Q' A' (F: (Q -> A) ->> (Q' -> A')) (sec: Q -> nat):
-  F is_continuous -> exists mf, mf is_minimal_modulus_of F wrt sec.
+Lemma minimal_mod_function Q A Q' A' (cnt: nat -> Q) (sec: Q -> nat) (F: (Q -> A) ->> (Q' -> A')):
+  F is_continuous -> sec is_minimal_section_of cnt ->
+  exists mf, is_min_mod cnt sec F mf.
 Proof.
-  move => cont.
+  move => cont [] issec ismin.
   set P := fun phiq L => forall psi, phiq.1 and psi coincide_on L
     -> forall Fphi, F phiq.1 Fphi -> forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2.
   set R := fun phiq L => P phiq L /\
-  	(forall K, P phiq K -> size sec L <= size sec K).
-  have: forall phiq, exists L, R phiq L.
-  - move => phiq.
-  	have: exists n, exists L, P phiq L/\ size sec L = n.
+  	(forall K, P phiq K ->  exists m, m <= size sec K /\ L = in_seg cnt m).
+  have cond: forall phiq, exists L, R phiq L.
+    move => phiq.
+  	have cond : exists n, exists L, P phiq L /\ size sec L = n.
   		move: (cont phiq.1 phiq.2) => [L] Lprop.
   		exists (size sec L).
   		by exists L.
-  	move => cond.
   	move: (@well_order_nat (fun n => exists L, P phiq L
   		/\ size sec L = n) cond) => [n] [ [L] [Lprop Leqn]] nprop.
-  	exists L.
+  	exists (in_seg cnt (size sec L)).
   	split.
-  		apply: Lprop.
+      move => psi coin.
+      move: coin (@list_size Q A cnt sec issec L phiq.1 psi coin) => _ coin.
+  		by apply: Lprop.
   	rewrite -Leqn in nprop.
   	move => K Pfi.
-		apply: (nprop (size sec K)).
-		by exists K.
- 	move => cond.
+		exists (size sec L).
+    split => //.
+    have e : exists L : seq Q, P phiq L /\ size sec L = (size sec K) by exists K.
+    by apply: (nprop (size sec K) e).
  	move: (@choice ((Q -> A)*Q') (list Q) R cond) => [mf] mfprop.
  	rewrite /R in mfprop.
  	move: R cond => _ _.
