@@ -4,7 +4,13 @@ and it should work for any continuous function from B -> B. Usually B is the Bai
 here, i.e. the set of all mappings from strings to strings. However, since I don't want
 to rely on a handwritten type of strings as I attempted in the file "operators.v" I use
 more generaly a space S -> T as substitute for B. *)
-Load initial_segments.
+From mathcomp Require Import all_ssreflect.
+Require Import multi_valued_functions continuity initial_segments.
+Require Import ClassicalChoice Psatz.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 Section UNIVERSAL_MACHINE.
 
@@ -81,7 +87,7 @@ Lemma choice_function_list phi L:
 Proof.
 move => q [] a listin.
 split.
-	by exists a; apply (in_function_list listin).
+	exists a; apply: (in_function_list listin).
 move => a' phiqa'.
 by rewrite -phiqa'; apply: (function_list_in phi (function_in_list listin)).
 Qed.
@@ -193,82 +199,73 @@ Definition is_count T :=
 	exists cnt: nat -> T, (F2MF cnt) is_surjective.
 Notation "T 'is_countable'" := (is_count T) (at level 2).
 
+
+Notation "B ~> B'" := (nat -> B -> B') (at level 2).
+
+Definition comp (M: B ~> B'):
+  forall phi Fphi, F phi Fphi -> forall q', exists n, M n phi q' = Fphi q'.
+
+Definition is_comp:
+  exists M, comp M F.
+
 Lemma U_is_universal:
 	Q is_countable -> F is_continuous ->
-  	exists psi, forall phi, (exists Fphi, F phi Fphi) ->
-    forall (Fphi: Q'->A') a, exists n, U n psi phi a = Some (Fphi a).
+  	exists psiF, forall phi Fphi, F phi Fphi ->
+      forall a, exists n, U n psiF phi a = Some (Fphi a).
 Proof.
 move => [cnt sur] cont.
-move: sur (minimal_section sur) => _ [] sec [] issec ismin.
+move: sur (minimal_section sur) => _ [] sec isminsec.
 set init_seg := fun m => in_seg cnt m.
-set size := Top.size sec.
-move: (minimal_mod_function sec cont) => [mf'] mprop.
-set mf := fun phi q' => init_seg (size (mf' phi q')).
+set size := size sec.
+
+set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
+have cond: forall phi, exists psi, R phi psi.
+  move => phi.
+  case: (classic (exists psi' , F phi psi')).
+    move => [psi prop].
+    by exists psi.
+  move => false.
+  by exists (fun a => None).
+move: ((@choice ((Q -> A)) (Q' -> A') R) cond) => [Ff] Fprop.
+rewrite /R /= in Fprop; move: R cond => _ _.
+
+move: (@minimal_mod_function Q A Q' A' cnt sec F cont isminsec) => [] mf mprop.
 move: (continuous_lists cont) => [] phi' phi'prop.
-have: forall phi q'' psi, phi and psi coincide_on (mf phi q'') ->
-	size (mf psi q'') <= size (mf phi q'').
-move => phi q'' psi coin.
-move: list_size.
-
-have: forall phi L,
-	(phi' (flst phi L)) and phi coincide_on L.
-	move => phi L.
-	apply: (coin_choice_flst (phi' (flst phi L)) phi L).1.
-	apply phi'prop.
-move => phi'prop'.
-
-
-  set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
-  have: forall phi, exists psi, R phi psi.
-  - move => phi.
-    case: (classic (exists psi' , F phi psi')).
-    - move => [psi prop].
-      by exists psi.
-    move => false.
-    by exists (fun a => None).
-  move => cond.
-  move: ((@choice ((Q -> A)) (Q' -> A') R) cond) => [Ff] Fprop.
-  rewrite /R /= in Fprop.
-  move: R cond => _ _.
-
-move => psi' coin'.
-apply: (mprop.1 psi q'' psi').
-apply: (@list_size Q A cnt sec issec (mf psi q'') psi psi').
-
 set psiF := (fun L =>
   if
-    (leq (size sec (mf (phi' L.2) L.1)) (length L.2))
+    (leq (size (mf (phi' L.2) L.1)) (length L.2))
   then
     (inr (Ff (phi' L.2) L.1))
   else
     (inl (cnt (length L.2).+1))).
 exists psiF.
-move => phi [Fphi FphiFphi] Fphi' q'.
-exists (size sec (mf phi q')).
-set QA := fun m => function_list phi (init_seg m).
-have: size sec (mf (phi' (QA (size sec (mf phi q')))) q') <= size sec (mf phi q').
-	apply mprop.
-	move => psi coin Fphi'L val Fpsi FpsiFpsi.
-	replace (Fpsi q') with (Fphi q').
-	apply: (mprop.1 (phi' (QA (size sec (mf phi q')))) q' psi) => //.
-  apply: (listf_prop 
-  (phi' (QA (size sec (mf phi q'))))
-  psi
-  (mf (phi' (QA (size sec (mf phi q')))) q')).1.
-	move: (phi'prop (function_list psi (mf (phi' (QA (size sec (mf phi q')))) q'))).2.
-	have:
-  	forall m, m < size sec (mf phi q') ->
-  	U_step psiF phi q' (QA m) = inr (QA m.+1).
-  elim.
-  	move => ineq.
-  		rewrite /U_step.
-  		rewrite /psiF /=.
-  		replace (QA 0) with (@nil (Q*A)).
+move => phi phifd Fphi FphiFphi.
+exists (size (mf phi q')).
+have: forall m, m = size (mf phi q') -> U (size (mf phi q')) psiF phi q' = Some (Fphi q').
+elim.
+  move => eq.
+  rewrite -eq.
+  have ineq: size (mf (phi' [::]) q') <= 0.
+  have prop: forall psi : B,
+    (phi' [::]) and psi coincide_on [::] ->
+    forall Fphi0 : B',
+    F (phi' [::]) Fphi0 -> forall Fpsi : B', F psi Fpsi -> Fphi0 q' = Fpsi q'.
+  have isnil: (mf phi q' = nil).
+    move: (mprop.2 phi q' (mf phi q') (mprop.1 phi q')) => [] m [];rewrite -/size.
+    move => leq.
+    have null: m = 0 by lia.
+    by rewrite null.
+  move => psi coin Fphi0 Fphi0Fphi0 Fpsi FpsiFpsi.
+  have: phi and psi coincide_on nil.
+    apply: (coin_trans _ coin).
+    move: (phi'prop nil).
+  move: (mprop.1 phi q').
+  move: (size_in_seg isminsec 0);rewrite -/size.
+  lia.
+  move: .
 
-
-(* This is probably not true without further assumptions... also, instead of arbitrary
-certificates, the function f should probably use minimal certificates for it to work
-even in special cases. *)
+  rewrite -/size.
+  rewrite /U /U_rec /U_step /psiF /=.
 
 Fixpoint cons_check S T S' T' (psi : S'*list T -> S + T') (s': S') (L : list (S*T)) :=
 match L with
