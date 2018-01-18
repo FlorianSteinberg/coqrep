@@ -40,7 +40,9 @@ Notation "f \, g" := (mf_prod f g) (at level 50).
 (*This is the notation for the tupling of multifunctions*)
 
 Definition is_sing_wrt S T (f: S ->> T) (R: T -> T -> Prop) :=
-  forall s t t', (f s t) -> (f s t') -> R t t'.
+  (forall s t t', f s t -> f s t' -> R t t')
+  /\
+  forall s t t', f s t -> R t t' -> f s t'.
 Notation "f 'is_single_valued_wrt' P" := (is_sing_wrt f P) (at level 2).
 (* To understand why this is called "single valued" see the special case that R i
 the equality relation below. More generally, this means that f factors through the
@@ -52,26 +54,32 @@ Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
 Lemma fun_to_sing S T (f: S-> T):
 	(F2MF f) is_single_valued.
 Proof.
-by move => s t t' fst fst';rewrite -fst -fst'.
+by split => s t t' H H0; rewrite -H0.
 Qed.
 
 Lemma prod_sing_wrt S S' T T' (f: S ->> T) (g : S' ->> T') R R' :
   f is_single_valued_wrt R /\ g is_single_valued_wrt R'
   	-> (f \, g) is_single_valued_wrt (fun p q => R p.1 q.1 /\ R' p.2 q.2).
 Proof.
-move => [Fsing Gsing] [a1 a2] [x1 x2] [y1 y2] [fv1 gv1] [fv2 gv2].
-split.
-	by apply (Fsing a1 x1 y1).
-by apply (Gsing a2 x2 y2).
+move => [fsing gsing]; split.
+	move => s t t' [] H H0 []; split.
+		by apply/ (fsing.1 s.1).
+	by apply/ (gsing.1 s.2).
+move => s t t' [] H H0 []; split.
+	by apply/ (fsing.2 s.1 t.1).
+by apply/ (gsing.2 s.2 t.2).
 Qed.
 
 Lemma prod_sing S S' T T' (f: S ->> T) (g: S' ->> T'):
   f is_single_valued /\ g is_single_valued -> (f \, g) is_single_valued.
 Proof.
-move => [fsing gsing] [a1 a2] [x1 x2] [y1 y2] [fv1 gv1] [fv2 gv2].
-apply: injective_projections.
-	by apply (fsing a1 x1 y1).
-by apply (gsing a2 x2 y2).
+move => [fsing gsing]; split => s t t' [] H H0 [] H1.
+	move => H2;	apply: injective_projections.
+		by apply (fsing.1 s.1).
+	by apply (gsing.1 s.2).
+split; rewrite -H1.
+	by apply/ (fsing.2 s.1 t.1).
+by apply (gsing.2 s.2 t.2).
 Qed.
 
 Definition range S T (f: S ->> T) (t : T) := exists s, f s t.
@@ -96,12 +104,30 @@ Notation "s 'from_dom' f" := (dom f s) (at level 2).
 Definition tight S T (f: S ->> T) (g: S ->> T) :=
 	forall s, (exists t, f s t) -> (exists t, g s t) /\ forall t, g s t -> f s t.
 Notation "g 'tightens' f" := (tight f g) (at level 2).
+
 (* A thightening is a generalization of an extension of a single-valued function
 to multivalued functions. It reduces to the usual notion of extension for single valued
 functions: A single valued function g tightens a single valued function f if and only
 if "forall s, (exists t, f(s) = t) -> g(s) = f(s)". This formula can also be written as
 "forall s t, f(s) = t -> g(s) = t" and the equivalence is proven in the next lemmas.*)
 Notation "g 'extends' f" := (forall s t, f s t -> g s t) (at level 2).
+
+Lemma tight_ref S T (f: S ->> T):
+	f tightens f.
+Proof.
+done.
+Qed.
+
+Lemma tight_trans S T (f g h: S ->> T):
+	f tightens g -> g tightens h -> f tightens h.
+Proof.
+move => ftg gth s eh.
+split.
+	apply: (ftg s (gth s eh).1).1.
+move => t fst.
+apply: ((gth s eh).2 t).
+by apply: ((ftg s (gth s eh).1).2 t).
+Qed.
 
 Lemma tightening_of_single_valued S T (f: S ->> T) g:
 	f is_single_valued -> g tightens f -> g extends f.
@@ -110,7 +136,7 @@ move => fsing gef s t fst.
 move: (gef s) => [].
 	by exists t.
 move => [] t' gst' cond.
-rewrite (fsing s t t') => //.
+rewrite (fsing.1 s t t') => //.
 by apply (cond t').
 Qed.
 
@@ -122,7 +148,7 @@ split.
 	exists t.
 	by apply: (gef s t).
 move => t' gst'.
-rewrite -(gsing s t t') => //.
+rewrite -(gsing.1 s t t') => //.
 by apply gef.
 Qed.
 
@@ -145,39 +171,18 @@ Lemma exists_choice S T (f: S ->> T):
 Proof.
 move => [] t _.
 set R := fun s t => s from_dom f -> f s t.
-have: forall s, exists t, R s t.
+have cond: forall s, exists t, R s t.
 	move => s.
 	case: (classic (s from_dom f)).
 		by move => [] t' fst; exists t'.
 	move => false.
-	exists t.
-	move => sfd.
-	by exfalso.
-move => cond.
+	exists t => sfd; by exfalso.
 move: (choice R cond) => [] F prop.
-exists F.
-move => s sfd.
+exists F => s sfd.
 split.
 	by exists (F s).
 move => t0 Fst0.
 by rewrite -Fst0; apply (prop s sfd).
-Qed.
-
-Lemma tight_ref S T (f: S ->> T):
-	f tightens f.
-Proof.
-done.
-Qed.
-
-Lemma tight_trans S T (f g h: S ->> T):
-	f tightens g -> g tightens h -> f tightens h.
-Proof.
-move => ftg gth s eh.
-split.
-	apply: (ftg s (gth s eh).1).1.
-move => t fst.
-apply: ((gth s eh).2 t).
-by apply: ((ftg s (gth s eh).1).2 t).
 Qed.
 
 Definition is_tot S T (f: S ->> T) := forall s, s from_dom f.
@@ -208,22 +213,26 @@ Lemma single_valued_composition_wrt R S T (f: S ->> T) (g : R ->> S) :
 	f is_single_valued -> g is_single_valued_wrt (fun s s' => forall t, f s t -> f s' t)
 		-> f o g is_single_valued.
 Proof.
-move => fsing gsing r t t' [][] s [] grs fst prop [][]s' [] grs' fs't' prop'.
-move: (gsing r s s' grs grs' t fst) => fs't.
-move: (fsing s t t') => eq.
-move: (fsing s' t t') => eq''.
-rewrite eq => //.
-by rewrite -eq''.
+move => fsing gsing; split=> r t t' [][] s [] grs fst prop [][].
+	move => s' [] grs' fs't' prop'.
+	move: (gsing.1 r s s' grs grs' t fst) => fs't.
+	move: (fsing.1 s t t') (fsing.1 s' t t') => eq eq''.
+	by rewrite eq => //; rewrite -eq''.
+move => eq; split => //.
+exists s.
+by rewrite -eq.
 Qed.
 
 Lemma single_valued_composition R S T (f: S ->> T) (g : R ->> S) :
 	f is_single_valued -> g is_single_valued -> f o g is_single_valued.
 Proof.
-move => fsing gsing r t t' [][] s [] grs fst prop [][]s' [] grs' fs't' prop'.
-move: (gsing r s s' grs grs') => eq.
-move: (fsing s t t') => eq'.
-rewrite eq' => //.
-by rewrite eq.
+move => fsing gsing; split=> r t t' [][] s [] grs fst prop [][].
+	move => s' [] grs' fs't' prop'.
+	move: (gsing.1 r s s' grs grs') (fsing.1 s t t') => eq eq'.
+	by rewrite eq' => //; rewrite eq.
+move => eq; split => //.
+exists s.
+by rewrite -eq.
 Qed.
 
 Notation "f 'restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
@@ -255,7 +264,7 @@ split.
 	exists (s); split.
 		by apply: ((icf s sfd).2 t).
 	move => s0 t' fs0t fs0t'.
-	by rewrite (sing s0 t t' fs0t fs0t') in Pt.
+	by rewrite (sing.1 s0 t t' fs0t fs0t') in Pt.
 move: (exists_choice f e) => [] F prop sur.
 exists F; split => //.
 move => t Pt.
@@ -265,7 +274,7 @@ exists s; split.
 have ex: (exists t, f s t) by exists t.
 move: (prop s ex) => [] [] t' Fst' cond'.
 move: (cond' t' Fst') => fst'.
-by rewrite (sing s t t' fst fst').
+by rewrite (sing.1 s t t' fst fst').
 Qed.
 
 Lemma surjective_composition_wrt R S T (f: S ->> T) (g : R ->> S):

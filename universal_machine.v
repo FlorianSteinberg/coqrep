@@ -20,14 +20,14 @@ Notation A' := (option I').
 Notation B := (Q -> A).
 Notation B' := (Q' -> A').
 
-Definition U_step (psi: Q'* list(Q*A) -> Q + A') phi q' L :=
-match psi (q', L) with
+Definition U_step (psi: list(Q * A) * Q' -> Q + A') phi q' L :=
+match psi (L, q') with
   | inr a' => inl a'
   | inl q => inr (cons (q, phi q) L)
 end.
 
 Fixpoint U_rec
-n (psi: Q'* list(Q*A) -> Q + A') phi q' :=
+n (psi: list(Q * A) * Q' -> Q + A') phi q' :=
 match n with
 	|	0 => match U_step psi phi q' nil with
 		| inl a' => inl a'
@@ -42,11 +42,11 @@ end.
 (* This is what I want to prove to be a universal machine: *)
 Definition U
 	(n: nat)
-	(psi:Q' * list (Q * A) -> Q + A')
+	(psi: list (Q * A) * Q' -> Q + A')
 	(phi: Q -> A)
 	(q' : Q') :=
 match (U_rec n psi phi q') with
-	| inl a' => Some a'
+	| inl a' => a'
 	| inr L => None
 end.
 
@@ -199,20 +199,43 @@ Definition is_count T :=
 	exists cnt: nat -> T, (F2MF cnt) is_surjective.
 Notation "T 'is_countable'" := (is_count T) (at level 2).
 
-
 Notation "B ~> B'" := (nat -> B -> B') (at level 2).
 
-Definition comp (M: B ~> B'):
-  forall phi Fphi, F phi Fphi -> forall q', exists n, M n phi q' = Fphi q'.
+Definition F_computed_by (M: B ~> B'):=
+  (forall phi Fphi, F phi Fphi -> forall q', exists n, M n phi q' = Fphi q')
+    /\
+  (forall phi n q' a', M n phi q' = Some a' -> exists Fphi, F phi Fphi /\ Fphi q' = Some a').
+
+Lemma icf_coin_flst (phi psi:B) L:
+	phi is_choice_for (L2MF(flst psi L)) <-> phi and psi coincide_on L.
+Proof.
+split.
+	move => icf.
+	apply/ (coin_and_list_in phi psi L) => q listin.
+	have ex: (exists t : A, List.In (q, t) (function_list psi L)).
+			exists (psi q).
+			by apply: (function_list_in).
+	have inlist: List.In (q, phi q) (flst psi L) by apply: (icf q ex).2.
+	by move: (in_function_list inlist).
+move => coin q []a listin.
+move: (function_in_list listin) => inlist.
+move: coin ((coin_and_list_in phi psi L).1 coin q) => _ coin .
+split.
+	exists a.
+	move: (in_function_list listin) => /= eq.
+	by rewrite -eq -coin.
+move => a' eq.
+rewrite -eq coin => //.
+by apply: (function_list_in).
+Qed.
 
 Lemma U_is_universal:
 	Q is_countable -> F is_continuous ->
-  	exists psiF, forall phi Fphi, F phi Fphi ->
-      forall q', exists n, U n psiF phi q' = Some (Fphi q').
+  	exists psiF, F_computed_by (fun n phi q' => U n psiF phi q').
 Proof.
 move => [cnt sur] cont.
 move: sur (minimal_section sur) => _ [] sec isminsec.
-set init_seg := fun m => in_seg cnt m.
+set init_seg := in_seg cnt.
 set size := size sec.
 
 set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
@@ -228,13 +251,108 @@ rewrite /R /= in Fprop; move: R cond => _ _.
 
 move: (@minimal_mod_function Q A Q' A' cnt sec F cont isminsec) => [] mf mprop.
 move: (continuous_lists cont) => [] phi' phi'prop.
+
+have coin: forall phi q', (phi' (flst phi (mf phi q'))) and phi coincide_on (mf phi q').
+	move => phi q'.
+	apply/ icf_coin_flst.
+	by apply: (phi'prop (flst phi (mf phi q'))).2.
+
+have mfinseg: forall phi q', init_seg (size (mf phi q')) = mf phi q'.
+	move => phi q'.
+	move: (mprop.2 phi q' (mf phi q') (mprop.1 phi q')) => [] m [] ineq eq'.
+	move: (size_in_seg isminsec m) => ineq'.
+	rewrite -eq' in ineq'.
+	rewrite -/size in ineq ineq'.
+	have eq'': (size (mf phi q')) = m by lia.
+	by rewrite eq'' eq'.
+
+have ineq: forall phi q', phi from_dom F -> size (mf (phi' (flst phi (init_seg (size (mf phi q'))))) q') <= size (mf phi q').
+	move => phi q' [] Fphi FphiFphi.
+	set L := init_seg (size (mf phi q')).
+	set K := mf (phi' (flst phi L)) q'.
+	suffices: exists m : nat, m <= size (mf phi q') /\ K = in_seg cnt m.
+		move => [] m [] leq eq.
+		rewrite eq.
+		move: (size_in_seg isminsec m) => ineq.
+		rewrite -/size in ineq.
+		by lia.
+	apply: (mprop.2 (phi' (flst phi L)) q' (mf phi q')) => psi coin' FphiL FphiLFphiL.
+	apply: (mprop.1 phi q' psi) => //.
+		apply/ (coin_trans).
+			by apply: ((coin_sym phi (phi' (flst phi (mf phi q'))) (mf phi q')).2 (coin phi q')).
+		by rewrite -{1}mfinseg.
+	rewrite ((cont_to_sing cont) phi FphiL Fphi).
+	
+
 set psiF := (fun L =>
   if
-    (leq (size (mf (phi' L.2) L.1)) (length L.2))
+    (leq (size (mf (phi' L.1) L.2)) (length L.1))
   then
-    (inr (Ff (phi' L.2) L.1))
+    (inr (Ff (phi' L.1) L.2))
   else
-    (inl (cnt (length L.2).+1))).
+    (inl (cnt (length L.1).+1))).
+
+have: forall n phi q', U_step psiF phi q' (flst phi (init_seg n)) =
+  if (size (mf phi q') <= n)%N then inr (flst phi (init_seg n.+1)) else inl (Ff phi q').
+elim.
+  move => phi q'.
+  rewrite /U_step/psiF/=.
+  set L := flst phi (init_seg 0).
+  case_eq (size (mf (phi' L) q')<= 0)%N => ass.
+  move: (ineq phi q').
+  set K := mf (phi' L) q'.
+	have isnil: K = nil.
+		move: (mprop.2 phi q' K).
+		move: (mprop.1 (phi' L) q').
+		) => [] m [];rewrite -/size-/init_seg.
+		move => leq.
+		have null: m = 0 by lia.
+		by rewrite null.
+  	have ineq: size (mf (phi' [::]) q') <= 0.
+  		have prop: forall psi : B,
+  	  	(phi' [::]) and psi coincide_on [::] ->
+  	  	forall Fphi0 : B',
+  	  	F (phi' [::]) Fphi0 -> forall Fpsi : B', F psi Fpsi -> Fphi0 q' = Fpsi q'.
+  			move => psi _ Fphi0 Fphi0Fphi0 Fpsi FpsiFpsi.
+ 				have coin1: phi and psi coincide_on (mf phi q').
+ 					rewrite isnil.
+  	  		by apply: (coin_and_list_in phi (phi' nil) nil).2.
+ 				have coin2: phi and (phi' nil) coincide_on (mf phi q').
+ 					rewrite isnil.
+  	  		by apply: (coin_and_list_in phi (phi' nil) nil).2.
+  	  	replace (Fpsi q') with (Fphi q').
+  	  		by rewrite (mprop.1 phi q' (phi' nil) coin2 Fphi FphiFphi Fphi0).
+  	  	by rewrite (mprop.1 phi q' psi coin1 Fphi FphiFphi Fpsi FpsiFpsi).
+  	  move: (mprop.2 (phi' nil) q' nil prop); rewrite -/size.
+  	  move => /= [] m [] le a.
+  	  have isnull: (size nil = 0) by trivial.
+  	  rewrite isnull in le.
+  	  have m0: m=0 by lia.
+  	  rewrite m0 in a.
+  	  have snil: (in_seg cnt 0 = nil) by trivial.
+  	  rewrite snil in a.
+  	  by rewrite a isnull.
+  	replace (size (mf (phi' nil) q')<= 0)%N with true.
+  	replace (Ff (phi' [::]) q') with (Fphi q') => //.
+  	apply: (mprop.1 phi q' (phi' nil) _ Fphi _ ) => //.
+  	by rewrite isnil.
+  	apply: Fprop.
+  	have ex: (exists phi0 : B,
+    	phi0 from_dom F /\
+    	phi0 is_choice_for (L2MF [::])).
+    	exists phi.
+    	split.
+    		by exists Fphi.
+    	move => q [] a false.
+    	by exfalso.
+  	by move: ((phi'prop nil).1 ex).
+
+Definition U_step (psi: list(Q * A) * Q' -> Q + A') phi q' L :=
+match psi (q', L) with
+  | inr a' => inl a'
+  | inl q => inr (cons (q, phi q) L)
+end.
+
 exists psiF.
 move => phi Fphi FphiFphi q'.
 exists (size (mf phi q')).
