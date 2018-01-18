@@ -205,13 +205,10 @@ Notation "B ~> B'" := (nat -> B -> B') (at level 2).
 Definition comp (M: B ~> B'):
   forall phi Fphi, F phi Fphi -> forall q', exists n, M n phi q' = Fphi q'.
 
-Definition is_comp:
-  exists M, comp M F.
-
 Lemma U_is_universal:
 	Q is_countable -> F is_continuous ->
   	exists psiF, forall phi Fphi, F phi Fphi ->
-      forall a, exists n, U n psiF phi a = Some (Fphi a).
+      forall q', exists n, U n psiF phi q' = Some (Fphi q').
 Proof.
 move => [cnt sur] cont.
 move: sur (minimal_section sur) => _ [] sec isminsec.
@@ -239,27 +236,58 @@ set psiF := (fun L =>
   else
     (inl (cnt (length L.2).+1))).
 exists psiF.
-move => phi phifd Fphi FphiFphi.
+move => phi Fphi FphiFphi q'.
 exists (size (mf phi q')).
-have: forall m, m = size (mf phi q') -> U (size (mf phi q')) psiF phi q' = Some (Fphi q').
-elim.
-  move => eq.
-  rewrite -eq.
-  have ineq: size (mf (phi' [::]) q') <= 0.
-  have prop: forall psi : B,
-    (phi' [::]) and psi coincide_on [::] ->
-    forall Fphi0 : B',
-    F (phi' [::]) Fphi0 -> forall Fpsi : B', F psi Fpsi -> Fphi0 q' = Fpsi q'.
-  have isnil: (mf phi q' = nil).
-    move: (mprop.2 phi q' (mf phi q') (mprop.1 phi q')) => [] m [];rewrite -/size.
-    move => leq.
-    have null: m = 0 by lia.
-    by rewrite null.
-  move => psi coin Fphi0 Fphi0Fphi0 Fpsi FpsiFpsi.
-  have: phi and psi coincide_on nil.
-    apply: (coin_trans _ coin).
-    move: (phi'prop nil).
-  move: (mprop.1 phi q').
+have: forall m, m = size (mf phi q') ->
+	U (size (mf phi q')) psiF phi q' = Some (Fphi q').
+	elim.
+ 		move => eq.
+  	rewrite -eq /U/U_rec/U_step/psiF/=.
+  	have isnil: (mf phi q' = nil).
+  		move: (mprop.2 phi q' (mf phi q') (mprop.1 phi q')) => [] m [];rewrite -/size.
+  		move => leq.
+  		have null: m = 0 by lia.
+  		by rewrite null.
+  	have ineq: size (mf (phi' [::]) q') <= 0.
+  		have prop: forall psi : B,
+  	  	(phi' [::]) and psi coincide_on [::] ->
+  	  	forall Fphi0 : B',
+  	  	F (phi' [::]) Fphi0 -> forall Fpsi : B', F psi Fpsi -> Fphi0 q' = Fpsi q'.
+  			move => psi _ Fphi0 Fphi0Fphi0 Fpsi FpsiFpsi.
+ 				have coin1: phi and psi coincide_on (mf phi q').
+ 					rewrite isnil.
+  	  		by apply: (coin_and_list_in phi (phi' nil) nil).2.
+ 				have coin2: phi and (phi' nil) coincide_on (mf phi q').
+ 					rewrite isnil.
+  	  		by apply: (coin_and_list_in phi (phi' nil) nil).2.
+  	  	replace (Fpsi q') with (Fphi q').
+  	  		by rewrite (mprop.1 phi q' (phi' nil) coin2 Fphi FphiFphi Fphi0).
+  	  	by rewrite (mprop.1 phi q' psi coin1 Fphi FphiFphi Fpsi FpsiFpsi).
+  	  move: (mprop.2 (phi' nil) q' nil prop); rewrite -/size.
+  	  move => /= [] m [] le a.
+  	  have isnull: (size nil = 0) by trivial.
+  	  rewrite isnull in le.
+  	  have m0: m=0 by lia.
+  	  rewrite m0 in a.
+  	  have snil: (in_seg cnt 0 = nil) by trivial.
+  	  rewrite snil in a.
+  	  by rewrite a isnull.
+  	replace (size (mf (phi' nil) q')<= 0)%N with true.
+  	replace (Ff (phi' [::]) q') with (Fphi q') => //.
+  	apply: (mprop.1 phi q' (phi' nil) _ Fphi _ ) => //.
+  	by rewrite isnil.
+  	apply: Fprop.
+  	have ex: (exists phi0 : B,
+    	phi0 from_dom F /\
+    	phi0 is_choice_for (L2MF [::])).
+    	exists phi.
+    	split.
+    		by exists Fphi.
+    	move => q [] a false.
+    	by exfalso.
+  	by move: ((phi'prop nil).1 ex).
+  	admit.
+	move => n ih ass.
   move: (size_in_seg isminsec 0);rewrite -/size.
   lia.
   move: .
