@@ -2,7 +2,8 @@
 a space that can be thought about continuity on. *)
 From Coq.micromega Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions continuity initial_segments Classical.
+Require Import continuity initial_segments multi_valued_functions.
+Require Import Classical.
 
 Open Scope coq_nat_scope.
 Set Implicit Arguments.

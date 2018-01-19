@@ -109,8 +109,7 @@ VFILES:=multi_valued_functions.v\
   example_second_order_polynomials_using_representations.v\
   example_second_order_polynomials_without_representations.v\
   initial_segments.v\
-  example_continuity.v\
-  par_spaces.v\
+  examples_continuity.v\
   universal_machine.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)

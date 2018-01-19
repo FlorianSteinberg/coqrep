@@ -5,6 +5,5 @@ example_approximating_reals_with_rationals.v
 example_second_order_polynomials_using_representations.v
 example_second_order_polynomials_without_representations.v
 initial_segments.v
-example_continuity.v
-par_spaces.v
+examples_continuity.v
 universal_machine.v

@@ -12,7 +12,7 @@ surjective and singlevalued multi-valued function. Due to delta being single-val
 this can also be phrased as a representation being a partial surjection. *)
 
 Definition is_rep_of S T (delta: S ->> T) (P : T -> Prop) :=
-  delta is_single_valued_wrt (fun t t' => P t -> P t' -> t = t') /\ delta is_surjective_wrt P.
+  delta is_single_valued_wrt (fun t t' => t = t') /\ delta is_surjective_wrt P.
 Notation "delta 'is_representation_of' elements" := (is_rep_of delta elements) (at level 2).
 (* To make subspaces work, we allow predicates as the underlying set of a represented space. *)
 
@@ -28,15 +28,21 @@ Proof.
 split.
 - move => [issing issur].
 	split.
- 		move => s t t' dst dst' _ _.
- 		by apply: (issing s t t').
+		split.
+ 			move => s t t' dst dst'.
+ 			by apply: (issing.1 s t t').
+ 		move => s t t' dst eq.
+ 		by rewrite -eq.
   move => t _ .
   move: (issur t) => [] s dst.
   by exists s.
 move => [issing issur].
 split.
-- move => s t t' dst dst'.
-  by apply: (issing s t t').
+	split.
+		move => s t t' dst dst'.
+  	by apply: (issing.1 s t t').
+	move => s t t' dst eq.
+	by rewrite -eq.
 move => t.
 have: True.
 	done.
@@ -53,16 +59,16 @@ Proof.
 Qed.
 
 Lemma sur_rep_sing_b S T (delta: S ->> T) (P: T -> Prop) :
-  delta is_representation_of P <-> delta is_representation_wrt (fun x y => P x -> P y -> x = y) of P.
+  delta is_representation_of P <-> delta is_representation_wrt (fun x y => x = y) of P.
 Proof.
 done.
 Qed.
 
 Lemma sur_rep_sing S T (delta: S ->> T) (P: T -> Prop) :
-  delta is_representation_of P -> delta is_representation_wrt (fun x y => P x -> P y -> x = y) of P.
+  delta is_representation_of P -> delta is_representation_wrt (fun x y => x = y) of P.
 Proof.
-  move: (sur_rep_sing_b delta P) => [cond cond'].
-  exact: cond.
+move: (sur_rep_sing_b delta P) => [cond cond'].
+exact: cond.
 Qed.
 
 (* To construct a represented space it is necessary to provide a proof that the
@@ -92,10 +98,7 @@ Lemma prod_rep (X Y : type):
 Proof.
 move: (@representation_is_valid X) (@representation_is_valid Y) => [xsing xsur] [ysing ysur].
 split.
-	move => phi x y [inx1 inx2] [iny1 iny2].
-  split.
-  - by apply: (xsing phi.1 x.1 y.1).
-  by apply: (ysing phi.2 x.2 y.2).
+	by apply/ prod_sing_wrt.
 move => [x y] [xe ye].
 move: (xsur x xe) => []phi[]dphix condx.
 move: (ysur y ye) => []psi[]dpsiy condy.
@@ -137,7 +140,7 @@ Definition make_rep_space_from_sur
   (delta : names ->> space) (representation_is_valid : is_rep delta) :=
   @rep_space.make_rep_space space
     (fun x=> True)
-    (fun x y => True -> True -> x= y)
+    (fun x y => x= y)
     names
     inhe
     delta
@@ -148,8 +151,7 @@ Lemma fun_rep_on_range S X (f : S -> X) :
   (F2MF f) is_representation_of (range (F2MF f)).
 Proof.
 split.
-	move => s t t' fst fst' tfr t'fr.
-  by rewrite -fst -fst'.
+	split => s t t' fst H;by rewrite -H.
 move => t [] s fst.
 exists s.
 split => //.
@@ -165,7 +167,7 @@ Definition make_rep_space_from_fun
     @rep_space.make_rep_space
       space
       (range (F2MF delta))
-      (fun x y => x from_range (F2MF delta) -> y from_range (F2MF delta) -> x = y)
+      (fun x y => x = y)
       names
       inhe
       (F2MF delta)
@@ -177,8 +179,6 @@ Lemma single_valued_rep_on_range S T (f : S ->> T) :
 Proof.
 move => sing.
 split => //.
-	move => s t t' fst fst' tfr t'fr.
-	by apply (sing s t t').
 move => t [] s fst.
 exists s.
 split => //.
@@ -195,7 +195,7 @@ Definition make_rep_space_from_mfun
     @rep_space.make_rep_space
       space
       (range delta)
-      (fun x y => x from_range delta -> y from_range delta -> x = y)
+      (fun x y => x = y)
       names
       inhe
       delta

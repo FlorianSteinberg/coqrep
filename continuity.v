@@ -156,12 +156,13 @@ Require Import FunctionalExtensionality.
 Lemma cont_to_sing (F: B ->> B'):
 	F is_continuous -> F is_single_valued.
 Proof.
-move => cont phi Fpsi Fpsi' v1 v2.
-apply functional_extensionality => a.
-move: cont (cont phi a) => _ [L] cont.
-have: (forall K, phi and phi coincide_on K) by elim.
-move => equal.
-by rewrite -((cont phi (equal L) Fpsi') v2).
+move => cont.
+split => phi Fphi Fphi' FphiFphi H.
+	apply functional_extensionality => a.
+	move: cont (cont phi a) => _ [L] cont.
+	have eq: (forall K, phi and phi coincide_on K) by elim.
+	by rewrite -((cont phi (eq L) Fphi') H).
+by rewrite -H.
 Qed.
 End CONTINUITY_LEMMAS.
 
@@ -224,8 +225,8 @@ case (classic (exists Fphi, F phi Fphi)).
 			done.
 		move => coin' GFpsi [] [] Fpsi' [] FpsiFpsi' GFpsi'GFpsi cond.
 		apply (Lprop Fpsi) => //.
-		rewrite ((cont_to_sing Fcont) phi Fphi Fphi') => //.
-		rewrite ((cont_to_sing Fcont) psi Fpsi Fpsi') => //.
+		rewrite ((cont_to_sing Fcont).1 phi Fphi Fphi') => //.
+		rewrite ((cont_to_sing Fcont).1 psi Fpsi Fpsi') => //.
 	move => false coin a b c [][]Fpsi [] FpsiFpsi .
 	exfalso; apply false.
 	by exists Fpsi.

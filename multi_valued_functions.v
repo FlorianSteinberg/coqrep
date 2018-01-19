@@ -43,7 +43,7 @@ Definition is_sing_wrt S T (f: S ->> T) (R: T -> T -> Prop) :=
   (forall s t t', f s t -> f s t' -> R t t')
   /\
   forall s t t', f s t -> R t t' -> f s t'.
-Notation "f 'is_single_valued_wrt' P" := (is_sing_wrt f P) (at level 2).
+Notation "f 'is_single_valued_wrt' R" := (is_sing_wrt f R) (at level 2).
 (* To understand why this is called "single valued" see the special case that R i
 the equality relation below. More generally, this means that f factors through the
 relation R. *)

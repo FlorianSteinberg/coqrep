@@ -241,24 +241,25 @@ Qed.
 
 Lemma rep_R_is_sing: is_sing rep_R.
 Proof.
-move => phi x x' pinox pinox'.
-apply: cond_eq_rat => q qg0.
-set r := Q2R (phi (Qdiv q (1+1))).
-replace (x-x') with ((x-r) + (r-x')) by field.
-apply: Rle_trans.
-- apply: (Rabs_triang (x-r)).
-rewrite (_ : q == q / (1 + 1) + q / (1 + 1))%Q; last first.
-  by field.
-rewrite plus_Q2R.
-have q2_pos : (0 < q / (1 + 1))%Q.
-  rewrite (_ : 0 == 0 / (1 + 1))%Q; last by field.
-  apply: (Qmult_lt_compat_r 0 q (/(1+1))) => //.
-  by apply: Q2R_lt0; lra.
-apply: Rplus_le_compat.
-- by apply: pinox.
-- replace (Rabs (r - x')) with (Rabs (x' - r)).
-    by apply: pinox'.
-by split_Rabs; lra.
+split => phi x x' pinox H.
+	apply: cond_eq_rat => q qg0.
+	set r := Q2R (phi (Qdiv q (1+1))).
+	replace (x-x') with ((x-r) + (r-x')) by field.
+	apply: Rle_trans.
+	- apply: (Rabs_triang (x-r)).
+	rewrite (_ : q == q / (1 + 1) + q / (1 + 1))%Q; last first.
+	  by field.
+	rewrite plus_Q2R.
+	have q2_pos : (0 < q / (1 + 1))%Q.
+	  rewrite (_ : 0 == 0 / (1 + 1))%Q; last by field.
+	  apply: (Qmult_lt_compat_r 0 q (/(1+1))) => //.
+	  by apply: Q2R_lt0; lra.
+	apply: Rplus_le_compat.
+	- by apply: pinox.
+	- replace (Rabs (r - x')) with (Rabs (x' - r)).
+	    by apply: H.
+	by split_Rabs; lra.
+by rewrite -H.
 Qed.
 
 Lemma rep_R_is_rep: rep_R is_representation.
