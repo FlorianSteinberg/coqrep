@@ -276,13 +276,15 @@ have ineq: forall phi q', phi from_dom F -> size (mf (phi' (flst phi (init_seg (
 		move: (size_in_seg isminsec m) => ineq.
 		rewrite -/size in ineq.
 		by lia.
-	apply: (mprop.2 (phi' (flst phi L)) q' (mf phi q')) => psi coin' FphiL FphiLFphiL.
+	apply: (mprop.2 (phi' (flst phi L)) q' (mf phi q')) => psi coin' FphiL FphiLFphiL Fpsi FpsiFpsi.
+	replace (FphiL q') with (Fphi q').
 	apply: (mprop.1 phi q' psi) => //.
 		apply/ (coin_trans).
 			by apply: ((coin_sym phi (phi' (flst phi (mf phi q'))) (mf phi q')).2 (coin phi q')).
 		by rewrite -{1}mfinseg.
-	rewrite ((cont_to_sing cont) phi FphiL Fphi).
-	
+	apply: (mprop.1 phi q' (phi' (flst phi L))) => //.
+	move: ((coin_sym phi (phi' (flst phi (mf phi q'))) (mf phi q')).2 (coin phi q')).
+	by rewrite -{1}mfinseg.
 
 set psiF := (fun L =>
   if
@@ -290,18 +292,85 @@ set psiF := (fun L =>
   then
     (inr (Ff (phi' L.1) L.2))
   else
-    (inl (cnt (length L.1).+1))).
+    (inl (cnt (length L.1)))).
 
-have: forall n phi q', U_step psiF phi q' (flst phi (init_seg n)) =
-  if (size (mf phi q') <= n)%N then inr (flst phi (init_seg n.+1)) else inl (Ff phi q').
-elim.
-  move => phi q'.
-  rewrite /U_step/psiF/=.
-  set L := flst phi (init_seg 0).
-  case_eq (size (mf (phi' L) q')<= 0)%N => ass.
-  move: (ineq phi q').
-  set K := mf (phi' L) q'.
-	have isnil: K = nil.
+have: forall phi q' n a', phi from_dom F -> U_step psiF phi q' (flst phi (init_seg n)) = inl a' 
+	-> U_step psiF phi q' (flst phi(init_seg n.+1)) = inl a'.
+	move => phi q' n a' phifd H.
+	replace (flst phi (init_seg n.+1)) with ((cnt n, phi (cnt n))::(flst phi (init_seg n))) by trivial.
+	rewrite /U_step/psiF/=.
+
+have: forall n phi q', phi from_dom F -> size (mf phi q') <= n -> U_step psiF phi q' (flst phi (init_seg n)) = inl (Ff phi q').
+	elim.
+  	move => phi q' phifd ass.
+  	rewrite /U_step/psiF/=.
+  	have isnil: flst phi (init_seg 0) = nil by trivial.
+  	rewrite isnil.
+  	have isnil': (mf phi q' = nil).
+ 			move: (mprop.2 phi q' (mf phi q') (mprop.1 phi q')) => [] m [];rewrite -/size /leqP.
+ 			move => leq.
+ 			have null: m = 0 by lia.
+ 			by rewrite null.
+ 		have eq : 0 = size (mf phi q') by lia.
+ 		have sizenil: size nil = 0 by trivial.
+ 		case_eq (size (mf (phi' nil) q') <= 0)%N => truth;last first.
+ 			exfalso.
+ 			case (classic (size (mf (phi' nil) q') <= 0)%N).
+ 				by rewrite truth.
+ 			move => false; apply false; apply/ leP.
+			move: (ineq phi q' phifd).
+			by rewrite isnil' isnil sizenil => ineq'.
+		replace (Ff (phi' [::]) q') with (Ff phi q') => //.
+		have phi'fd : (phi' nil) from_dom F.
+			have ex: (exists phi0 : B, phi0 from_dom F /\ phi0 is_choice_for (L2MF [::])).
+				exists phi.
+				split => //.
+				have triv: forall phi, flst phi nil = nil by trivial.
+				move: (@choice_function_list phi nil).
+				by rewrite triv.
+			by move: ((phi'prop nil).1 ex).
+		move: (Fprop phi phifd) (Fprop (phi' nil) phi'fd) => val1 val2.
+		apply: (mprop.1 phi q' (phi' [::]) _ (Ff phi) val1 (Ff (phi' [::])) val2).
+		by rewrite isnil'.
+	move => n ih phi q' phifd ass.
+	case: ((PeanoNat.Nat.le_succ_r (size (mf phi q')) n).1 ass) => ass'.
+		move: (ih phi q' phifd ass').
+		rewrite /U_step/psiF/=.
+
+	move: (mfinseg phi q').
+	
+	Search _ le S (_ \/ _).
+	case_eq (size (mf (phi' (flst phi (mf phi q'))) q') <= n.+1)%N => truth;last first.
+		exfalso.
+	case (classic (size (mf (phi' nil) q') <= 0)%N).
+		by rewrite truth.
+	move => false; apply false; apply/ leP.
+	move: (ineq phi q' phifd).
+	by rewrite isnil' isnil sizenil => ineq'.
+replace (Ff (phi' [::]) q') with (Ff phi q') => //.
+have phi'fd : (phi' nil) from_dom F.
+	have ex: (exists phi0 : B, phi0 from_dom F /\ phi0 is_choice_for (L2MF [::])).
+		exists phi.
+		split => //.
+		have triv: forall phi, flst phi nil = nil by trivial.
+		move: (@choice_function_list phi nil).
+		by rewrite triv.
+	by move: ((phi'prop nil).1 ex).
+move: (Fprop phi phifd) (Fprop (phi' nil) phi'fd) => val1 val2.
+apply: (mprop.1 phi q' (phi' [::]) _ (Ff phi) val1 (Ff (phi' [::])) val2).
+by rewrite isnil'.
+  
+  		
+  		move: true'.
+  		apply /eqP.
+
+  			done.
+  		rewrite ineq'.
+  		apply /leqP. => //.
+  	rewrite -eq.
+
+  	set K := mf (phi' L) q'.
+		have isnil: K = nil.
 		move: (mprop.2 phi q' K).
 		move: (mprop.1 (phi' L) q').
 		) => [] m [];rewrite -/size-/init_seg.
@@ -361,11 +430,6 @@ have: forall m, m = size (mf phi q') ->
 	elim.
  		move => eq.
   	rewrite -eq /U/U_rec/U_step/psiF/=.
-  	have isnil: (mf phi q' = nil).
-  		move: (mprop.2 phi q' (mf phi q') (mprop.1 phi q')) => [] m [];rewrite -/size.
-  		move => leq.
-  		have null: m = 0 by lia.
-  		by rewrite null.
   	have ineq: size (mf (phi' [::]) q') <= 0.
   		have prop: forall psi : B,
   	  	(phi' [::]) and psi coincide_on [::] ->
