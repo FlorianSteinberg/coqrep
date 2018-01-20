@@ -294,12 +294,6 @@ set psiF := (fun L =>
   else
     (inl (cnt (length L.1)))).
 
-have: forall phi q' n a', phi from_dom F -> U_step psiF phi q' (flst phi (init_seg n)) = inl a' 
-	-> U_step psiF phi q' (flst phi(init_seg n.+1)) = inl a'.
-	move => phi q' n a' phifd H.
-	replace (flst phi (init_seg n.+1)) with ((cnt n, phi (cnt n))::(flst phi (init_seg n))) by trivial.
-	rewrite /U_step/psiF/=.
-
 have: forall n phi q', phi from_dom F -> size (mf phi q') <= n -> U_step psiF phi q' (flst phi (init_seg n)) = inl (Ff phi q').
 	elim.
   	move => phi q' phifd ass.
@@ -336,19 +330,23 @@ have: forall n phi q', phi from_dom F -> size (mf phi q') <= n -> U_step psiF ph
 	case: ((PeanoNat.Nat.le_succ_r (size (mf phi q')) n).1 ass) => ass'.
 		move: (ih phi q' phifd ass').
 		rewrite /U_step/psiF/=.
-
-	move: (mfinseg phi q').
+		have length': forall n, length (flst phi (init_seg n)) = n.
+			elim => //.
+			move => n0 ih0.
+			rewrite -{2}ih0.
+			done.
+		rewrite (length' n).
 	
-	Search _ le S (_ \/ _).
 	case_eq (size (mf (phi' (flst phi (mf phi q'))) q') <= n.+1)%N => truth;last first.
 		exfalso.
 	case (classic (size (mf (phi' nil) q') <= 0)%N).
 		by rewrite truth.
 	move => false; apply false; apply/ leP.
-	move: (ineq phi q' phifd).
 	by rewrite isnil' isnil sizenil => ineq'.
 replace (Ff (phi' [::]) q') with (Ff phi q') => //.
 have phi'fd : (phi' nil) from_dom F.
+		move: (mfinseg phi q').
+	move: (ineq phi q' phifd).
 	have ex: (exists phi0 : B, phi0 from_dom F /\ phi0 is_choice_for (L2MF [::])).
 		exists phi.
 		split => //.
