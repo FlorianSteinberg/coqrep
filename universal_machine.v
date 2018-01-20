@@ -50,98 +50,163 @@ match (U_rec n psi phi q') with
 	| inr L => None
 end.
 
-Context (F: B ->> B').
-
 Notation L2MF L := (fun q a => List.In (q, a) L).
 
-Definition flst (phi: B) L := zip L (map phi L).
-Notation function_list phi L := (flst phi L).
+Section FLST.
+Context (phi: B).
+Definition flst L:= (zip L (map phi L)).
 
-Lemma in_function_list phi qa:
-	forall L, List.In qa (function_list phi L) -> phi (qa.1) = qa.2.
+Lemma flst_cons_elts qa L:
+	List.In qa (flst L) -> phi (qa.1) = qa.2.
 Proof.
-elim => // q L ih ass.
+move: L; elim => // q L ih ass.
 case: ass => //; rewrite (surjective_pairing qa).
 by case => eq1 eq2 /=; rewrite -eq1.
 Qed.
 
-Lemma function_list_in phi q:
-	forall L, (List.In q L -> List.In (q, phi q) (function_list phi L)).
+Lemma list_in_to_flst_in q L:
+	(List.In q L -> List.In (q, phi q) (flst L)).
 Proof.
-elim => // q' L ih ass.
+move: L; elim => // q' L ih ass.
 case: ass => H.
 	by left; rewrite H.
 by move; right; apply: ih.
 Qed.
 
-Lemma function_in_list phi qa:
-	forall L, List.In qa (function_list phi L) -> List.In qa.1 L.
+Lemma flst_in_to_list_in qa L:
+	List.In qa (flst L) -> List.In qa.1 L.
 Proof.
-elim => // a L ih [].
+move: L; elim => // a L ih [].
 	by rewrite (surjective_pairing qa); case => eq _; left.
 by move => stuff; right; apply: ih.
 Qed.
 
-Lemma choice_function_list phi L:
-	phi is_choice_for (L2MF (function_list phi L)).
+Lemma icf_flst L:
+	phi is_choice_for (L2MF (flst L)).
 Proof.
 move => q [] a listin.
 split.
-	exists a; apply: (in_function_list listin).
+	exists a; apply: (flst_cons_elts listin).
 move => a' phiqa'.
-by rewrite -phiqa'; apply: (function_list_in phi (function_in_list listin)).
+by rewrite -phiqa'; apply: (list_in_to_flst_in (flst_in_to_list_in listin)).
 Qed.
 
-Lemma coin_choice_flst phi psi:
-	forall L, phi is_choice_for (L2MF (function_list psi L))
+Lemma coin_icf_flst psi L:
+	psi is_choice_for (L2MF (flst L))
 	<->
-	phi and psi coincide_on L.
+	psi and phi coincide_on L.
 Proof.
-elim.
+move: L; elim.
 	by split => // _ /= q [] a false; exfalso.
 move => q L.
 split.
 	move: H => [] ih _ icf.
 	split.
 		case: (icf q).
-			by exists (psi q); apply: (function_list_in psi); left.
-		move => [] a phiqa prop.
-		move: (in_function_list (prop a phiqa)) => /= psiqa.
+			by exists (phi q); apply: (list_in_to_flst_in); left.
+		move => [] a psiqa prop.
+		move: (flst_cons_elts (prop a psiqa)) => /= phiqa.
 		by rewrite psiqa -phiqa.
 	apply ih => q' [] a inlist.
-	move: (in_function_list inlist) => /= eq.
+	move: (flst_cons_elts inlist) => /= eq.
 	split.
 		exists a; case: (icf q') => /=.
 			by exists a; right.
-		move => [] a' phiq'a' prop.
-		case: (prop a' phiq'a').
+		move => [] a' psiq'a' prop.
+		case: (prop a' psiq'a').
 			move: prop => _ [] eq1 eq2.
 			by rewrite -eq -{2}eq1 eq2.
 		move: prop => _ listin.
-		move: (in_function_list listin) => /= eq'.
+		move: (flst_cons_elts listin) => /= eq'.
 		by rewrite -eq eq'.
-	move: (function_in_list inlist) => /= listin a' phiq'a'.
+	move: (flst_in_to_list_in inlist) => /= listin a' psiq'a'.
 	case: (icf q').
 		by exists a; right.
 	move => _ prop.
-	case: (prop a' phiq'a').
+	case: (prop a' psiq'a').
 		move => [] eq1 eq2.
-		by rewrite -eq2 eq1; apply: function_list_in.
+		by rewrite -eq2 eq1; apply: list_in_to_flst_in.
 	by move => stuff.
 move => coin q' [] a inlist.
 split.
-	by exists (phi q').
-move: coin.1 => eq a' phiq'a'.
-rewrite -phiq'a'.
-case: (function_in_list inlist) => /=.
+	by exists (psi q').
+move: coin.1 => eq a' psiq'a'.
+rewrite -psiq'a'.
+case: (flst_in_to_list_in inlist) => /=.
 	move => eq'.
 	by left; rewrite -eq' eq.
 move => listin;right.
 have: List.In q' (q::L) by right.
 move => listin2.
-move: ((coin_and_list_in phi psi (q::L)).1 coin q' listin2) => eq'.
-by rewrite eq'; apply: (function_list_in psi).
+move: ((coin_and_list_in psi phi (q::L)).1 coin q' listin2) => eq'.
+by rewrite eq'; apply: (list_in_to_flst_in).
 Qed.
+
+Lemma icf_flst_coin psi L:
+	psi is_choice_for (L2MF(flst L)) <-> psi and phi coincide_on L.
+Proof.
+exact: coin_icf_flst.
+Qed.
+
+Lemma length_flst_in_seg cnt n:
+	length (flst (in_seg cnt n)) = n.
+Proof.
+by move: n; elim => // n ih; rewrite -{2}ih.
+Qed.
+End FLST.
+
+Section MINIMAL_MODULI.
+Context (cnt: nat -> Q) (sec: Q -> nat) (F: B ->> B').
+Notation init_seg := (in_seg cnt).
+Notation size := (size sec).
+
+Definition is_min_mod mf :=
+	mf is_modulus_of F /\ forall phi q' K, (forall psi, phi and psi coincide_on K
+    -> forall Fphi, F phi Fphi -> forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q') ->
+     exists m, m <= size K /\ mf phi q'= init_seg m.
+
+Lemma minimal_mod_function:
+  F is_continuous -> sec is_minimal_section_of cnt ->
+  exists mf, is_min_mod mf.
+Proof.
+  move => cont [] issec ismin.
+  set P := fun phiq L => forall psi, phiq.1 and psi coincide_on L
+    -> forall Fphi, F phiq.1 Fphi -> forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2.
+  set R := fun phiq L => P phiq L /\
+  	(forall K, P phiq K ->  exists m, m <= size K /\ L = init_seg m).
+  have cond: forall phiq, exists L, R phiq L.
+    move => phiq.
+  	have cond : exists n, exists L, P phiq L /\ size L = n.
+  		move: (cont phiq.1 phiq.2) => [L] Lprop.
+  		exists (size L).
+  		by exists L.
+  	move: (@well_order_nat (fun n => exists L, P phiq L
+  		/\ size L = n) cond) => [n] [ [L] [Lprop Leqn]] nprop.
+  	exists (in_seg cnt (size L)).
+  	split.
+      move => psi coin.
+      move: coin (@list_size Q A cnt sec issec L phiq.1 psi coin) => _ coin.
+  		by apply: Lprop.
+  	rewrite -Leqn in nprop.
+  	move => K Pfi.
+		exists (size L).
+    split => //.
+    have e : exists L : seq Q, P phiq L /\ size L = (size K) by exists K.
+    by apply: (nprop (size K) e).
+ 	move: (@choice ((Q -> A)*Q') (list Q) R cond) => [mf] mfprop.
+ 	rewrite /R in mfprop.
+ 	move: R cond => _ _.
+ 	exists (fun phi q' => mf (phi, q')).
+ 	split.
+ 		move => phi q' psi.
+ 		apply (mfprop (phi, q')).
+ 	move => phi q' K mod.
+ 	move: (mfprop (phi,q')) => [_ b].
+ 	apply: (b K).
+ 	move => psi coin Fphi FphiFphi Fpsi FpsiFpsi.
+ 	apply: (mod psi) =>//.
+Qed.
+End MINIMAL_MODULI.
 
 (*This should at some point go into an appropriate section: *)
 Lemma extend_list:
@@ -171,12 +236,21 @@ move: (listfprop (q, L) a inlist) => /= asdf.
 by rewrite v in asdf.
 Qed.
 
-Lemma continuous_lists:
-	F is_continuous ->
-		exists phi', forall L: list (Q*A),
-		((exists phi, phi from_dom F /\ phi is_choice_for (L2MF L)) ->
-			(phi' L) from_dom F)
-    /\ (phi' L) is_choice_for (L2MF L).
+Context (cnt : nat -> Q).
+Notation init_seg := (in_seg cnt).
+
+Lemma length_in_seg n:
+	length (init_seg n) = n.
+Proof.
+by move: n; elim => // n ih; rewrite -{2}ih.
+Qed.
+
+Context (F: B ->> B').
+
+Lemma listsf:
+		exists phi',
+		forall L: list (Q*A), ((exists phi, phi from_dom F /\ phi is_choice_for (L2MF L)) ->
+			(phi' L) from_dom F) /\ (phi' L) is_choice_for (L2MF L).
 Proof.
 move: extend_list => [] listf listfprop.
 set R := (fun L (psi: B) =>
@@ -195,9 +269,27 @@ move: ((@choice (list(Q * A)) (Q -> A) R) cond) => [phi'] phi'prop.
 by exists phi'.
 Qed.
 
-Definition is_count T :=
-	exists cnt: nat -> T, (F2MF cnt) is_surjective.
+Context (sec: Q -> nat) (isminsec: is_min_sec cnt sec).
+Notation size := (size sec).
+
+Lemma min_mod_in_seg mf:
+	is_min_mod cnt sec F mf ->
+	forall phi q', in_seg cnt (size (mf phi q')) = mf phi q'.
+Proof.
+move => mprop phi q'.
+move: (mprop.2 phi q' (mf phi q') (mprop.1 phi q')) => [] m [] ineq eq'.
+move: (size_in_seg isminsec m) => ineq'.
+rewrite -eq' in ineq'.
+rewrite -/size in ineq ineq'.
+have eq'': (size (mf phi q')) = m by lia.
+by rewrite eq'' eq'.
+Qed.
+
+Definition is_count Q :=
+	exists cnt: nat -> Q, (F2MF cnt) is_surjective.
 Notation "T 'is_countable'" := (is_count T) (at level 2).
+
+Context (sur: (F2MF cnt) is_surjective).
 
 Notation "B ~> B'" := (nat -> B -> B') (at level 2).
 
@@ -206,38 +298,10 @@ Definition F_computed_by (M: B ~> B'):=
     /\
   (forall phi n q' a', M n phi q' = Some a' -> exists Fphi, F phi Fphi /\ Fphi q' = Some a').
 
-Lemma icf_coin_flst (phi psi:B) L:
-	phi is_choice_for (L2MF(flst psi L)) <-> phi and psi coincide_on L.
-Proof.
-split.
-	move => icf.
-	apply/ (coin_and_list_in phi psi L) => q listin.
-	have ex: (exists t : A, List.In (q, t) (function_list psi L)).
-			exists (psi q).
-			by apply: (function_list_in).
-	have inlist: List.In (q, phi q) (flst psi L) by apply: (icf q ex).2.
-	by move: (in_function_list inlist).
-move => coin q []a listin.
-move: (function_in_list listin) => inlist.
-move: coin ((coin_and_list_in phi psi L).1 coin q) => _ coin .
-split.
-	exists a.
-	move: (in_function_list listin) => /= eq.
-	by rewrite -eq -coin.
-move => a' eq.
-rewrite -eq coin => //.
-by apply: (function_list_in).
-Qed.
-
 Lemma U_is_universal:
-	Q is_countable -> F is_continuous ->
-  	exists psiF, F_computed_by (fun n phi q' => U n psiF phi q').
+	F is_continuous -> exists psiF, F_computed_by (fun n phi q' => U n psiF phi q').
 Proof.
-move => [cnt sur] cont.
-move: sur (minimal_section sur) => _ [] sec isminsec.
-set init_seg := in_seg cnt.
-set size := size sec.
-
+move => Fcont.
 set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
 have cond: forall phi, exists psi, R phi psi.
   move => phi.
@@ -249,42 +313,70 @@ have cond: forall phi, exists psi, R phi psi.
 move: ((@choice ((Q -> A)) (Q' -> A') R) cond) => [Ff] Fprop.
 rewrite /R /= in Fprop; move: R cond => _ _.
 
-move: (@minimal_mod_function Q A Q' A' cnt sec F cont isminsec) => [] mf mprop.
-move: (continuous_lists cont) => [] phi' phi'prop.
+move: (minimal_mod_function Fcont isminsec) => [] mf mprop.
+move: listsf => [] phi' phi'prop.
 
-have coin: forall phi q', (phi' (flst phi (mf phi q'))) and phi coincide_on (mf phi q').
+have coin:
+	forall phi q', (phi' (flst phi (mf phi q'))) and phi coincide_on (mf phi q').
 	move => phi q'.
-	apply/ icf_coin_flst.
+	apply/ icf_flst_coin.
 	by apply: (phi'prop (flst phi (mf phi q'))).2.
 
-have mfinseg: forall phi q', init_seg (size (mf phi q')) = mf phi q'.
-	move => phi q'.
-	move: (mprop.2 phi q' (mf phi q') (mprop.1 phi q')) => [] m [] ineq eq'.
-	move: (size_in_seg isminsec m) => ineq'.
-	rewrite -eq' in ineq'.
-	rewrite -/size in ineq ineq'.
-	have eq'': (size (mf phi q')) = m by lia.
-	by rewrite eq'' eq'.
+have mon_in_seg:
+	forall q n m, n <= m -> List.In q (init_seg n) -> List.In q (init_seg m).
+	move => q n.
+	elim.
+		move => l0.
+		have eq: (n = 0) by lia.
+		by rewrite eq.
+	move => m ih ass.
+	case: ((PeanoNat.Nat.le_succ_r n m).1 ass).
+		move => ineq listin.
+		replace (init_seg m.+1) with ((cnt m):: init_seg m) by trivial.
+		by right; apply ih.
+	move => eq listin.
+	by rewrite -eq.
 
-have ineq: forall phi q', phi from_dom F -> size (mf (phi' (flst phi (init_seg (size (mf phi q'))))) q') <= size (mf phi q').
-	move => phi q' [] Fphi FphiFphi.
-	set L := init_seg (size (mf phi q')).
-	set K := mf (phi' (flst phi L)) q'.
+have ineq: forall phi q' n, phi from_dom F -> size (mf phi q') <= n ->
+	size (mf (phi' (flst phi (init_seg n))) q') <= size (mf phi q').
+	move => phi q' n [] Fphi FphiFphi ass.
+	set K := mf (phi' (flst phi (init_seg n))) q'.
+	have coin'': (phi' (flst phi (init_seg n))) and phi coincide_on (mf phi q').
+		move: ((coin_icf_flst phi (phi' (flst phi (init_seg n))) (init_seg n)).1
+			(phi'prop (flst phi (init_seg n))).2) => coin''.
+		move: ((coin_and_list_in (phi' (flst phi (init_seg n))) phi (init_seg n)).1 coin'') => elts.
+		apply/ coin_and_list_in.
+		move => q listin.
+		apply elts.
+		rewrite -(min_mod_in_seg mprop phi q') in listin.
+		by apply: (mon_in_seg q (size (mf phi q')) n).
+	have coin''':
+		(phi' (flst phi (init_seg n))) and (phi' (flst phi (mf phi q'))) coincide_on (mf phi q').
+		apply/ coin_trans.
+			by apply coin''.
+		move: ((coin_icf_flst phi (phi' (flst phi (mf phi q'))) (mf phi q')).1
+			(phi'prop (flst phi (mf phi q'))).2) => coin'''.
+		by apply/ coin_sym.
 	suffices: exists m : nat, m <= size (mf phi q') /\ K = in_seg cnt m.
 		move => [] m [] leq eq.
 		rewrite eq.
 		move: (size_in_seg isminsec m) => ineq.
-		rewrite -/size in ineq.
 		by lia.
-	apply: (mprop.2 (phi' (flst phi L)) q' (mf phi q')) => psi coin' FphiL FphiLFphiL Fpsi FpsiFpsi.
+	apply: (mprop.2 (phi' (flst phi (init_seg n))) q' (mf phi q'))
+		=> psi coin' FphiL FphiLFphiL Fpsi FpsiFpsi.
 	replace (FphiL q') with (Fphi q').
 	apply: (mprop.1 phi q' psi) => //.
 		apply/ (coin_trans).
-			by apply: ((coin_sym phi (phi' (flst phi (mf phi q'))) (mf phi q')).2 (coin phi q')).
-		by rewrite -{1}mfinseg.
-	apply: (mprop.1 phi q' (phi' (flst phi L))) => //.
-	move: ((coin_sym phi (phi' (flst phi (mf phi q'))) (mf phi q')).2 (coin phi q')).
-	by rewrite -{1}mfinseg.
+			apply/ coin_sym.
+			by apply: coin.
+		apply/ coin_trans.
+			apply/ coin_sym.
+			by apply: coin'''.
+		done.
+	apply/ (mprop.1 phi) => //.
+		apply/ coin_sym.
+		by apply coin''.
+	done.
 
 set psiF := (fun L =>
   if
@@ -294,17 +386,65 @@ set psiF := (fun L =>
   else
     (inl (cnt (length L.1)))).
 
-have: forall n phi q', phi from_dom F -> size (mf phi q') <= n -> U_step psiF phi q' (flst phi (init_seg n)) = inl (Ff phi q').
+have length_size: forall phi q', size (mf phi q') = length (mf phi q').
+	move => phi q'.
+	rewrite -{2}(min_mod_in_seg mprop phi q').
+	by rewrite length_in_seg.
+
+have U_step_prop:
+	forall phi q' n, phi from_dom F -> size (mf phi q') <= n ->
+	U_step psiF phi q' (flst phi (init_seg n)) = inl(Ff (phi' (flst phi (init_seg n))) q').
+	move => phi q' n phifd ass.
+	rewrite /U_step/psiF/=.
+	rewrite (length_flst_in_seg phi cnt n).
+	move: (size_in_seg isminsec n) => tada.
+	move: (ineq phi q' n phifd ass) => toeroe.
+	case_eq (size (mf (phi' (flst phi (init_seg n))) q') <= n)%N => intros //.
+	exfalso.
+	have: (size (mf (phi' (flst phi (init_seg n))) q') <= n)%N by apply /leP; lia.
+	by rewrite intros.
+
+have U_rec_prop:
+	forall n phi q', phi from_dom F ->
+		U_rec n psiF phi q' = inl(Ff phi q')
+		\/
+		U_rec n psiF phi q' = inr(flst phi (init_seg (S n))).
 	elim.
-  	move => phi q' phifd ass.
+		move => phi q' phifd.
+		rewrite /U_rec /U_step /psiF /=.
+		case_eq  (size (mf (phi' [::]) q') <= 0)%N => intros.
+			by left; trivial.
+		by right; trivial.
+	move => n ih phi q' phifd /=.
+	move: ih (ih phi q' phifd) => _ ih.
+	case: ih => eq; rewrite eq /=.
+		left.
+	rewrite /U_rec. /U_step /psiF /=.
+			case_eq  (size (mf (phi' [::]) q') <= n)%N => intros.
+			by left; trivial.
+		by right; trivial.
+		replace (flst phi (init_seg 0)) with (nil: list (Q * A)) by trivial.
+		apply NNPP.
+		move => neq.
+		rewrite /U_step/psiF /=.
+
+
+have: forall n phi q', phi from_dom F -> size (mf phi q') <= n -> U_rec n psiF phi q' = inl(Ff (phi' (flst phi (init_seg n))) q').
+	elim.
+		move => phi q' phifd ass.
+		rewrite /U_rec.
+		rewrite -U_step_prop => //.
+  	replace (flst phi (init_seg 0)) with (nil:list (Q * A)) by trivial.
+  	by elim (U_step psiF phi q' [::]).
+  move => n ih phi q' phifd ass.
+
+
+
+ 		move => phi q' phifd ass.
   	rewrite /U_step/psiF/=.
   	have isnil: flst phi (init_seg 0) = nil by trivial.
   	rewrite isnil.
-  	have isnil': (mf phi q' = nil).
- 			move: (mprop.2 phi q' (mf phi q') (mprop.1 phi q')) => [] m [];rewrite -/size /leqP.
- 			move => leq.
- 			have null: m = 0 by lia.
- 			by rewrite null.
+
  		have eq : 0 = size (mf phi q') by lia.
  		have sizenil: size nil = 0 by trivial.
  		case_eq (size (mf (phi' nil) q') <= 0)%N => truth;last first.
@@ -336,7 +476,7 @@ have: forall n phi q', phi from_dom F -> size (mf phi q') <= n -> U_step psiF ph
 			rewrite -{2}ih0.
 			done.
 		rewrite (length' n).
-	
+
 	case_eq (size (mf (phi' (flst phi (mf phi q'))) q') <= n.+1)%N => truth;last first.
 		exfalso.
 	case (classic (size (mf (phi' nil) q') <= 0)%N).
@@ -357,8 +497,8 @@ have phi'fd : (phi' nil) from_dom F.
 move: (Fprop phi phifd) (Fprop (phi' nil) phi'fd) => val1 val2.
 apply: (mprop.1 phi q' (phi' [::]) _ (Ff phi) val1 (Ff (phi' [::])) val2).
 by rewrite isnil'.
-  
-  		
+
+
   		move: true'.
   		apply /eqP.
 
