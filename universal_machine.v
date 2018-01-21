@@ -185,7 +185,7 @@ Proof.
   	exists (in_seg cnt (size L)).
   	split.
       move => psi coin.
-      move: coin (@list_size Q A cnt sec issec L phiq.1 psi coin) => _ coin.
+      move: coin (list_size issec coin) => _ coin.
   		by apply: Lprop.
   	rewrite -Leqn in nprop.
   	move => K Pfi.
@@ -413,12 +413,58 @@ have U_rec_prop:
 		move => phi q' phifd.
 		rewrite /U_rec /U_step /psiF /=.
 		case_eq  (size (mf (phi' [::]) q') <= 0)%N => intros.
-			by left; trivial.
+			left.
+			replace (Ff (phi' nil) q') with (Ff phi q') => //.
+			replace (Ff phi q') with (Ff (phi' nil) q') => //.
+			apply/ (mprop.1).
+			move: ((icf_flst_coin phi (phi' nil) (nil)).1 (phi'prop (flst phi nil)).2).
+			have t: size (mf (phi' nil) q') <= 0
+				by apply /leP; rewrite intros.
+			have eq: size (mf (phi' nil) q') = 0 by lia.
+			have isnil: mf (phi' nil) q' = nil.
+				suffices:
+					exists m : nat, m <= size (mf (phi' nil) q') /\ mf (phi' [::]) q' = init_seg m.
+					move => /= [] m [] leq eq'.
+					have m0 : m=0 by lia.
+					by rewrite eq' m0.
+				apply: (mprop.2 (phi' nil) q' (mf (phi' nil) q')).
+				apply: (mprop.1 (phi' nil) q').
+			rewrite -isnil => equal.
+			by apply: equal.
+			apply: Fprop.
+			apply: (phi'prop (nil: list (Q * A))).1.
+			exists phi.
+			split => //.
+			move => q [] a false.
+			exfalso.
+			by apply false.
+			by apply: Fprop.
 		by right; trivial.
 	move => n ih phi q' phifd /=.
 	move: ih (ih phi q' phifd) => _ ih.
 	case: ih => eq; rewrite eq /=.
+		by left.
+	rewrite /U_step/psiF.
+	rewrite (length_flst_in_seg phi cnt (S n)) /=.
+	case_eq (size (mf (phi' (flst phi (cnt n :: init_seg n))) q') <= n.+1)%N => intros.
 		left.
+		admit.
+ 	right.
+	done.
+
+have U_rec_prop':
+	forall n phi q', phi from_dom F -> size (mf phi q') <= n ->
+		U_rec n psiF phi q' = inl(Ff phi q').
+	elim => //.
+		move => phi q' phifd leq /=.
+		
+		
+	exists psiF.
+	split.
+		move => phi Fphi FphiFphi q'.
+		exists (size (mf phi q')).
+		rewrite /U.
+		
 	rewrite /U_rec. /U_step /psiF /=.
 			case_eq  (size (mf (phi' [::]) q') <= n)%N => intros.
 			by left; trivial.
