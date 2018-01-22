@@ -1,6 +1,7 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
-Load functions.
+From mathcomp Require Import all_ssreflect.
+Require Import universal_machine multi_valued_functions FunctionalExtensionality.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -13,31 +14,44 @@ Notation "delta 'is_representation'" := (is_rep delta) (at level 2).
 surjective and singlevalued multi-valued function. Due to delta being single-valued
 this can also be phrased as a representation being a partial surjection. *)
 
-Definition is_rep_of S T (delta: S ->> T) (elements : T -> Prop) :=
-  delta is_single_valued_in elements /\ forall t, elements t -> range delta t.
+Definition is_rep_of S T (delta: S ->> T) (P : T -> Prop) :=
+  delta is_single_valued_wrt (fun t t' => t = t') /\ delta is_surjective_wrt P.
 Notation "delta 'is_representation_of' elements" := (is_rep_of delta elements) (at level 2).
 (* To make subspaces work, we allow predicates as the underlying set of a represented space. *)
 
-Definition is_rep_of_wrt S T (delta: S ->> T) (elements: T -> Prop) (equals: T-> T -> Prop) :=
-  (forall s t t', elements t -> elements t' -> delta s t -> delta s t' -> equals t t')
-    /\ (forall t t' s, equals t t' -> delta s t -> delta s t')
-    /\ forall t, elements t -> range delta t.
-Notation "delta 'is_representation_wrt' eq 'of' elements" := 
-  (is_rep_of_wrt delta elements eq) (at level 2).
+Definition is_rep_of_wrt S T (delta: S ->> T) (P: T -> Prop) (R: T-> T -> Prop) :=
+  delta is_single_valued_wrt R /\ delta is_surjective_wrt P.
+Notation "delta 'is_representation_wrt' equals 'of' elements" := 
+  (is_rep_of_wrt delta elements equals) (at level 2).
 (* This is to make it possible to identify elements arbirarily, i.e. make quotients work. *)
 
 Lemma sur_rep_b S T (delta: S ->> T) :
   delta is_representation <-> delta is_representation_of (fun x => True).
 Proof.
-  split.
-  - move => [issing issur].
-    by split.
-  - move => [issing issur].
-    split.
-    - move => s.
-      by apply: (issing s).
-    - move => s.
-      by apply: (issur s).
+split.
+- move => [issing issur].
+	split.
+		split.
+ 			move => s t t' dst dst'.
+ 			by apply: (issing.1 s t t').
+ 		move => s t t' dst eq.
+ 		by rewrite -eq.
+  move => t _ .
+  move: (issur t) => [] s dst.
+  by exists s.
+move => [issing issur].
+split.
+	split.
+		move => s t t' dst dst'.
+  	by apply: (issing.1 s t t').
+	move => s t t' dst eq.
+	by rewrite -eq.
+move => t.
+have: True.
+	done.
+move => true.
+move: (issur t true) => []s []dst_.
+by exists s.
 Qed.
 
 Lemma sur_rep S T (delta: S ->> T) :
@@ -47,32 +61,18 @@ Proof.
   exact: cond.
 Qed.
 
-Lemma sur_rep_sing_b S T (delta: S ->> T) (elements: T -> Prop) :
-  delta is_representation_of elements <-> delta is_representation_wrt (fun x y => x = y) of elements.
+Lemma sur_rep_sing_b S T (delta: S ->> T) (P: T -> Prop) :
+  delta is_representation_of P <-> delta is_representation_wrt (fun x y => x = y) of P.
 Proof.
-  split.
-  - move => [sing sur].
-    split.
-    - move => s t t'.
-      by apply: (sing s t t').
-    - split.
-      - move => t t' s tet'.
-        by rewrite -tet'.
-      - by apply sur.
-  - move => [sing [eq sur]].
-    split.
-    - move => s t t'.
-      apply: (sing s t t').
-    - done.
+done.
 Qed.
 
-Lemma sur_rep_sing S T (delta: S ->> T) (elements: T -> Prop) :
-  delta is_representation_of elements -> delta is_representation_wrt (fun x y => x = y) of elements.
+Lemma sur_rep_sing S T (delta: S ->> T) (P: T -> Prop) :
+  delta is_representation_of P -> delta is_representation_wrt (fun x y => x = y) of P.
 Proof.
-  move: (sur_rep_sing_b delta elements) => [cond cond'].
-  exact: cond.
+move: (sur_rep_sing_b delta P) => [cond cond'].
+exact: cond.
 Qed.
-
 
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names can be an arbitrary type
@@ -85,17 +85,15 @@ Structure type := make_comp_space {
   space : Type;
   elements : space -> Prop;
   equals : space -> space -> Prop;
-  questions : eqType;
-  answer_type : eqType;
+  questions : Type;
+  answer_type : Type;
   delta : (questions -> option(answer_type)) ->> space;
-  countable_questions: exists (cntq : nat -> questions), (F2MF cntq) is_surjective;
-  countable_answers: exists (cnta : nat -> questions), (F2MF cnta) is_surjective;
+  countable_questions: questions is_countable;
+  countable_answers: answer_type is_countable;
   representation_is_valid : delta is_representation_wrt equals of elements
   }.
 Notation answers X := (option (answer_type X)).
 Notation names X := ((questions X) -> (answers X)).
-
-Require Import FunctionalExtensionality.
 
 Lemma prod_rep (X Y : type):
   (fun (phipsi : (questions X + questions Y -> option(answer_type X + answer_type Y))) x =>
@@ -113,18 +111,21 @@ Lemma prod_rep (X Y : type):
     of
   (fun x => elements x.1 /\ elements x.2).
 Proof.
-  move: (@representation_is_valid X) (@representation_is_valid Y)
-    => [xsing [xeq xsur]] [ysing [yeq ysur]].
-  - split.
-    - move => phipsi [x y] [x' y'] /= [iex iey] [iex' iey'] [inx iny] [inx' iny'].
-      split.
-      apply: xsing => //.
-      apply: inx.
-      apply: inx'.
-      apply: ysing => //.
-      apply iny.
-      apply iny'.
-    - split. 
+move: (@representation_is_valid X) (@representation_is_valid Y)
+	=> [xsing xsur] [ysing ysur].
+split.
+	split.
+  	move => phipsi [x y] [x' y'] /= [inx iny] [inx' iny'].
+    split.
+    	apply: xsing.1.
+      	by apply: inx.
+      by apply: inx'.
+    apply: ysing.1.
+      by apply iny.
+    by apply iny'.
+  move => phipsi [] x y [] x' y' /= [] inx iny [] eqx eqy.
+  apply (xsing.2 phipsi.1 eqx).
+  split. 
       - move => x y phi [xey1 xey2] [inx iny].
         split.
         apply: (xeq x.1) => //.
