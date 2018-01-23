@@ -522,23 +522,6 @@ move => phi n q' a' []Fphi FphiFphi eq.
 	rewrite /U in eq.
 	rewrite case_eq /= in eq.
 	by exfalso.
-
-
-
-Fixpoint cons_check S T S' T' (psi : S'*list T -> S + T') (s': S') (L : list (S*T)) :=
-match L with
-  | nil =>
-  match (psi (s',nil)) with
-    | inl s => Some False
-    | inr t => None
-  end
-  | cons a K =>
-  match (psi (s',map snd K)) with
-    | inl s =>
-    match (cons_check psi s' K) with
-      | None => None
-      | Some b => Some (a.1 = s /\ b)
-    end
-    | inr t => None
-   end
-end.
+Qed.
+End UNIVERSAL_MACHINE.
+Notation "T 'is_countable'" := (is_count T) (at level 2).

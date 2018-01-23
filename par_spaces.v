@@ -1,7 +1,8 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions universal_machine.
+Require Import universal_machine multi_valued_functions FunctionalExtensionality.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -21,7 +22,7 @@ Notation "delta 'is_representation_of' elements" := (is_rep_of delta elements) (
 
 Definition is_rep_of_wrt S T (delta: S ->> T) (P: T -> Prop) (R: T-> T -> Prop) :=
   delta is_single_valued_wrt R /\ delta is_surjective_wrt P.
-Notation "delta 'is_representation_wrt' equals 'of' elements" := 
+Notation "delta 'is_representation_wrt' equals 'of' elements" :=
   (is_rep_of_wrt delta elements equals) (at level 2).
 (* This is to make it possible to identify elements arbirarily, i.e. make quotients work. *)
 
@@ -93,8 +94,6 @@ Structure type := make_comp_space {
   }.
 Notation answers X := (option (answer_type X)).
 Notation names X := ((questions X) -> (answers X)).
-
-Require Import FunctionalExtensionality.
 
 Lemma prod_rep (X Y : type):
   (fun (phipsi : (questions X + questions Y -> option(answer_type X + answer_type Y))) x =>
@@ -217,7 +216,7 @@ have: forall n, 2 * (cnt' n).2 = n <-> exists s, (cnt' n).1 = inl s.
 		split.
 			move => eq.
 			exists ((cnt' n).1).
-	
+
 exists (fun n => (cnt' n).1).
 rewrite /is_sur.
 apply sum_rect.
@@ -233,26 +232,26 @@ apply sum_rect.
 	replace (2 * n.+1) with ((2 * n).+2).
 		rewrite -idx.
 		replace (inl (cnt1 n.+1)) with ((@inl Q Q' (cnt1 (S n)),S n).1).
-		replace ((@inl Q Q' (cnt1 (S n)),S n).1) with (cnt 
+		replace ((@inl Q Q' (cnt1 (S n)),S n).1) with (cnt
 		done.
 		replace (cnt (2 * n).+2) with (@inl S T (cnt1 (n.+1))) => //.
 		replace (cnt1 n.+1) with (cnt1 (2 * n)) => //.
-		
 
-    have 
+
+    have
  (ih (cnt1 n)).
     have (cnt (2*n)) = inl s
     case: ih.
     rewrite /cnt /=.
     by rewrite -idx.
     replace (inl (cnt1 n.+1)) with (cnt (2*n.+1)).
-    
+
     replace (cnt (2*n).+1) with (@inr S T (cnt2 n)).
-    exists cnt 
+    exists cnt
     - rewrite -idx.
-      replace 
-      
-    
+      replace
+
+
 
 Canonical rep_space_prod X Y := @make_rep_space
   (space X * space Y)

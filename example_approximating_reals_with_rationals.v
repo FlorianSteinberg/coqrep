@@ -323,12 +323,16 @@ Proof.
   move => phi x [phi0 phi1] xie eps eg0.
   rewrite /Rmult_realizer.
   rewrite mul_Q2R.
-  set r := Q2R (phi.1 (eps / four /(rab phi.2))%Q).
-  set q := Q2R (phi.2 (eps / four /(rab phi.1))%Q).
+  set dx := (eps / four /(rab phi.2))%Q.
+  set dy := (eps / four /(rab phi.1))%Q.
+  set r := Q2R (phi.1 dx).
+  set q := Q2R (phi.2 dy).
   replace (x.1 * x.2 - (r * q)) with ((x.1 - r) * x.2 + r * (x.2 - q)); last first.
   - field.
   apply: (triang).
   replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
   - rewrite Rabs_mult Rabs_mult.
     apply: Rplus_le_compat.
+		move: .
+	
 Admitted.
