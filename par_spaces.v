@@ -1,11 +1,12 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
-Load functions.
-
+From mathcomp Require Import all_ssreflect.
+Require Import multi_valued_functions universal_machine.
 Set Implicit Arguments.
 Unset Strict Implicit.
-Unset Printing Implicits Defensive.
+Unset Printing Implicit Defensive.
 
+Section REPRESENTED_SPACES.
 Definition is_rep S T (delta: S ->> T) :=
   delta is_single_valued /\ delta is_surjective.
 Notation "delta 'is_representation'" := (is_rep delta) (at level 2).
@@ -13,31 +14,44 @@ Notation "delta 'is_representation'" := (is_rep delta) (at level 2).
 surjective and singlevalued multi-valued function. Due to delta being single-valued
 this can also be phrased as a representation being a partial surjection. *)
 
-Definition is_rep_of S T (delta: S ->> T) (elements : T -> Prop) :=
-  delta is_single_valued_in elements /\ forall t, elements t -> range delta t.
+Definition is_rep_of S T (delta: S ->> T) (P : T -> Prop) :=
+  delta is_single_valued_wrt (fun t t' => t = t') /\ delta is_surjective_wrt P.
 Notation "delta 'is_representation_of' elements" := (is_rep_of delta elements) (at level 2).
 (* To make subspaces work, we allow predicates as the underlying set of a represented space. *)
 
-Definition is_rep_of_wrt S T (delta: S ->> T) (elements: T -> Prop) (equals: T-> T -> Prop) :=
-  (forall s t t', elements t -> elements t' -> delta s t -> delta s t' -> equals t t')
-    /\ (forall t t' s, equals t t' -> delta s t -> delta s t')
-    /\ forall t, elements t -> range delta t.
-Notation "delta 'is_representation_wrt' eq 'of' elements" := 
-  (is_rep_of_wrt delta elements eq) (at level 2).
+Definition is_rep_of_wrt S T (delta: S ->> T) (P: T -> Prop) (R: T-> T -> Prop) :=
+  delta is_single_valued_wrt R /\ delta is_surjective_wrt P.
+Notation "delta 'is_representation_wrt' equals 'of' elements" := 
+  (is_rep_of_wrt delta elements equals) (at level 2).
 (* This is to make it possible to identify elements arbirarily, i.e. make quotients work. *)
 
 Lemma sur_rep_b S T (delta: S ->> T) :
   delta is_representation <-> delta is_representation_of (fun x => True).
 Proof.
-  split.
-  - move => [issing issur].
-    by split.
-  - move => [issing issur].
-    split.
-    - move => s.
-      by apply: (issing s).
-    - move => s.
-      by apply: (issur s).
+split.
+- move => [issing issur].
+	split.
+		split.
+ 			move => s t t' dst dst'.
+ 			by apply: (issing.1 s t t').
+ 		move => s t t' dst eq.
+ 		by rewrite -eq.
+  move => t _ .
+  move: (issur t) => [] s dst.
+  by exists s.
+move => [issing issur].
+split.
+	split.
+		move => s t t' dst dst'.
+  	by apply: (issing.1 s t t').
+	move => s t t' dst eq.
+	by rewrite -eq.
+move => t.
+have: True.
+	done.
+move => true.
+move: (issur t true) => []s []dst_.
+by exists s.
 Qed.
 
 Lemma sur_rep S T (delta: S ->> T) :
@@ -47,33 +61,18 @@ Proof.
   exact: cond.
 Qed.
 
-Lemma sur_rep_sing_b S T (delta: S ->> T) (elements: T -> Prop) :
-  delta is_representation_of elements <-> delta is_representation_wrt (fun x y => x = y) of elements.
+Lemma sur_rep_sing_b S T (delta: S ->> T) (P: T -> Prop) :
+  delta is_representation_of P <-> delta is_representation_wrt (fun x y => x = y) of P.
 Proof.
-  split.
-  - move => [sing sur].
-    split.
-    - move => s t t'.
-      by apply: (sing s t t').
-    - split.
-      - move => t t' s tet'.
-        by rewrite -tet'.
-      - by apply sur.
-  - move => [sing [eq sur]].
-    split.
-    - move => s t t'.
-      apply: (sing s t t').
-    - done.
+done.
 Qed.
 
-Lemma sur_rep_sing S T (delta: S ->> T) (elements: T -> Prop) :
-  delta is_representation_of elements -> delta is_representation_wrt (fun x y => x = y) of elements.
+Lemma sur_rep_sing S T (delta: S ->> T) (P: T -> Prop) :
+  delta is_representation_of P -> delta is_representation_wrt (fun x y => x = y) of P.
 Proof.
-  move: (sur_rep_sing_b delta elements) => [cond cond'].
-  exact: cond.
+move: (sur_rep_sing_b delta P) => [cond cond'].
+exact: cond.
 Qed.
-
-
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names can be an arbitrary type
 but will usually be something that can be computed on, i.e. Baire space or something.
@@ -85,11 +84,11 @@ Structure type := make_comp_space {
   space : Type;
   elements : space -> Prop;
   equals : space -> space -> Prop;
-  questions : eqType;
-  answer_type : eqType;
+  questions : Type;
+  answer_type : Type;
   delta : (questions -> option(answer_type)) ->> space;
-  countable_questions: exists (cntq : nat -> questions), (F2MF cntq) is_surjective;
-  countable_answers: exists (cnta : nat -> questions), (F2MF cnta) is_surjective;
+  countable_questions: questions is_countable;
+  countable_answers: answer_type is_countable;
   representation_is_valid : delta is_representation_wrt equals of elements
   }.
 Notation answers X := (option (answer_type X)).
@@ -113,107 +112,133 @@ Lemma prod_rep (X Y : type):
     of
   (fun x => elements x.1 /\ elements x.2).
 Proof.
-  move: (@representation_is_valid X) (@representation_is_valid Y)
-    => [xsing [xeq xsur]] [ysing [yeq ysur]].
-  - split.
-    - move => phipsi [x y] [x' y'] /= [iex iey] [iex' iey'] [inx iny] [inx' iny'].
-      split.
-      apply: xsing => //.
-      apply: inx.
-      apply: inx'.
-      apply: ysing => //.
-      apply iny.
-      apply iny'.
-    - split. 
-      - move => x y phi [xey1 xey2] [inx iny].
-        split.
-        apply: (xeq x.1) => //.
-        apply: (yeq x.2) => //.
-      - move => [x y] /= [iex iey].
-        move: (xsur x iex) (ysur y iey) => [phi inx] [psi iny].
-        exists (fun q => match q with
-          | inl qx => match phi qx with
-            | Some a => Some (inl a)
-            | None => None
-          end
-          | inr qy => match psi qy with
-            | Some a => Some (inr a)
-            | None => None
-          end
-        end).
-        split => /=.
-        replace (fun q : questions X =>
-        match
-         match phi q with
-          | Some a => Some (inl a)
-          | None => None
-         end
-        with
-         | Some (inl a) => Some a
-         | Some (inr _) => None
-         | None => None
-        end) with phi.
-        done.
-        apply: functional_extensionality => q.
-        elim (phi q).
-        done.
-        done.
-        replace (fun q : questions Y =>
-        match
-         match psi q with
-          | Some a => Some (inr a)
-          | None => None
-         end
-        with
-         | Some (inr a) => Some a
-         | Some (inl _) => None
-         | None => None
-        end) with psi.
-        done.
-        apply: functional_extensionality => q.
-        elim (psi q).
-        done.
-        done.
+move: (@representation_is_valid X) (@representation_is_valid Y)
+  => [xsing xsur] [ysing ysur].
+split.
+	split.
+		move => phipsi [x y] [x' y'] /= [inx iny] [inx' iny'].
+    split.
+      apply: xsing.1 => //.
+      	by apply: inx.
+      by apply: inx'.
+    apply: ysing.1 => //.
+      by apply iny.
+    by apply iny'.
+	move => phipsi.
+	move => [] x y [] x' y' /=[] inx iny [] ex ey.
+	split.
+		apply/ xsing.2.
+			by apply inx.
+		done.
+	apply/ ysing.2.
+		by apply iny.
+	done.
+move => [] x y /=[Px Py].
+move: (xsur x Px) => [] phi []dphix phiprop.
+move: (ysur y Py) => [] psi []dpsiy psiprop.
+exists (fun q => match q with
+	| inl qx => match phi qx with
+		| Some a => Some (inl a)
+		| None => None
+	end
+	| inr qy => match psi qy with
+		| Some a => Some (inr a)
+		| None => None
+	end
+end).
+split => /=.
+	replace (fun q : questions X =>
+  match
+		match phi q with
+			| Some a => Some (inl a)
+			| None => None
+		end
+	with
+		| Some (inl a) => Some a
+		| Some (inr _) => None
+		| None => None
+	end) with phi.
+	split => //.
+		replace (fun q : questions Y =>
+			match
+				match psi q with
+					| Some a => Some (inr a)
+					| None => None
+				end
+			with
+				| Some (inr a) => Some a
+				| Some (inl _) => None
+				| None => None
+			end) with psi.
+		done.
+	apply: functional_extensionality => q.
+	by elim (psi q).
+apply: functional_extensionality => q.
+by elim (phi q).
+move => phipsi [] x' y' []dphix' dpsiy' [] ano ther.
+split.
+	apply/ phiprop.
+		by apply dphix'.
+	done.
+apply/ psiprop.
+	by apply dpsiy'.
+done.
 Qed.
 
 (* This is the product of represented spaces. At some point I should prove that this
 is the product in some category, but I am unsure what the morphisms are supposed to be. *)
 
-Notation comp_space := type.
+Notation rep_space := type.
 Notation "'rep'" := @delta (at level 2).
 Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
 Notation "x 'is_element'" := (elements x) (at level 2).
 Notation "x 'is_from' X" := (@elements X x) (at level 2).
 Notation "x 'equal' y" := (@equals x y) (at level 2).
 
-Lemma sum_is_countable S T:
-  (exists (cnt1 : nat -> S), (F2MF cnt1) is_surjective) -> (exists (cnt2 : nat -> T), (F2MF cnt2) is_surjective)
-    -> exists (cnt : nat -> S + T), (F2MF cnt) is_surjective.
+Lemma sum_is_countable Q Q':
+  Q is_countable -> Q' is_countable -> (Q + Q') is_countable.
 Proof.
-  move => [cnt1] sur1 [cnt2] sur2.
-  set cnt := fix cnt n := match n with
-    | 0 => inl (cnt1 0)
-    | 1 => inr (cnt2 0)
-    | S (S n') => match cnt n' with
-      | inl s => inl (cnt1 (n'))
-      | inr t => inr (cnt2 (n'+1))
-    end
-  end.
-  exists (cnt).
-  rewrite /is_sur.
-  apply sum_rect.
-  - move => s.
-    move: (sur1 s) => [n] idx.
-    exists (2*n)%coq_nat.
-    move: n s idx.
-    rewrite /F2MF.
-    elim.
-    - move => s idx.
-      by rewrite -idx.
-    move => n ih s idx.
-    replace (2 * n.+1)%coq_nat with ((2*n).+1.+1)%coq_nat.
-    rewrite -idx.
-    replace (cnt (2 * n).+2) with (@inl S T (cnt1 (2*n))).
+move => [cnt1] sur1 [cnt2] sur2.
+set cnt' := fix cnt' n := match n with
+	| 0 => (inl (cnt1 0),0)
+	| 1 => (inr (cnt2 0),0)
+	| S (S n') => match cnt' n' with
+		| (inl s,m) => (inl (cnt1 (S m)),S m)
+		| (inr t,m) => (inr (cnt2 (S m)),S m)
+	end
+end.
+have: forall n, 2 * (cnt' n).2 = n <-> exists s, (cnt' n).1 = inl s.
+	elim.
+		split.
+			move => eq.
+			by exists (cnt1 0).
+		by move => [] s eq.
+	move => n ih.
+		split.
+			move => eq.
+			exists ((cnt' n).1).
+	
+exists (fun n => (cnt' n).1).
+rewrite /is_sur.
+apply sum_rect.
+	move => s.
+	move: (sur1 s) => [n] idx.
+	exists (2*n).
+	move: n s idx.
+	rewrite /F2MF.
+	elim.
+		move => s idx.
+		by rewrite -idx.
+	move => n ih s idx.
+	replace (2 * n.+1) with ((2 * n).+2).
+		rewrite -idx.
+		replace (inl (cnt1 n.+1)) with ((@inl Q Q' (cnt1 (S n)),S n).1).
+		replace ((@inl Q Q' (cnt1 (S n)),S n).1) with (cnt 
+		done.
+		replace (cnt (2 * n).+2) with (@inl S T (cnt1 (n.+1))) => //.
+		replace (cnt1 n.+1) with (cnt1 (2 * n)) => //.
+		
+
     have 
  (ih (cnt1 n)).
     have (cnt (2*n)) = inl s
