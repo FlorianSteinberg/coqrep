@@ -1,7 +1,8 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
-Require Import universal_machine multi_valued_functions FunctionalExtensionality.
+Require Import universal_machine multi_valued_functions.
+Require Import FunctionalExtensionality Psatz.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -81,7 +82,7 @@ At some point I will probably change the names to be a size_type. The type of na
 must be inherited for the rather irrelevant full function-space construction to
 work. This may change depending on whether other function space constructions also
 need this or not. *)
-Structure type := make_comp_space {
+Structure type := make_rep_space {
   space : Type;
   elements : space -> Prop;
   equals : space -> space -> Prop;
@@ -95,8 +96,8 @@ Structure type := make_comp_space {
 Notation answers X := (option (answer_type X)).
 Notation names X := ((questions X) -> (answers X)).
 
-Lemma prod_rep (X Y : type):
-  (fun (phipsi : (questions X + questions Y -> option(answer_type X + answer_type Y))) x =>
+Definition prod_rep X Y :=
+	(fun (phipsi : (questions X + questions Y -> option(answer_type X + answer_type Y))) x =>
       delta (fun q => match phipsi (inl q) with
         | None => None
         | Some (inl a) => Some a
@@ -105,8 +106,10 @@ Lemma prod_rep (X Y : type):
         | None => None
         | Some (inl a) => None
         | Some (inr b) => Some b
-      end) x.2)
-    is_representation_wrt
+      end) x.2).
+
+Lemma prod_rep_is_rep (X Y : type):
+  (@prod_rep X Y) is_representation_wrt
   (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
     of
   (fun x => elements x.1 /\ elements x.2).
@@ -145,6 +148,7 @@ exists (fun q => match q with
 		| None => None
 	end
 end).
+rewrite /prod_rep.
 split => /=.
 	replace (fun q : questions X =>
   match
@@ -198,26 +202,30 @@ Lemma sum_is_countable Q Q':
   Q is_countable -> Q' is_countable -> (Q + Q') is_countable.
 Proof.
 move => [cnt1] sur1 [cnt2] sur2.
-set cnt' := fix cnt' n := match n with
-	| 0 => (inl (cnt1 0),0)
-	| 1 => (inr (cnt2 0),0)
-	| S (S n') => match cnt' n' with
-		| (inl s,m) => (inl (cnt1 (S m)),S m)
-		| (inr t,m) => (inr (cnt2 (S m)),S m)
-	end
+set cnt' := fix cnt' n acc := match n with
+	| 0 => inl (cnt1 acc) 
+	| 1 => inr (cnt2 acc)
+	| S (S n') => (cnt' n' (S acc))
 end.
-have: forall n, 2 * (cnt' n).2 = n <-> exists s, (cnt' n).1 = inl s.
-	elim.
-		split.
-			move => eq.
-			by exists (cnt1 0).
-		by move => [] s eq.
-	move => n ih.
-		split.
-			move => eq.
-			exists ((cnt' n).1).
 
-exists (fun n => (cnt' n).1).
+have prop: forall n k, cnt' (2 * n) k = inl(cnt1 (n + k)).
+	elim => //.
+	move => n ih k.
+	replace (2*n.+1) with ((2*n).+2).
+	rewrite /= (ih (k.+1)).
+	replace (n + k.+1) with (n.+1 + k) => //.
+	admit.
+	admit.
+have prop2: forall n k, cnt' (2 * n + 1) k = inr(cnt2 (n + k)).
+	elim => //.
+	move => n ih k.
+	replace (2*n.+1) with ((2*n).+2).
+	rewrite /= (ih (k.+1)).
+	replace (n + k.+1) with (n.+1 + k) => //.
+	admit.
+	admit.
+
+exists (fun n => cnt' n 0).
 rewrite /is_sur.
 apply sum_rect.
 	move => s.
@@ -230,28 +238,27 @@ apply sum_rect.
 		by rewrite -idx.
 	move => n ih s idx.
 	replace (2 * n.+1) with ((2 * n).+2).
-		rewrite -idx.
-		replace (inl (cnt1 n.+1)) with ((@inl Q Q' (cnt1 (S n)),S n).1).
-		replace ((@inl Q Q' (cnt1 (S n)),S n).1) with (cnt
-		done.
-		replace (cnt (2 * n).+2) with (@inl S T (cnt1 (n.+1))) => //.
-		replace (cnt1 n.+1) with (cnt1 (2 * n)) => //.
-
-
-    have
- (ih (cnt1 n)).
-    have (cnt (2*n)) = inl s
-    case: ih.
-    rewrite /cnt /=.
-    by rewrite -idx.
-    replace (inl (cnt1 n.+1)) with (cnt (2*n.+1)).
-
-    replace (cnt (2*n).+1) with (@inr S T (cnt2 n)).
-    exists cnt
-    - rewrite -idx.
-      replace
-
-
+		rewrite -idx /=.
+		rewrite prop.
+		replace (S n) with (n + 1) => //.
+		admit.
+		admit.
+	move => s.
+	move: (sur2 s) => [n] idx.
+	exists (2*n + 1).
+	move: n s idx.
+	rewrite /F2MF.
+	elim.
+		move => s idx.
+		by rewrite -idx.
+	move => n ih s idx.
+	replace (2 * n.+1) with ((2 * n).+2).
+		rewrite -idx /=.
+		rewrite prop2.
+		replace (S n) with (n + 1) => //.
+		admit.
+		admit.
+Admitted.
 
 Canonical rep_space_prod X Y := @make_rep_space
   (space X * space Y)
@@ -259,17 +266,10 @@ Canonical rep_space_prod X Y := @make_rep_space
   (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
   (@questions X + @questions Y)
   (@answer_type X + @answer_type Y)
-  (fun (phipsi : (questions X + questions Y -> option(answer_type X + answer_type Y))) x =>
-      delta (fun q => match phipsi (inl q) with
-        | None => None
-        | Some (inl a) => Some a
-        | Some (inr b) => None
-      end) x.1 /\ delta (fun q => match phipsi (inr q) with
-        | None => None
-        | Some (inl a) => None
-        | Some (inr b) => Some b
-      end) x.2)
-  (@prod_rep X Y).
+  (@prod_rep X Y)
+  (sum_is_countable (countable_questions X) (countable_questions Y))
+  (sum_is_countable (countable_answers X) (countable_answers Y))
+  (@prod_rep_is_rep X Y).
 
 Definition make_rep_space_from_sur
   (space : Type)
