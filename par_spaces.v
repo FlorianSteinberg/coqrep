@@ -1,7 +1,7 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
-Require Import universal_machine multi_valued_functions.
+Require Import universal_machine multi_valued_functions machines.
 Require Import FunctionalExtensionality Psatz.
 
 Set Implicit Arguments.
@@ -26,6 +26,48 @@ Definition is_rep_of_wrt S T (delta: S ->> T) (P: T -> Prop) (R: T-> T -> Prop) 
 Notation "delta 'is_representation_wrt' equals 'of' elements" :=
   (is_rep_of_wrt delta elements equals) (at level 2).
 (* This is to make it possible to identify elements arbirarily, i.e. make quotients work. *)
+
+Lemma R_sym S T delta P R:
+	@is_rep_of_wrt S T delta P R -> forall s t, P s -> P t -> (R s t -> R t s).
+Proof.
+move => [] sing sur t t' Pt Pt' Rtt'.
+	move: (sur t Pt) => [] s [] dst sprop.
+	move: (sing.2 s t t' dst Rtt') => dst'.
+	by apply/ (sing.1 s).
+Qed.
+
+Lemma R_trans S T delta P R:
+	@is_rep_of_wrt S T delta P R -> forall s r t, P s -> P r -> P t -> R s r -> R r t -> R s t.
+Proof.
+move => rep s r t Ps Pr Pt Rsr Rrt'.
+move: (rep.2 r Pr) => [] s' [] ds'r sprop.
+move: (rep.1.2 s' r t ds'r Rrt') => ds't.
+move: (R_sym rep Ps Pr Rsr) => Rrs.
+move: (rep.1.2 s' r s ds'r Rrs) => dst.
+apply/ (rep.1.1).
+apply dst.
+apply ds't.
+Qed.
+
+Lemma R_equiv S T delta P R:
+	@is_rep_of_wrt S T delta P R ->
+		(forall t, P t -> R t t)
+		/\
+		(forall s t, P s -> P t -> (R s t -> R t s) /\ forall r, P r -> R s r -> R r t -> R s t).
+Proof.
+move => rep.
+split.
+	move => t Pt.
+	move: ((rep.2 t Pt)) => [] s' [] ds't sprop.
+	by apply (rep.1.1 s' t t).
+split.
+by apply/ (R_sym rep).
+move => r Pr Rsr Rrt.
+apply/ (R_trans rep) => //.
+by apply Pr => //.
+done.
+done.
+Qed.
 
 Lemma sur_rep_b S T (delta: S ->> T) :
   delta is_representation <-> delta is_representation_of (fun x => True).
@@ -87,25 +129,23 @@ Structure type := make_rep_space {
   elements : space -> Prop;
   equals : space -> space -> Prop;
   questions : Type;
-  answer_type : Type;
-  delta : (questions -> option(answer_type)) ->> space;
+  answers : Type;
+	No_answer:answers;
+  delta : (questions -> answers) ->> space;
   countable_questions: questions is_countable;
-  countable_answers: answer_type is_countable;
+  countable_answers: answers is_countable;
   representation_is_valid : delta is_representation_wrt equals of elements
   }.
-Notation answers X := (option (answer_type X)).
 Notation names X := ((questions X) -> (answers X)).
 
 Definition prod_rep X Y :=
-	(fun (phipsi : (questions X + questions Y -> option(answer_type X + answer_type Y))) x =>
+	(fun (phipsi : (questions X + questions Y -> answers X + answers Y)) x =>
       delta (fun q => match phipsi (inl q) with
-        | None => None
-        | Some (inl a) => Some a
-        | Some (inr b) => None
+        | inl a => a
+        | inr b => No_answer X
       end) x.1 /\ delta (fun q => match phipsi (inr q) with
-        | None => None
-        | Some (inl a) => None
-        | Some (inr b) => Some b
+        | inl a => No_answer Y
+        | inr b => b
       end) x.2).
 
 Lemma prod_rep_is_rep (X Y : type):
@@ -139,53 +179,18 @@ move => [] x y /=[Px Py].
 move: (xsur x Px) => [] phi []dphix phiprop.
 move: (ysur y Py) => [] psi []dpsiy psiprop.
 exists (fun q => match q with
-	| inl qx => match phi qx with
-		| Some a => Some (inl a)
-		| None => None
-	end
-	| inr qy => match psi qy with
-		| Some a => Some (inr a)
-		| None => None
-	end
+	| inl qx => inl (phi qx)
+	| inr qy => inr (psi qy)
 end).
 rewrite /prod_rep.
-split => /=.
-	replace (fun q : questions X =>
-  match
-		match phi q with
-			| Some a => Some (inl a)
-			| None => None
-		end
-	with
-		| Some (inl a) => Some a
-		| Some (inr _) => None
-		| None => None
-	end) with phi.
-	split => //.
-		replace (fun q : questions Y =>
-			match
-				match psi q with
-					| Some a => Some (inr a)
-					| None => None
-				end
-			with
-				| Some (inr a) => Some a
-				| Some (inl _) => None
-				| None => None
-			end) with psi.
-		done.
-	apply: functional_extensionality => q.
-	by elim (psi q).
-apply: functional_extensionality => q.
-by elim (phi q).
-move => phipsi [] x' y' []dphix' dpsiy' [] ano ther.
+split => //= [] s t' [] dx dy [] dt1 dt2.
 split.
-	apply/ phiprop.
-		by apply dphix'.
-	done.
-apply/ psiprop.
-	by apply dpsiy'.
-done.
+	apply: phiprop.
+		by apply dx.
+	by apply dt1.
+apply: psiprop.
+	by apply dy.
+by apply dt2.
 Qed.
 
 (* This is the product of represented spaces. At some point I should prove that this
@@ -211,19 +216,15 @@ end.
 have prop: forall n k, cnt' (2 * n) k = inl(cnt1 (n + k)).
 	elim => //.
 	move => n ih k.
-	replace (2*n.+1) with ((2*n).+2).
+	replace (2*n.+1) with ((2*n).+2) by by rewrite /muln/muln_rec; lia.
 	rewrite /= (ih (k.+1)).
-	replace (n + k.+1) with (n.+1 + k) => //.
-	admit.
-	admit.
+	by replace (n + k.+1) with (n.+1 + k) by by rewrite /addn/addn_rec; lia.
 have prop2: forall n k, cnt' (2 * n + 1) k = inr(cnt2 (n + k)).
 	elim => //.
 	move => n ih k.
-	replace (2*n.+1) with ((2*n).+2).
+	replace (2*n.+1) with ((2*n).+2) by by rewrite /muln/muln_rec; lia.
 	rewrite /= (ih (k.+1)).
-	replace (n + k.+1) with (n.+1 + k) => //.
-	admit.
-	admit.
+	by replace (n + k.+1) with (n.+1 + k) by by rewrite /addn/addn_rec; lia.
 
 exists (fun n => cnt' n 0).
 rewrite /is_sur.
@@ -237,12 +238,10 @@ apply sum_rect.
 		move => s idx.
 		by rewrite -idx.
 	move => n ih s idx.
-	replace (2 * n.+1) with ((2 * n).+2).
+	replace (2 * n.+1) with ((2 * n).+2) by by rewrite /muln/muln_rec; lia.
 		rewrite -idx /=.
 		rewrite prop.
-		replace (S n) with (n + 1) => //.
-		admit.
-		admit.
+		by replace (S n) with (n + 1) by by rewrite /addn/addn_rec; lia.
 	move => s.
 	move: (sur2 s) => [n] idx.
 	exists (2*n + 1).
@@ -252,47 +251,103 @@ apply sum_rect.
 		move => s idx.
 		by rewrite -idx.
 	move => n ih s idx.
-	replace (2 * n.+1) with ((2 * n).+2).
+	replace (2 * n.+1) with ((2 * n).+2) by by rewrite /muln/muln_rec; lia.
 		rewrite -idx /=.
 		rewrite prop2.
-		replace (S n) with (n + 1) => //.
-		admit.
-		admit.
-Admitted.
+		by replace (S n) with (n + 1) by by rewrite /addn/addn_rec; lia.
+Qed.
 
 Canonical rep_space_prod X Y := @make_rep_space
   (space X * space Y)
   (fun x => x.1 is_element /\ x.2 is_element)
   (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
   (@questions X + @questions Y)
-  (@answer_type X + @answer_type Y)
+  (@answers X + @answers Y)
+  (inl (No_answer X))
   (@prod_rep X Y)
   (sum_is_countable (countable_questions X) (countable_questions Y))
   (sum_is_countable (countable_answers X) (countable_answers Y))
   (@prod_rep_is_rep X Y).
 
-Definition make_rep_space_from_sur
+Lemma prod_is_countable Q Q':
+  Q is_countable -> Q' is_countable -> (Q * Q') is_countable.
+Proof.
+move => [] cntQ surQ [] cntQ' surQ'.
+rewrite /is_count.
+
+Lemma list_is_countable Q:
+  Q is_countable -> Q' is_countable -> (Q + Q') is_countable.
+Proof.
+
+(*Definition make_rep_space_from_sur
   (space : Type)
   (questions : Type)
   (answers : Type)
-  (delta : (questions->option(answers)) ->> space) (representation_is_valid : is_rep delta) :=
+  (delta : (questions->answers) ->> space) (representation_is_valid : is_rep delta) :=
   @make_rep_space space
     (fun x=> True)
     (fun x y => x= y)
     questions
     answers
-    delta
     (sur_rep_sing (sur_rep representation_is_valid))
-  .
+  .*)
 
 Lemma fun_rep_on_range S X (f : S -> X) :
   (F2MF f) is_representation_of (range (F2MF f)).
 Proof.
-  split.
-  - move => s t t' tfr t'fr fst fst'.
-    by rewrite -fst -fst'.
-  - by move => t tfrf.
+split.
+	split => s t t' fst H;by rewrite -H.
+move => t [] s fst.
+exists s.
+split => //.
+move => s' x' fs't fs't'.
+by exists s'.
 Qed.
+
+(*
+Definition make_rep_space_from_fun
+  (space : Type)
+  (names : Type)
+  (inhe : names)
+  (delta : names -> space) :=
+    @rep_space.make_rep_space
+      space
+      (range (F2MF delta))
+      (fun x y => x = y)
+      names
+      inhe
+      (F2MF delta)
+      (sur_rep_sing (fun_rep_on_range delta))
+    .
+*)
+
+Lemma single_valued_rep_on_range S T (f : S ->> T) :
+  f is_single_valued -> f is_representation_of (range f).
+Proof.
+move => sing.
+split => //.
+move => t [] s fst.
+exists s.
+split => //.
+move => s' t' _ fs't'.
+by exists s'.
+Qed.
+
+(*
+Definition make_rep_space_from_mfun
+  (space: Type)
+  (names : Type)
+  (inhe:names)
+  (delta: names ->> space)
+  (sing: delta is_single_valued) :=
+    @rep_space.make_rep_space
+      space
+      (range delta)
+      (fun x y => x = y)
+      names
+      inhe
+      delta
+      (sur_rep_sing (single_valued_rep_on_range sing)).
 
 Definition make_rep_space_from_fun
   (space : Type)
@@ -308,31 +363,7 @@ Definition make_rep_space_from_fun
       (F2MF delta)
       (sur_rep_sing (fun_rep_on_range delta))
     .
-
-Lemma single_valued_rep_on_range S T (f : S ->> T) :
-  f is_single_valued -> f is_representation_of (range f).
-Proof.
-  move => sing.
-  split.
-  - move => s t t' tfr t'fr.
-    by apply sing.
-  - done.
-Qed.
-
-Definition make_rep_space_from_mfun
-  (space : Type)
-  (questions : Type)
-  (answers : Type)
-  (delta: (questions -> option answers) ->> space)
-  (sing: delta is_single_valued) :=
-    @make_rep_space
-      space
-      (range delta)
-      (fun x y => x = y)
-      questions
-      answers
-      delta
-      (sur_rep_sing (single_valued_rep_on_range sing)).
+*)
 
 Definition is_mf_realizer (X Y : rep_space) F (f : (space X) ->> (space Y)) :=
   forall phi x y, delta phi x -> delta (F phi) y -> f x y.
@@ -343,9 +374,9 @@ Definition is_realizer (X Y : rep_space) F (f: space X -> space Y) := is_mf_real
 Notation "F 'is_realizer_of' f" := (is_realizer F f) (at level 2).
 Arguments is_realizer {X Y}.
 
-Definition is_comp (X Y : rep_space) (f : space X -> space Y) :=
+Definition is_prim_rec (X Y : rep_space) (f : space X -> space Y) :=
   exists F, is_realizer F f.
-Notation "f 'is_computable'" := (is_comp f) (at level 2).
+Notation "f 'is_primitive_recursive'" := (is_prim_rec f) (at level 2).
 
 Notation "X ~> Y" := (nat -> (names X) -> (questions Y) -> answers Y) (format "X ~> Y", at level 2).
 (* I think about this type as a type of machines: For M : B ~> B' I "read M s n = nothing" as
@@ -358,10 +389,3 @@ Definition eval (X Y : rep_space) (M : X ~> Y) : ((names X) ->> (names Y)) :=
 (* if M is a machine then eval M is the function the machine computes. Since no assumptions
 about convergence or concurrency have been made, the computed multivalued function need
 neither be singlevalued nor total. *)
-
-Definition is_comput (X Y : rep_space) (F: (names X) ->> (names Y)):=
-  exists M, forall phi, (exists psi, F phi psi) -> forall psi, (eval M phi psi -> F phi psi).
-(* This is the best candidate for computability I have come up with so far: If there are eligible
-return values then the machine produces one of these, but if there are none, the machine may behave
-arbitrarily. I am not one hundred percent sure this is the right notion, but pretty confident. *)
-Notation "F 'is_computable'" := (is_comput F) (at level 2).

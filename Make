@@ -7,3 +7,4 @@ example_second_order_polynomials_without_representations.v
 initial_segments.v
 examples_continuity.v
 universal_machine.v
+machines.v

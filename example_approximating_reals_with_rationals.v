@@ -333,6 +333,4 @@ Proof.
   replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
   - rewrite Rabs_mult Rabs_mult.
     apply: Rplus_le_compat.
-		move: .
-	
 Admitted.

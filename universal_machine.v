@@ -5,8 +5,8 @@ here, i.e. the set of all mappings from strings to strings. However, since I don
 to rely on a handwritten type of strings as I attempted in the file "operators.v" I use
 more generaly a space S -> T as substitute for B. *)
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions continuity initial_segments.
-Require Import ClassicalChoice Psatz.
+Require Import multi_valued_functions continuity initial_segments machines.
+Require Import ClassicalChoice Psatz FunctionalExtensionality.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -17,17 +17,17 @@ Section UNIVERSAL_MACHINE.
 Context (Q I Q' I' : Type).
 Notation A := (option I).
 Notation A' := (option I').
-Notation B := (Q -> A).
-Notation B' := (Q' -> A').
+Notation B := (Q -> I).
+Notation B' := (Q' -> I').
 
-Definition U_step (psi: list(Q * A) * Q' -> Q + A') phi q' L :=
+Definition U_step (psi: list(Q * I) * Q' -> Q + I') phi q' L :=
 match psi (L, q') with
   | inr a' => inl a'
   | inl q => inr (cons (q, phi q) L)
 end.
 
 Fixpoint U_rec
-n (psi: list(Q * A) * Q' -> Q + A') phi q' :=
+n (psi: list(Q * I) * Q' -> Q + I') phi q' :=
 match n with
 	|	0 => match U_step psi phi q' nil with
 		| inl a' => inl a'
@@ -42,11 +42,11 @@ end.
 (* This is what I want to prove to be a universal machine: *)
 Definition U
 	(n: nat)
-	(psi: list (Q * A) * Q' -> Q + A')
-	(phi: Q -> A)
+	(psi: list (Q * I) * Q' -> Q + I')
+	(phi: Q -> I)
 	(q' : Q') :=
 match (U_rec n psi phi q') with
-	| inl a' => a'
+	| inl a' => Some a'
 	| inr L => None
 end.
 
@@ -193,7 +193,7 @@ Proof.
     split => //.
     have e : exists L : seq Q, P phiq L /\ size L = (size K) by exists K.
     by apply: (nprop (size K) e).
- 	move: (@choice ((Q -> A)*Q') (list Q) R cond) => [mf] mfprop.
+ 	move: (@choice ((Q -> I)*Q') (list Q) R cond) => [mf] mfprop.
  	rewrite /R in mfprop.
  	move: R cond => _ _.
  	exists (fun phi q' => mf (phi, q')).
@@ -210,9 +210,10 @@ End MINIMAL_MODULI.
 
 (*This should at some point go into an appropriate section: *)
 Lemma extend_list:
-	exists listf, forall (L: list (Q * A)), (listf L) is_choice_for (L2MF L).
+	I -> exists listf, forall (L: list (Q * I)), (listf L) is_choice_for (L2MF L).
 Proof.
-set R := (fun (L : Q * list(Q * A)) (a: A) =>
+move => i.
+set R := (fun (L : Q * list(Q * I)) (a: I) =>
 	forall b, (L2MF L.2) L.1 b -> (L2MF L.2) L.1 a).
 have : forall L, exists b, R L b.
 	move => [q L].
@@ -220,12 +221,12 @@ have : forall L, exists b, R L b.
 		move => [a] inlist.
 		by exists a.
 	move => false.
-	exists None.
+	exists i.
 	move => a inlist.
 	exfalso; apply: false.
 	by exists a.
 move => cond.
-move: ((@choice (Q*list(Q * A)) A R) cond) => [listf] listfprop.
+move: ((@choice (Q*list(Q * I)) I R) cond) => [listf] listfprop.
 exists (fun L => (fun q => listf (q,L))).
 move => L q e.
 split.
@@ -248,11 +249,12 @@ Qed.
 Context (F: B ->> B').
 
 Lemma listsf:
-		exists phi',
-		forall L: list (Q*A), ((exists phi, phi from_dom F /\ phi is_choice_for (L2MF L)) ->
+		I -> exists phi',
+		forall L: list (Q*I), ((exists phi, phi from_dom F /\ phi is_choice_for (L2MF L)) ->
 			(phi' L) from_dom F) /\ (phi' L) is_choice_for (L2MF L).
 Proof.
-move: extend_list => [] listf listfprop.
+move => i.
+move: (extend_list i) => [] listf listfprop.
 set R := (fun L (psi: B) =>
 	((exists phi, phi from_dom F /\ phi is_choice_for (L2MF L)) -> psi from_dom F)
 	/\ psi is_choice_for (L2MF L)).
@@ -265,7 +267,7 @@ have : forall L, exists psi, R L psi.
   exists (listf L).
   by split => //.
 move => cond.
-move: ((@choice (list(Q * A)) (Q -> A) R) cond) => [phi'] phi'prop.
+move: ((@choice (list(Q * I)) (Q -> I) R) cond) => [phi'] phi'prop.
 by exists phi'.
 Qed.
 
@@ -288,21 +290,15 @@ Qed.
 Definition is_count Q :=
 	exists cnt: nat -> Q, (F2MF cnt) is_surjective.
 Notation "T 'is_countable'" := (is_count T) (at level 2).
+Notation "B ~> B'" := (nat -> B -> Q'-> A') (at level 2).
 
 Context (sur: (F2MF cnt) is_surjective).
-
-Notation "B ~> B'" := (nat -> B -> B') (at level 2).
-
-Definition F_computed_by (M: B ~> B'):=
-  (forall phi Fphi, F phi Fphi -> forall q', exists n, M n phi q' = Fphi q')
-    /\
-  (forall phi n q' a', phi from_dom F -> M n phi q' = Some a' ->
-  	exists Fphi, F phi Fphi /\ Fphi q' = Some a').
+Check is_comp.
 
 Lemma U_is_universal:
-	F is_continuous -> exists psiF, F_computed_by (fun n phi q' => U n psiF phi q').
+	I -> I' -> F is_continuous -> exists psiF, (fun n phi q' => U n psiF phi q') computes F.
 Proof.
-move => Fcont.
+move => None None' Fcont.
 set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
 have cond: forall phi, exists psi, R phi psi.
   move => phi.
@@ -310,12 +306,12 @@ have cond: forall phi, exists psi, R phi psi.
     move => [psi prop].
     by exists psi.
   move => false.
-  by exists (fun a => None).
-move: ((@choice ((Q -> A)) (Q' -> A') R) cond) => [Ff] Fprop.
+  by exists (fun a => None').
+move: ((@choice ((Q -> I)) (Q' -> I') R) cond) => [Ff] Fprop.
 rewrite /R /= in Fprop; move: R cond => _ _.
 
 move: (minimal_mod_function Fcont isminsec) => [] mf mprop.
-move: listsf => [] phi' phi'prop.
+move: (listsf None) => [] phi' phi'prop.
 
 have coin:
 	forall phi q', (phi' (flst phi (mf phi q'))) and phi coincide_on (mf phi q').
@@ -458,7 +454,7 @@ have U_rec_prop:
 					rewrite -isnil => equal.
 					by apply: equal.
 				apply: Fprop.
-				apply: (phi'prop (nil: list (Q * A))).1.
+				apply: (phi'prop (nil: list (Q * I))).1.
 				exists phi.
 				split => //.
 				move => q [] a false.
@@ -497,31 +493,41 @@ have U_rec_prop':
 	have leq'':size (mf (phi' (flst phi (init_seg n.+1))) q') <= S n by lia.
 	by rewrite (Ffprop (S n) phi q' phifd leq'').
 
-exists psiF.
+exists psiF => phi phifd.
 split.
-	move => phi Fphi FphiFphi q'.
+	move: phifd => [] Fphi FphiFphi.
+	exists Fphi.
+	move => q'.
 	exists (size (mf phi q')).
 	rewrite /U.
 	rewrite (U_rec_prop' (size (mf phi q')) phi q')=>//;last first.
 		by exists Fphi.
+	replace (Ff phi q') with (Fphi q') => //.
 	apply/ (mprop.1); last first.
-			by apply/ FphiFphi.
+			apply Fprop.
+			by exists Fphi.
+		by apply/ FphiFphi.
+	by apply/ (coin_ref phi).
+move: phifd => [] Fphi FphiFphi Mphi MphiMphi.
+replace Mphi with Fphi => //.
+apply: functional_extensionality => q'.
+apply: Some_inj.
+move: (MphiMphi q') => [] n eq.
+rewrite -eq.
+rewrite /U.
+case (U_rec_prop n phi q').
+		by exists Fphi.
+	move => ass.
+	rewrite ass.
+	replace (Fphi q') with (Ff phi q') => //.
+	apply/ (mprop.1); last first.
+			by apply FphiFphi.
 		apply Fprop.
 		by exists Fphi.
 	by apply/ (coin_ref phi).
-move => phi n q' a' []Fphi FphiFphi eq.
-	exists Fphi; split => //.
-	have phifd: phi from_dom F by exists Fphi.
-	case: (U_rec_prop n phi q' phifd) => case_eq.
-		rewrite -eq /U case_eq /=.
-		replace Fphi with (Ff phi) => //.
-		rewrite ((cont_to_sing Fcont).1 phi Fphi (Ff phi)) => //.
-		apply/ Fprop.
-		by exists Fphi.
-	rewrite -eq /U case_eq /=.
-	rewrite /U in eq.
-	rewrite case_eq /= in eq.
-	by exfalso.
+move => ass.
+rewrite /U ass in eq.
+by exfalso.
 Qed.
 End UNIVERSAL_MACHINE.
 Notation "T 'is_countable'" := (is_count T) (at level 2).
