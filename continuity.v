@@ -157,12 +157,15 @@ Lemma cont_to_sing (F: B ->> B'):
 	F is_continuous -> F is_single_valued.
 Proof.
 move => cont.
-split => phi Fphi Fphi' FphiFphi H.
+split.
+	move => phi Fphi Fphi' FphiFphi H.
 	apply functional_extensionality => a.
 	move: cont (cont phi a) => _ [L] cont.
 	have eq: (forall K, phi and phi coincide_on K) by elim.
 	by rewrite -((cont phi (eq L) Fphi') H).
-by rewrite -H.
+split => phi Fphi Fphi' FphiFphi eq.
+	by rewrite -eq.
+by rewrite eq.
 Qed.
 End CONTINUITY_LEMMAS.
 

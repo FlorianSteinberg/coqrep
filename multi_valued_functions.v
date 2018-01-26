@@ -42,7 +42,9 @@ Notation "f \, g" := (mf_prod f g) (at level 50).
 Definition is_sing_wrt S T (f: S ->> T) (R: T -> T -> Prop) :=
   (forall s t t', f s t -> f s t' -> R t t')
   /\
-  forall s t t', f s t -> R t t' -> f s t'.
+  (forall s t t', f s t -> R t t' -> f s t')
+  /\
+  forall s t t', f s t -> R t' t -> f s t'.
 Notation "f 'is_single_valued_wrt' R" := (is_sing_wrt f R) (at level 2).
 (* To understand why this is called "single valued" see the special case that R i
 the equality relation below. More generally, this means that f factors through the
@@ -54,7 +56,11 @@ Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
 Lemma fun_to_sing S T (f: S-> T):
 	(F2MF f) is_single_valued.
 Proof.
-by split => s t t' H H0; rewrite -H0.
+split.
+	by move => s t t' H H0; rewrite -H0.
+split => s t t' H H0.
+	by rewrite -H0.
+by rewrite H0.
 Qed.
 
 Lemma prod_sing_wrt S S' T T' (f: S ->> T) (g : S' ->> T') R R' :
@@ -65,21 +71,31 @@ move => [fsing gsing]; split.
 	move => s t t' [] H H0 []; split.
 		by apply/ (fsing.1 s.1).
 	by apply/ (gsing.1 s.2).
+split.
+	move => s t t' [] H H0 []; split.
+		by apply/ (fsing.2.1 s.1 t.1).
+	by apply/ (gsing.2.1 s.2 t.2).
 move => s t t' [] H H0 []; split.
-	by apply/ (fsing.2 s.1 t.1).
-by apply/ (gsing.2 s.2 t.2).
+	by apply/ (fsing.2.2 s.1 t.1).
+by apply/ (gsing.2.2 s.2 t.2).
 Qed.
 
 Lemma prod_sing S S' T T' (f: S ->> T) (g: S' ->> T'):
   f is_single_valued /\ g is_single_valued -> (f \, g) is_single_valued.
 Proof.
-move => [fsing gsing]; split => s t t' [] H H0 [] H1.
-	move => H2;	apply: injective_projections.
+move => [fsing gsing]; split.
+	move => s t t' [] H H0 [] H1 H2; apply: injective_projections.
 		by apply (fsing.1 s.1).
 	by apply (gsing.1 s.2).
-split; rewrite -H1.
-	by apply/ (fsing.2 s.1 t.1).
-by apply (gsing.2 s.2 t.2).
+split => s t t' [] H H0 [] H1.
+	rewrite -H1.
+	split.
+		by apply/ (fsing.2.1 s.1 t.1).
+	by apply (gsing.2.1 s.2 t.2).
+rewrite H1.
+split.
+	by apply/ (fsing.2.2 s.1 t.1).
+by apply (gsing.2.2 s.2 t.2).
 Qed.
 
 Definition range S T (f: S ->> T) (t : T) := exists s, f s t.
@@ -213,26 +229,27 @@ Lemma single_valued_composition_wrt R S T (f: S ->> T) (g : R ->> S) :
 	f is_single_valued -> g is_single_valued_wrt (fun s s' => forall t, f s t -> f s' t)
 		-> f o g is_single_valued.
 Proof.
-move => fsing gsing; split=> r t t' [][] s [] grs fst prop [][].
+move => fsing gsing; split.
+	move => r t t' [][] s [] grs fst prop [][].
 	move => s' [] grs' fs't' prop'.
 	move: (gsing.1 r s s' grs grs' t fst) => fs't.
 	move: (fsing.1 s t t') (fsing.1 s' t t') => eq eq''.
 	by rewrite eq => //; rewrite -eq''.
-move => eq; split => //.
-exists s.
-by rewrite -eq.
+split => r t t' fgrt eq.
+	by rewrite -eq.
+by rewrite eq.
 Qed.
 
 Lemma single_valued_composition R S T (f: S ->> T) (g : R ->> S) :
 	f is_single_valued -> g is_single_valued -> f o g is_single_valued.
 Proof.
-move => fsing gsing; split=> r t t' [][] s [] grs fst prop [][].
-	move => s' [] grs' fs't' prop'.
+move => fsing gsing; split.
+	move => r t t' [][] s [] grs fst prop [][] s' [] grs' fs't' prop'.
 	move: (gsing.1 r s s' grs grs') (fsing.1 s t t') => eq eq'.
 	by rewrite eq' => //; rewrite eq.
-move => eq; split => //.
-exists s.
-by rewrite -eq.
+split => // s t t' fgst eq.
+	by rewrite -eq.
+by rewrite eq.
 Qed.
 
 Notation "f 'restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).

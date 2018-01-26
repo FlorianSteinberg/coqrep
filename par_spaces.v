@@ -1,7 +1,7 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
-Require Import universal_machine multi_valued_functions machines.
+Require Import continuity universal_machine multi_valued_functions machines.
 Require Import FunctionalExtensionality Psatz ClassicalChoice.
 
 Set Implicit Arguments.
@@ -23,29 +23,38 @@ Notation "delta 'is_representation_of' elements" := (is_rep_of delta elements) (
 
 Definition is_rep_of_wrt S T (delta: S ->> T) (P: T -> Prop) (R: T-> T -> Prop) :=
   delta is_single_valued_wrt R /\ delta is_surjective_wrt P.
-Notation "delta 'is_representation_wrt' equals 'of' elements" :=
-  (is_rep_of_wrt delta elements equals) (at level 2).
+Notation "delta 'represents' elements 'wrt' identify" := (is_rep_of_wrt delta elements identify) (at level 2).
+
+Definition is_rep_wrt S T (delta: S ->> T) (R: T-> T -> Prop) :=
+	delta is_single_valued_wrt R /\ delta is_surjective_wrt (fun t => R t t).
+
+Notation "delta 'is_representation_wrt' equal" :=
+  (is_rep_wrt delta equal) (at level 2).
 (* This is to make it possible to identify elements arbirarily, i.e. make quotients work. *)
 
 Lemma R_sym S T delta P R:
 	@is_rep_of_wrt S T delta P R ->
-		forall s t, P s -> P t -> (R s t -> R t s).
+		forall s t, P s -> (R s t <-> R t s).
 Proof.
-move => [] sing sur t t' Pt Pt' Rtt'.
+move => [] sing sur t t' Pt.
+split => eq.
 	move: (sur t Pt) => [] s [] dst sprop.
-	move: (sing.2 s t t' dst Rtt') => dst'.
+	move: (sing.2.1 s t t' dst eq) => dst'.
 	by apply/ (sing.1 s).
+move: (sur t Pt) => [] s [] dst sprop.
+move: (sing.2.2 s t t' dst eq) => dst'.
+by apply/ (sing.1 s).
 Qed.
 
 Lemma R_trans S T delta P R:
 	@is_rep_of_wrt S T delta P R ->
-		forall s r t, P s -> P r -> P t -> R s r -> R r t -> R s t.
+		forall s r t, P r -> R s r -> R r t -> R s t.
 Proof.
-move => rep s r t Ps Pr Pt Rsr Rrt'.
+move => rep s r t Pr Rsr Rrt'.
 move: (rep.2 r Pr) => [] s' [] ds'r sprop.
-move: (rep.1.2 s' r t ds'r Rrt') => ds't.
-move: (R_sym rep Ps Pr Rsr) => Rrs.
-move: (rep.1.2 s' r s ds'r Rrs) => dst.
+move: (rep.1.2.1 s' r t ds'r Rrt') => ds't.
+move: ((@R_sym S T delta P R rep r s Pr).2 Rsr) => Rrs.
+move: (rep.1.2.1 s' r s ds'r Rrs) => dst.
 apply/ (rep.1.1).
 apply dst.
 apply ds't.
@@ -69,8 +78,9 @@ split.
 		split.
  			move => s t t' dst dst'.
  			by apply: (issing.1 s t t').
- 		move => s t t' dst eq.
- 		by rewrite -eq.
+ 		split => s t t' dst eq.
+ 			by rewrite -eq.
+ 		by rewrite eq.
   move => t _ .
   move: (issur t) => [] s dst.
   by exists s.
@@ -79,8 +89,9 @@ split.
 	split.
 		move => s t t' dst dst'.
   	by apply: (issing.1 s t t').
-	move => s t t' dst eq.
-	by rewrite -eq.
+	split => s t t' dst eq.
+		by rewrite -eq.
+	by rewrite eq.
 move => t.
 have: True.
 	done.
@@ -97,17 +108,33 @@ Proof.
 Qed.
 
 Lemma sur_rep_sing_b S T (delta: S ->> T) (P: T -> Prop) :
-  delta is_representation_of P <-> delta is_representation_wrt (fun x y => x = y) of P.
+  delta is_representation_of P <-> delta represents P wrt (fun x y => x = y).
 Proof.
 done.
 Qed.
 
+Lemma rep_wrt S T (delta: S ->> T) (P: T-> Prop) (R: T -> T -> Prop):
+	delta represents P wrt R <-> delta is_representation_wrt (fun t t' => P t /\ R t t').
+Proof.
+split.
+	move => [] sing sur.
+	split.
+		split.
+			move => s t t' dst dst'.
+			move: (sing.1 s t t').
+			split => s t t' dst eq.
+				apply: (sing.2.1 s t t') =>//.
+				apply eq.2 => //.
+			apply: (sing.2.2 s t t') =>
+			apply eq.2.2.
+
 Lemma sur_rep_sing S T (delta: S ->> T) (P: T -> Prop) :
-  delta is_representation_of P -> delta is_representation_wrt (fun x y => x = y) of P.
+  delta is_representation_of P -> delta represents P wrt (fun x y => x = y).
 Proof.
 move: (sur_rep_sing_b delta P) => [cond cond'].
 exact: cond.
 Qed.
+
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names can be an arbitrary type
 but will usually be something that can be computed on, i.e. Baire space or something.
@@ -117,17 +144,40 @@ work. This may change depending on whether other function space constructions al
 need this or not. *)
 Structure type := make_rep_space {
   space : Type;
-  elements : space -> Prop;
-  identify : space -> space -> Prop;
+  equal: space -> space -> Prop;
   questions : Type;
   answers : Type;
 	No_answer:answers;
   delta : (questions -> answers) ->> space;
   countable_questions: questions is_countable;
   countable_answers: answers is_countable;
-  representation_is_valid : delta is_representation_wrt identify of elements
+  representation_is_valid : delta is_representation_wrt equal
   }.
 Notation names X := ((questions X) -> (answers X)).
+Notation rep_space := type.
+Notation "'rep'" := @delta (at level 2).
+Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
+Notation "x 'is_element'" := (equal x x) (at level 2).
+Notation "x 'is_from' X" := (@equal X x x) (at level 2).
+Notation "x 'equals' y" := (equal x y) (at level 2).
+
+Lemma equal_ref X:
+	(forall x:space X, x is_from X <-> x equals x).
+Proof.
+done.
+Qed.
+
+Lemma equal_sym X:
+	forall (x:space X) y, x is_from X -> (x equals y <-> y equals x).
+Proof.
+exact: (R_sym (representation_is_valid X)).
+Qed.
+
+Lemma equal_trans X:
+		forall x y z:space X, y is_from X -> x equals y -> y equals z -> x equals z.
+Proof.
+exact (R_trans (representation_is_valid X)).
+Qed.
 
 Definition prod_rep X Y :=
 	(fun (phipsi : (questions X + questions Y -> answers X + answers Y)) x =>
@@ -140,10 +190,7 @@ Definition prod_rep X Y :=
       end) x.2).
 
 Lemma prod_rep_is_rep (X Y : type):
-  (@prod_rep X Y) is_representation_wrt
-  (fun x y => identify x.1 y.1 /\ identify x.2 y.2)
-    of
-  (fun x => elements x.1 /\ elements x.2).
+  (@prod_rep X Y) is_representation_wrt (fun x y => equal x.1 y.1 /\ equal x.2 y.2).
 Proof.
 move: (@representation_is_valid X) (@representation_is_valid Y)
   => [xsing xsur] [ysing ysur].
@@ -157,13 +204,21 @@ split.
     apply: ysing.1 => //.
       by apply iny.
     by apply iny'.
-	move => phipsi.
+	split => phipsi.
+		move => [] x y [] x' y' /=[] inx iny [] ex ey.
+		split.
+			apply/ xsing.2.1.
+				by apply inx.
+			done.
+		apply/ ysing.2.1.
+			by apply iny.
+		done.
 	move => [] x y [] x' y' /=[] inx iny [] ex ey.
 	split.
-		apply/ xsing.2.
+		apply/ xsing.2.2.
 			by apply inx.
 		done.
-	apply/ ysing.2.
+	apply/ ysing.2.2.
 		by apply iny.
 	done.
 move => [] x y /=[Px Py].
@@ -186,16 +241,6 @@ Qed.
 
 (* This is the product of represented spaces. At some point I should prove that this
 is the product in some category, but I am unsure what the morphisms are supposed to be. *)
-
-Notation rep_space := type.
-Notation "'rep'" := @delta (at level 2).
-Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
-Notation "x 'is_element'" := (elements x) (at level 2).
-Notation "x 'is_from' X" := (@elements X x) (at level 2).
-Notation "X 'identifies' x 'and' y" := (@identify X x y) (at level 2).
-Notation equal x y :=
-	(x is_element /\ y is_element /\ identify x y).
-Notation "x 'equals' y" := (equal x y) (at level 2).
 
 Lemma sum_is_countable Q Q':
   Q is_countable -> Q' is_countable -> (Q + Q') is_countable.
@@ -253,8 +298,7 @@ Qed.
 
 Canonical rep_space_prod X Y := @make_rep_space
   (space X * space Y)
-  (fun x => x.1 is_element /\ x.2 is_element)
-  (fun x y => identify x.1 y.1 /\ identify x.2 y.2)
+  (fun x y => equal x.1 y.1 /\ equal x.2 y.2)
   (@questions X + @questions Y)
   (@answers X + @answers Y)
   (inl (No_answer X))
@@ -262,6 +306,18 @@ Canonical rep_space_prod X Y := @make_rep_space
   (sum_is_countable (countable_questions X) (countable_questions Y))
   (sum_is_countable (countable_answers X) (countable_answers Y))
   (@prod_rep_is_rep X Y).
+
+Canonical sub_rep_space (X,P) := @make_rep_space
+  (space X)
+  (fun x y => P x /\ P yequal x.1 y.1 /\ equal x.2 y.2)
+  (@questions X + @questions Y)
+  (@answers X + @answers Y)
+  (inl (No_answer X))
+  (@prod_rep X Y)
+  (sum_is_countable (countable_questions X) (countable_questions Y))
+  (sum_is_countable (countable_answers X) (countable_answers Y))
+  (@prod_rep_is_rep X Y).
+
 
 Lemma prod_is_countable Q Q':
   Q is_countable -> Q' is_countable -> (Q * Q') is_countable.
@@ -276,7 +332,7 @@ admit.
 Admitted.
 
 Definition is_mf_realizer (X Y : rep_space) F (f : (space X) ->> (space Y)) :=
-  forall phi x y, delta phi x -> f x y -> delta (F phi) y.
+  forall phi x y, x is_from X -> delta phi x -> f x y -> y is_from Y /\ delta (F phi) y.
 (* One candidate for the morphisms: The multivalued realizable functions. *)
 
 Definition is_realizer (X Y : rep_space) F (f: space X -> space Y) :=
@@ -287,38 +343,57 @@ Notation "F 'is_realizer_of' f" := (is_realizer F f) (at level 2).
 Lemma is_realizer_is_rep (X Y : rep_space):
   (@is_realizer X Y)
     is_representation_wrt
-  (fun f g => forall x y, x equals y -> (f x) equals (g y))
-    of
-  (fun f => (forall x y, x equals y -> (f x) equals (f y))).
+  (fun f g => forall x y, x is_from X -> y is_from X -> x equals y -> (f x) equals (g y)).
 Proof.
   move: (@representation_is_valid X) (@representation_is_valid Y)
     => [xsing xsur] [ysing ysur].
   split.
-  	split => F f g irf.
-  		move => irg x y [] xie [] yie xey.
+  	split.
+  		move => F f g irf irg x y xie yie xey.
     	move: (xsur x xie) => [] phi [] phinx prop.
-    	move: (ysing.1 (F phi) (f x) (g y)).
-				by apply: (irf phi x (f x) xie).
-			move: (xsing.2 phi x y phinx xey) => phiny.
-			by apply: (irg phi y (g y) yie phiny).
-		move => prop phi x gx xie phinx gxgx.
-		move: (prop x x xie xie ((R_ref (representation_is_valid X)) x xie)) => fxegx.
-		rewrite -gxgx.
-		have Fphinfx: (F phi) is_name_of (f x) by apply: (irf phi x (f x) xie phinx).
-		by apply: (ysing.2 (F phi) (f x) (g x) Fphinfx fxegx).
+    	apply: (ysing.1 (F phi) (f x) (g y)).
+				by apply/ (irf phi x (f x) xie phinx _).2.
+			move: (xsing.2.1 phi x y phinx xey) => phiny.
+			by apply: (irg phi y (g y) yie phiny _).2.
+		split => F f g irf prop phi x gx xie phinx gxgx.
+			rewrite - gxgx.
+			have Fphinfx: (F phi) is_name_of (f x) by apply (irf phi x (f x)).
+			move: (prop x x xie xie xie) => fxegx.
+ 			have Fphingx: (F phi) is_name_of (g x) by apply: (ysing.2.1 (F phi) (f x) (g x)).
+ 			split => //.
+ 			have fxefx: (f x) equals (f x) by apply/ (irf phi x (f x) _ _ _).1.
+			apply/ equal_trans.
+					by apply fxefx.
+				by apply (@equal_sym Y (f x) (g x) fxefx).
+			by apply fxegx.
+		rewrite - gxgx.
+		have Fphinfx: (F phi) is_name_of (f x) by apply (irf phi x (f x)).
+		move: (prop x x xie xie xie) => fxegx.
+		have Fphingx: (F phi) is_name_of (g x) by apply: (ysing.2.2 (F phi) (f x) (g x)).
+		split => //.
+		have fxefx: (f x) equals (f x) by apply/ (irf phi x (f x) _ _ _).1.
+		apply/ equal_trans.
+				by apply fxefx => //.
+			by apply fxegx.
+		by apply (@equal_sym Y (f x) (g x) fxefx).			
 	move => f cond.
-  set R := fun a b => forall x, x is_element -> delta a x -> delta b (f x).
+  set R := fun a b => forall x, x is_element -> delta a x -> (f x) is_element /\ delta b (f x).
   have: forall a, exists b, R a b.
   move => a.
   case: (classic (exists x, delta a x /\ x is_element)).
   	move => [x [anx xie]].
-		move: ((cond x).1 xie) => fxie.
+		move: (cond x x xie xie xie) => fxie.
     move: (ysur (f x) fxie) => [b []bnx] prop.
     exists b.
     move => y yie any.
     move: (xsing.1 a x y anx any) => xey.
-    move: ((cond x).2 y xey) => fxefy.
-    by apply: (ysing.2 b (f x) (f y)).
+    move: (cond x y xie yie xey) => fxefy.
+    split.
+    	apply/ equal_trans.
+   				by apply fxie.
+   			by apply (equal_sym (f y) fxie).
+   		done.
+   	by apply: (ysing.2.1 b (f x) (f y)).
   move => eq.
   exists (fun q => @No_answer Y).
   move => y yifx any.
@@ -327,29 +402,66 @@ Proof.
   by exists y.
 move => fe.
 move: (@choice (names X) (names Y) R fe) => [F Fir].
+rewrite /R in fe Fir.
+move: R fe => _ _.
 exists F.
 split.
 	move => a x y xie anx eq.
-	move: (Fir a x xie anx).
-	by rewrite eq.
+	move: (Fir a x xie anx) => Fanfx.
+	by rewrite -eq.
 move => G g Grf Grg x.
-split.
-	move => xie.
-	move: (xsur x xie) => [] phi [] phinx stuff.
-	move: ((cond x).1 xie) => fxie.
-	have gxefx: (g x) equal (f x).
-		apply: (ysing.1 (G phi) (g x) (f x)).
-			by apply: (Grg phi x (g x) xie phinx).
-		by apply: (Grf phi x (f x) xie phinx).
-	move: (ysing.2 (G phi) (f x) (g x)).
-	move: (ysur (f x)).
-	move: (cond x).1.
-move: (ysing).
-have: (g x) equal (f x).
-split.
-
-split.
+move => y xie yie xey.
+move: (xsur x xie) => [] phi [] phinx _.
+move: (xsur y yie) => [] psi [] psiny _.
+have fxefx: (f x) equals (f x) by apply (Fir phi x xie phinx).1.
+have fyefy: (f y) equals (f y) by apply (Fir psi y yie psiny).1.
+have gxefx: (g x) equals (f x).
+	apply/ ysing.1.
+		by apply: (Grg phi x (g x) _ _ _).2.
+	by apply: (Grf phi x (f x) _ _ _).2.
+have gyefy:	(g y) equals (f y).
+	apply/ ysing.1.
+		by apply: (Grg psi y (g y) _ _ _).2.
+	by apply: (Grf psi y (f y) _ _ _).2.
+apply: (equal_trans fxefx gxefx) => //.
+have fxefy: (f x) equals (f y) by apply cond.
+apply: (equal_trans fyefy fxefy).
+by apply: (equal_sym (g y) fyefy).2.
 Qed.
+
+Definition is_mf_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: (space X) ->> (space Y)) :=
+	(rep Y) o F tightens (f o (rep X)).
+
+Definition is_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: (space X) -> (space Y)) :=
+	@is_mf_rlzr X Y F (F2MF f).
+
+Definition has_cont_rlzr (X Y : rep_space) (f : (space X) -> (space Y)) :=
+	exists F, is_rlzr F f /\ @is_cont (questions X) (answers X) (questions Y) (answers Y) F.
+
+Definition is_ass (X Y: rep_space) psiF (f: (space X) -> (space Y)) :=
+	exists F, (@is_rlzr X Y F f) /\ (fun n phi q' => U n psiF phi q') computes F.
+
+Lemma is_associate_is_rep (X Y : rep_space):
+  (@is_ass X Y)
+    represents
+  (@has_cont_rlzr X Y)
+  	wrt
+  (fun f g => forall x y, x is_from X -> y is_from X -> x equals y -> (f x) equals (g y)).
+Proof.
+move: (representation_is_valid X) (representation_is_valid Y) => [] xsing xsur [] ysing ysur.
+split.
+Admitted.
+
+Canonical rep_space_cont_fun X Y := @make_rep_space
+  (space X -> space Y)
+  (fun f g => f has_cont_rlzr /\ g has_cont_rlzr /\ equal x.1 y.1 /\ equal x.2 y.2)
+  (@questions X + @questions Y)
+  (@answers X + @answers Y)
+  (inl (No_answer X))
+  (@prod_rep X Y)
+  (sum_is_countable (countable_questions X) (countable_questions Y))
+  (sum_is_countable (countable_answers X) (countable_answers Y))
+  (@prod_rep_is_rep X Y).
 
 
 (*Definition make_rep_space_from_sur
