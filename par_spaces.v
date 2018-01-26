@@ -2,7 +2,7 @@
 the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
 Require Import universal_machine multi_valued_functions machines.
-Require Import FunctionalExtensionality Psatz.
+Require Import FunctionalExtensionality Psatz ClassicalChoice.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -28,7 +28,8 @@ Notation "delta 'is_representation_wrt' equals 'of' elements" :=
 (* This is to make it possible to identify elements arbirarily, i.e. make quotients work. *)
 
 Lemma R_sym S T delta P R:
-	@is_rep_of_wrt S T delta P R -> forall s t, P s -> P t -> (R s t -> R t s).
+	@is_rep_of_wrt S T delta P R ->
+		forall s t, P s -> P t -> (R s t -> R t s).
 Proof.
 move => [] sing sur t t' Pt Pt' Rtt'.
 	move: (sur t Pt) => [] s [] dst sprop.
@@ -37,7 +38,8 @@ move => [] sing sur t t' Pt Pt' Rtt'.
 Qed.
 
 Lemma R_trans S T delta P R:
-	@is_rep_of_wrt S T delta P R -> forall s r t, P s -> P r -> P t -> R s r -> R r t -> R s t.
+	@is_rep_of_wrt S T delta P R ->
+		forall s r t, P s -> P r -> P t -> R s r -> R r t -> R s t.
 Proof.
 move => rep s r t Ps Pr Pt Rsr Rrt'.
 move: (rep.2 r Pr) => [] s' [] ds'r sprop.
@@ -49,24 +51,13 @@ apply dst.
 apply ds't.
 Qed.
 
-Lemma R_equiv S T delta P R:
+Lemma R_ref S T delta P R:
 	@is_rep_of_wrt S T delta P R ->
-		(forall t, P t -> R t t)
-		/\
-		(forall s t, P s -> P t -> (R s t -> R t s) /\ forall r, P r -> R s r -> R r t -> R s t).
+		(forall t, P t -> R t t).
 Proof.
-move => rep.
-split.
-	move => t Pt.
-	move: ((rep.2 t Pt)) => [] s' [] ds't sprop.
-	by apply (rep.1.1 s' t t).
-split.
-by apply/ (R_sym rep).
-move => r Pr Rsr Rrt.
-apply/ (R_trans rep) => //.
-by apply Pr => //.
-done.
-done.
+move => rep t Pt.
+move: ((rep.2 t Pt)) => [] s' [] ds't sprop.
+by apply (rep.1.1 s' t t).
 Qed.
 
 Lemma sur_rep_b S T (delta: S ->> T) :
@@ -127,14 +118,14 @@ need this or not. *)
 Structure type := make_rep_space {
   space : Type;
   elements : space -> Prop;
-  equals : space -> space -> Prop;
+  identify : space -> space -> Prop;
   questions : Type;
   answers : Type;
 	No_answer:answers;
   delta : (questions -> answers) ->> space;
   countable_questions: questions is_countable;
   countable_answers: answers is_countable;
-  representation_is_valid : delta is_representation_wrt equals of elements
+  representation_is_valid : delta is_representation_wrt identify of elements
   }.
 Notation names X := ((questions X) -> (answers X)).
 
@@ -150,7 +141,7 @@ Definition prod_rep X Y :=
 
 Lemma prod_rep_is_rep (X Y : type):
   (@prod_rep X Y) is_representation_wrt
-  (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
+  (fun x y => identify x.1 y.1 /\ identify x.2 y.2)
     of
   (fun x => elements x.1 /\ elements x.2).
 Proof.
@@ -201,7 +192,10 @@ Notation "'rep'" := @delta (at level 2).
 Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
 Notation "x 'is_element'" := (elements x) (at level 2).
 Notation "x 'is_from' X" := (@elements X x) (at level 2).
-Notation "x 'equal' y" := (@equals x y) (at level 2).
+Notation "X 'identifies' x 'and' y" := (@identify X x y) (at level 2).
+Notation equal x y :=
+	(x is_element /\ y is_element /\ identify x y).
+Notation "x 'equals' y" := (equal x y) (at level 2).
 
 Lemma sum_is_countable Q Q':
   Q is_countable -> Q' is_countable -> (Q + Q') is_countable.
@@ -260,7 +254,7 @@ Qed.
 Canonical rep_space_prod X Y := @make_rep_space
   (space X * space Y)
   (fun x => x.1 is_element /\ x.2 is_element)
-  (fun x y => equals x.1 y.1 /\ equals x.2 y.2)
+  (fun x y => identify x.1 y.1 /\ identify x.2 y.2)
   (@questions X + @questions Y)
   (@answers X + @answers Y)
   (inl (No_answer X))
@@ -272,12 +266,91 @@ Canonical rep_space_prod X Y := @make_rep_space
 Lemma prod_is_countable Q Q':
   Q is_countable -> Q' is_countable -> (Q * Q') is_countable.
 Proof.
-move => [] cntQ surQ [] cntQ' surQ'.
-rewrite /is_count.
+admit.
+Admitted.
 
 Lemma list_is_countable Q:
-  Q is_countable -> Q' is_countable -> (Q + Q') is_countable.
+	Q is_countable -> (list Q) is_countable.
 Proof.
+admit.
+Admitted.
+
+Definition is_mf_realizer (X Y : rep_space) F (f : (space X) ->> (space Y)) :=
+  forall phi x y, delta phi x -> f x y -> delta (F phi) y.
+(* One candidate for the morphisms: The multivalued realizable functions. *)
+
+Definition is_realizer (X Y : rep_space) F (f: space X -> space Y) :=
+	is_mf_realizer F (F2MF f).
+(* A second candidate: the total singlevalued realizable functions *)
+Notation "F 'is_realizer_of' f" := (is_realizer F f) (at level 2).
+
+Lemma is_realizer_is_rep (X Y : rep_space):
+  (@is_realizer X Y)
+    is_representation_wrt
+  (fun f g => forall x y, x equals y -> (f x) equals (g y))
+    of
+  (fun f => (forall x y, x equals y -> (f x) equals (f y))).
+Proof.
+  move: (@representation_is_valid X) (@representation_is_valid Y)
+    => [xsing xsur] [ysing ysur].
+  split.
+  	split => F f g irf.
+  		move => irg x y [] xie [] yie xey.
+    	move: (xsur x xie) => [] phi [] phinx prop.
+    	move: (ysing.1 (F phi) (f x) (g y)).
+				by apply: (irf phi x (f x) xie).
+			move: (xsing.2 phi x y phinx xey) => phiny.
+			by apply: (irg phi y (g y) yie phiny).
+		move => prop phi x gx xie phinx gxgx.
+		move: (prop x x xie xie ((R_ref (representation_is_valid X)) x xie)) => fxegx.
+		rewrite -gxgx.
+		have Fphinfx: (F phi) is_name_of (f x) by apply: (irf phi x (f x) xie phinx).
+		by apply: (ysing.2 (F phi) (f x) (g x) Fphinfx fxegx).
+	move => f cond.
+  set R := fun a b => forall x, x is_element -> delta a x -> delta b (f x).
+  have: forall a, exists b, R a b.
+  move => a.
+  case: (classic (exists x, delta a x /\ x is_element)).
+  	move => [x [anx xie]].
+		move: ((cond x).1 xie) => fxie.
+    move: (ysur (f x) fxie) => [b []bnx] prop.
+    exists b.
+    move => y yie any.
+    move: (xsing.1 a x y anx any) => xey.
+    move: ((cond x).2 y xey) => fxefy.
+    by apply: (ysing.2 b (f x) (f y)).
+  move => eq.
+  exists (fun q => @No_answer Y).
+  move => y yifx any.
+  exfalso.
+  apply eq.
+  by exists y.
+move => fe.
+move: (@choice (names X) (names Y) R fe) => [F Fir].
+exists F.
+split.
+	move => a x y xie anx eq.
+	move: (Fir a x xie anx).
+	by rewrite eq.
+move => G g Grf Grg x.
+split.
+	move => xie.
+	move: (xsur x xie) => [] phi [] phinx stuff.
+	move: ((cond x).1 xie) => fxie.
+	have gxefx: (g x) equal (f x).
+		apply: (ysing.1 (G phi) (g x) (f x)).
+			by apply: (Grg phi x (g x) xie phinx).
+		by apply: (Grf phi x (f x) xie phinx).
+	move: (ysing.2 (G phi) (f x) (g x)).
+	move: (ysur (f x)).
+	move: (cond x).1.
+move: (ysing).
+have: (g x) equal (f x).
+split.
+
+split.
+Qed.
+
 
 (*Definition make_rep_space_from_sur
   (space : Type)
@@ -364,15 +437,6 @@ Definition make_rep_space_from_fun
       (sur_rep_sing (fun_rep_on_range delta))
     .
 *)
-
-Definition is_mf_realizer (X Y : rep_space) F (f : (space X) ->> (space Y)) :=
-  forall phi x y, delta phi x -> delta (F phi) y -> f x y.
-(* One candidate for the morphisms: The multivalued realizable functions. *)
-
-Definition is_realizer (X Y : rep_space) F (f: space X -> space Y) := is_mf_realizer F (F2MF f).
-(* A second candidate: the total singlevalued realizable functions *)
-Notation "F 'is_realizer_of' f" := (is_realizer F f) (at level 2).
-Arguments is_realizer {X Y}.
 
 Definition is_prim_rec (X Y : rep_space) (f : space X -> space Y) :=
   exists F, is_realizer F f.
