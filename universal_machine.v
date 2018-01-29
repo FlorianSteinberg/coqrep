@@ -296,7 +296,7 @@ Context (sur: (F2MF cnt) is_surjective).
 Check is_comp.
 
 Lemma U_is_universal:
-	I -> I' -> F is_continuous -> exists psiF, (fun n phi q' => U n psiF phi q') computes F.
+	I -> I' -> F is_continuous -> exists psiF, (fun n phi q' => U n psiF phi q') type_two_computes F.
 Proof.
 move => None None' Fcont.
 set R := fun phi psi => ((exists psi', F phi psi') -> F phi psi).
