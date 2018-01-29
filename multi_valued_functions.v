@@ -1,11 +1,14 @@
 (* This file is supposed to be come a module for multivalued functions *)
 
 From mathcomp Require Import all_ssreflect.
+Require Import ClassicalChoice.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Section MULTIVALUED_FUNCTIONS.
+Context (S T S' T': Type).
 Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 (*This is the notation I use for multivalued functions. The value f(s) of such
 a function should be understood as the set of all elements t such that f s t is true. *)
@@ -13,7 +16,7 @@ a function should be understood as the set of all elements t such that f s t is 
 Definition F2MF S T (f : S -> T) s t := f s = t.
 (* I'd like this to be a Coercion but it won't allow me to do so. *)
 
-Definition mf_sum S S' T T' (f : S ->> T) (g : S' ->> T') :=
+Definition mf_sum S T S' T' (f : S ->> T) (g : S' ->> T') :=
   fun c x => match c with
     | inl a => match x with
       | inl y => f a y
@@ -29,7 +32,7 @@ it the use of sums is rather unusual for represented spaces. While infinite co-
 products show up for some weird spaces like polynomials or analytic functions, I
 have not seen finite coproducts very often. *)
 
-Definition mf_prod S S' T T' (f : S ->> T) (g : S' ->> T')
+Definition mf_prod S T S' T' (f : S ->> T) (g : S' ->> T')
 	:= fun c x => f c.1 x.1 /\ g c.2 x.2.
 (* in contrast to coproducts, products are very common and I have already included
 several lemmas about them because I needed them. *)
@@ -37,63 +40,24 @@ several lemmas about them because I needed them. *)
 Notation "f \, g" := (mf_prod f g) (at level 50).
 (*This is the notation for the tupling of multifunctions*)
 
-Definition is_sing_wrt S T (f: S ->> T) (R: T ->> T) :=
-  (forall s t t', f s t -> f s t' -> R t t')
-  /\
-  (forall s t t', f s t -> R t t' -> f s t')
-  /\
-  forall s t t', f s t -> R t' t -> f s t'.
-Notation "f 'is_single_valued_wrt' R" := (is_sing_wrt f R) (at level 2).
-(* To understand why this is called "single valued" see the special case that R i
-the equality relation below. More generally, this means that f factors through the
-relation R. *)
-Definition is_sing S T (f: S ->> T) := is_sing_wrt f (fun s t=> s = t).
+Definition is_sing S T (f: S ->> T) :=
+  (forall s t t', f s t -> f s t' -> t = t').
 Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
 (* a single valued function is still a partial function *)
 
-Lemma fun_to_sing S T (f: S-> T):
+Lemma fun_to_sing (f: S-> T):
 	(F2MF f) is_single_valued.
 Proof.
-split.
-	by move => s t t' H H0; rewrite -H0.
-split => s t t' H H0.
-	by rewrite -H0.
-by rewrite H0.
+by move => s t t' H H0; rewrite -H0.
 Qed.
 
-Lemma prod_sing_wrt S S' T T' (f: S ->> T) (g : S' ->> T') R R' :
-  f is_single_valued_wrt R /\ g is_single_valued_wrt R'
-  	-> (f \, g) is_single_valued_wrt (fun p q => R p.1 q.1 /\ R' p.2 q.2).
-Proof.
-move => [fsing gsing]; split.
-	move => s t t' [] H H0 []; split.
-		by apply/ (fsing.1 s.1).
-	by apply/ (gsing.1 s.2).
-split.
-	move => s t t' [] H H0 []; split.
-		by apply/ (fsing.2.1 s.1 t.1).
-	by apply/ (gsing.2.1 s.2 t.2).
-move => s t t' [] H H0 []; split.
-	by apply/ (fsing.2.2 s.1 t.1).
-by apply/ (gsing.2.2 s.2 t.2).
-Qed.
-
-Lemma prod_sing S S' T T' (f: S ->> T) (g: S' ->> T'):
+Lemma prod_sing (f: S ->> T) (g: S' ->> T'):
   f is_single_valued /\ g is_single_valued -> (f \, g) is_single_valued.
 Proof.
-move => [fsing gsing]; split.
-	move => s t t' [] H H0 [] H1 H2; apply: injective_projections.
-		by apply (fsing.1 s.1).
-	by apply (gsing.1 s.2).
-split => s t t' [] H H0 [] H1.
-	rewrite -H1.
-	split.
-		by apply/ (fsing.2.1 s.1 t.1).
-	by apply (gsing.2.1 s.2 t.2).
-rewrite H1.
-split.
-	by apply/ (fsing.2.2 s.1 t.1).
-by apply (gsing.2.2 s.2 t.2).
+move => [fsing gsing] s t t' [] fst gst [] fst' gst'.
+apply: injective_projections.
+	by apply (fsing s.1).
+by apply (gsing s.2).
 Qed.
 
 Definition range S T (f: S ->> T) (t : T) := exists s, f s t.
@@ -103,8 +67,9 @@ Notation "t 'from_range' f" := (range f t) (at level 2).
 Definition is_sur S T (f: S ->> T) :=
   forall t, range f t.
 Notation "f 'is_surjective'" := (is_sur f) (at level 2).
+(* this notion of surjectivity is only usefull in combination with single-valuedness *)
 
-Lemma prod_range S S' T T' (f: S ->> T) (g : S' ->> T') :
+Lemma prod_range (f: S ->> T) (g : S' ->> T') :
   forall s t, s from_range f /\ t from_range g -> (s,t) from_range (f \, g).
 Proof.
   move => s t.
@@ -117,6 +82,7 @@ Notation "s 'from_dom' f" := (dom f s) (at level 2).
 
 Definition tight S T (f: S ->> T) (g: S ->> T) :=
 	forall s, (exists t, f s t) -> (exists t, g s t) /\ forall t, g s t -> f s t.
+Notation "f 'is_tightened_by' g" := (tight f g) (at level 2).
 Notation "g 'tightens' f" := (tight f g) (at level 2).
 
 (* A thightening is a generalization of an extension of a single-valued function
@@ -126,13 +92,13 @@ if "forall s, (exists t, f(s) = t) -> g(s) = f(s)". This formula can also be wri
 "forall s t, f(s) = t -> g(s) = t" and the equivalence is proven in the next lemmas.*)
 Notation "g 'extends' f" := (forall s t, f s t -> g s t) (at level 2).
 
-Lemma tight_ref S T (f: S ->> T):
+Lemma tight_ref (f: S ->> T):
 	f tightens f.
 Proof.
 done.
 Qed.
 
-Lemma tight_trans S T (f g h: S ->> T):
+Lemma tight_trans (f g h: S ->> T):
 	f tightens g -> g tightens h -> f tightens h.
 Proof.
 move => ftg gth s eh.
@@ -143,18 +109,18 @@ apply: ((gth s eh).2 t).
 by apply: ((ftg s (gth s eh).1).2 t).
 Qed.
 
-Lemma tightening_of_single_valued S T (f: S ->> T) g:
+Lemma tightening_of_single_valued (f: S ->> T) g:
 	f is_single_valued -> g tightens f -> g extends f.
 Proof.
 move => fsing gef s t fst.
 move: (gef s) => [].
 	by exists t.
 move => [] t' gst' cond.
-rewrite (fsing.1 s t t') => //.
+rewrite (fsing s t t') => //.
 by apply (cond t').
 Qed.
 
-Lemma single_valued_tightening S T (f: S ->> T) g:
+Lemma single_valued_tightening (f: S ->> T) g:
 	g is_single_valued -> g extends f -> g tightens f.
 Proof.
 move => gsing gef s [] t fst.
@@ -162,11 +128,11 @@ split.
 	exists t.
 	by apply: (gef s t).
 move => t' gst'.
-rewrite -(gsing.1 s t t') => //.
+rewrite -(gsing s t t') => //.
 by apply gef.
 Qed.
 
-Lemma extension_and_tightening S T (f: S ->> T) g:
+Lemma extension_and_tightening (f: S ->> T) g:
 	f is_single_valued -> g is_single_valued -> (g extends f <-> g tightens f).
 Proof.
 split.
@@ -178,9 +144,7 @@ Qed.
 function of a multi valued funtion is a thightening of that funciton. *)
 Notation "g 'is_choice_for' f" := ((F2MF g) tightens f) (at level 2).
 
-Require Import ClassicalChoice.
-
-Lemma exists_choice S T (f: S ->> T):
+Lemma exists_choice (f: S ->> T):
 	(exists (t:T), True) -> exists F, F is_choice_for f.
 Proof.
 move => [] t _.
@@ -202,19 +166,18 @@ Qed.
 Definition is_tot S T (f: S ->> T) := forall s, s from_dom f.
 Notation "f 'is_total'" := (is_tot f) (at level 2).
 
-Lemma fun_total S T (f: S -> T):
+Lemma fun_total (f: S -> T):
 	(F2MF f) is_total.
 Proof.
-move => s.
-	by exists (f s).
+move => s; by exists (f s).
 Qed.
 
-Lemma prod_total S T S' T' (f: S ->> T) (g: S' ->> T'):
+Lemma prod_total (f: S ->> T) (g: S' ->> T'):
   f is_total /\ g is_total ->(f \, g) is_total.
 Proof.
-  move => [istotalf istotalg] s.
-  move: (istotalf s.1) (istotalg s.2) => [t fst] [t' gst'].
-  by exists (pair t t').
+move => [istotalf istotalg] s.
+move: (istotalf s.1) (istotalg s.2) => [t fst] [t' gst'].
+by exists (pair t t').
 Qed.
 
 Definition mf_comp R S T (f : S ->> T) (g : R ->> S) :=
@@ -223,7 +186,7 @@ Definition mf_comp R S T (f : S ->> T) (g : R ->> S) :=
 composition which would simply read "fun r t => exists s, f r s /\ g s t." *)
 Notation "f 'o' g" := (mf_comp f g) (at level 2).
 
-Lemma mf_comp_assoc R S T Q (f: T ->> Q) g (h: R ->> S) r q:
+Lemma mf_comp_assoc (f: S' ->> T') g (h: S ->> T) r q:
 	(f o g) o h r q <-> f o (g o h) r q.
 Proof.
 split.
@@ -280,31 +243,13 @@ have ghrt'': g o h r t''.
 by apply (cond t'' ghrt'').
 Qed.
 
-Lemma single_valued_composition_wrt R S T (f: S ->> T) (g : R ->> S) :
-	f is_single_valued -> g is_single_valued_wrt (fun s s' => forall t, f s t -> f s' t)
-		-> f o g is_single_valued.
-Proof.
-move => fsing gsing; split.
-	move => r t t' [][] s [] grs fst prop [][].
-	move => s' [] grs' fs't' prop'.
-	move: (gsing.1 r s s' grs grs' t fst) => fs't.
-	move: (fsing.1 s t t') (fsing.1 s' t t') => eq eq''.
-	by rewrite eq => //; rewrite -eq''.
-split => r t t' fgrt eq.
-	by rewrite -eq.
-by rewrite eq.
-Qed.
-
-Lemma single_valued_composition R S T (f: S ->> T) (g : R ->> S) :
+Lemma sing_comp (f: T ->> T') (g : S ->> T) :
 	f is_single_valued -> g is_single_valued -> f o g is_single_valued.
 Proof.
-move => fsing gsing; split.
-	move => r t t' [][] s [] grs fst prop [][] s' [] grs' fs't' prop'.
-	move: (gsing.1 r s s' grs grs') (fsing.1 s t t') => eq eq'.
-	by rewrite eq' => //; rewrite eq.
-split => // s t t' fgst eq.
-	by rewrite -eq.
-by rewrite eq.
+move => fsing gsing.
+move => r t t' [][] s [] grs fst prop [][] s' [] grs' fs't' prop'.
+move: (gsing r s s' grs grs') (fsing s t t') => eq eq'.
+by rewrite eq' => //; rewrite eq.
 Qed.
 
 Notation "f 'restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
@@ -325,7 +270,7 @@ as defined below. It does kind of make sense if the value set is interpreted as 
 set of "acceptable return values": It should either be the case that all acceptable
 values are from X or that none is. *)
 
-Lemma sur_and_really_sur S T (f: S ->> T) P:
+Lemma sur_and_really_sur (f: S ->> T) P:
 	(exists (t: T), True) -> f is_single_valued ->
 		(is_really_sur_wrt f P <-> f is_surjective_wrt P).
 Proof.
@@ -336,7 +281,7 @@ split.
 	exists (s); split.
 		by apply: ((icf s sfd).2 t).
 	move => s0 t' fs0t fs0t'.
-	by rewrite (sing.1 s0 t t' fs0t fs0t') in Pt.
+	by rewrite (sing s0 t t' fs0t fs0t') in Pt.
 move: (exists_choice f e) => [] F prop sur.
 exists F; split => //.
 move => t Pt.
@@ -346,10 +291,10 @@ exists s; split.
 have ex: (exists t, f s t) by exists t.
 move: (prop s ex) => [] [] t' Fst' cond'.
 move: (cond' t' Fst') => fst'.
-by rewrite (sing.1 s t t' fst fst').
+by rewrite (sing s t t' fst fst').
 Qed.
 
-Lemma surjective_composition_wrt R S T (f: S ->> T) (g : R ->> S):
+Lemma surjective_composition_wrt (f: T ->> T') (g : S ->> T):
 	f is_surjective -> g is_surjective_wrt (dom f) -> f o g is_surjective.
 Proof.
 move => fsur gsur t.
@@ -366,3 +311,20 @@ does not have additional assumptions. It is probably possible to prove:
 Lemma surjective_composition R S T (f: S ->> T) (g: R ->> S):
 	f is_surjective -> f is_total -> g is_surjective -> f o g is_surjective.
 I did not try, though. *)
+End MULTIVALUED_FUNCTIONS.
+Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
+Notation "f \, g" := (mf_prod f g) (at level 50).
+Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
+Notation "f 'restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
+Notation "t 'from_range' f" := (range f t) (at level 2).
+Notation "f 'is_surjective'" := (is_sur f) (at level 2).
+Notation "s 'from_dom' f" := (dom f s) (at level 2).
+Notation "f 'is_tightened_by' g" := (tight f g) (at level 2).
+Notation "g 'tightens' f" := (tight f g) (at level 2).
+Notation "g 'extends' f" := (forall s t, f s t -> g s t) (at level 2).
+Notation "g 'is_choice_for' f" := ((F2MF g) tightens f) (at level 2).
+Notation "f 'is_total'" := (is_tot f) (at level 2).
+Notation "f 'o' g" := (mf_comp f g) (at level 2).
+Notation "f 'restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
+Notation "f 'is_surjective_wrt' A" := (is_sur_wrt f A) (at level 2).
+
