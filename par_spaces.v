@@ -70,8 +70,8 @@ Structure rep_space := make_rep_space {
   space :> Space;
   questions : Type;
   answers : Type;
-	No_answer: answers;
   delta : (questions -> answers) ->> (@type space);
+	No_answer: answers;
   countable_questions: questions is_countable;
   countable_answers: answers is_countable;
   representation_is_valid : delta is_representation_of space
@@ -84,6 +84,45 @@ Notation "x 'is_element'" := (equal x x) (at level 2).
 Notation "x 'is_from' X" := (@equal X x x) (at level 2).
 Notation "x 'equals' y" := (equal x y) (at level 2).
 Notation "'rep_valid' X" := (@representation_is_valid X) (at level 2).
+
+Definition rep_space_from_rep X Q A
+	(No_answer:A)
+	(countable_questions:Q is_countable)
+	(countable_answers:A is_countable)
+	(delta: (Q -> A) ->> X)
+	(is_rep: delta is_representation) :=
+@make_rep_space
+	(Space_from_rep is_rep)
+	Q
+	A
+	delta
+	No_answer
+	countable_questions
+	countable_answers
+	(rep_of_space_from_rep is_rep).
+
+Lemma sing_rep S T (delta: S ->> T):
+	delta is_single_valued -> delta is_representation.
+Proof.
+move => sing s s' t t' dst dst' ds't'.
+by rewrite (sing s t t').
+Qed.
+
+Lemma sing_sur_rep S T (delta: S ->> T):
+	delta is_single_valued -> delta is_surjective -> delta is_representation_of (space_from_type T).
+Proof.
+move => sing sur.
+split.
+	apply/ (sing_rep sing).
+move => x y.
+split.
+	move => [] psi [] dpsix dpsiy.
+	by rewrite (sing psi x y).
+move => /= eq.
+rewrite eq /deq.
+move: (sur y) => [] psi.
+by exists psi.
+Qed.
 
 Definition prod_rep X Y :=
 	(fun (phipsi : (questions X + questions Y -> answers X + answers Y)) x =>
@@ -196,8 +235,8 @@ Canonical rep_space_prod X Y := @make_rep_space
   (prod_space (space X) (space Y))
   (@questions X + @questions Y)
   (@answers X + @answers Y)
-  (inl (No_answer X))
   (@prod_rep X Y)
+  (inl (No_answer X))
   (sum_count (countable_questions X) (countable_questions Y))
   (sum_count (countable_answers X) (countable_answers Y))
   (@prod_rep_is_rep X Y).
@@ -365,7 +404,7 @@ Qed.
 Definition has_cont_rlzr (X Y : rep_space) (f : (type (space X)) -> (type (space Y))) :=
 	exists F, is_rlzr F f /\ @is_cont (questions X) (answers X) (questions Y) (answers Y) F.
 
-Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
+Notation opU psi := (evaltt (fun n phi q' => U n psi phi q')).
 
 Definition is_ass (X Y: rep_space) psi (f: (type (space X)) -> (type (space Y))) := (opU psi) is_realizer_of f.
 
@@ -374,8 +413,8 @@ Lemma is_ass_is_rep (X Y : rep_space):
 Proof.
 move => psif psig f g psifaf psifag psigag.
 exact: (@is_rlzr_is_rep X Y 
-	(eval (fun n phi q' => U n psif phi q'))
-	(eval (fun n phi q' => U n psig phi q'))
+	(evaltt (fun n phi q' => U n psif phi q'))
+	(evaltt (fun n phi q' => U n psig phi q'))
 	f g psifaf psifag psigag
 	).
 Qed.
@@ -384,8 +423,8 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
   (Space_from_rep (@is_ass_is_rep X Y))
   (seq (questions X * answers X) * questions Y)
   (questions X + answers Y)
-  (inr (No_answer Y))
   (@is_ass X Y)
+  (inr (No_answer Y))
   (prod_count
   	(list_count (prod_count
   		(countable_questions X)
@@ -394,7 +433,62 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
   (sum_count (countable_questions X) (countable_answers Y))
   (rep_of_space_from_rep (@is_ass_is_rep X Y)).
 
+Definition has_comp_name (X: rep_space) (x: X):=
+	{M | exists phi, M computes (F2MF phi) /\ phi is_name_of x}.
+Definition has_prim_rec_name (X: rep_space) (x: X) :=
+	{phi| phi is_name_of x}.
+
+Lemma prim_rec_elt_comp_elt (X: rep_space) (x: X): has_prim_rec_name x -> has_comp_name x.
+Proof.
+move => [] phi phinx.
+exists (fun n q => some (phi q)).
+exists phi.
+split => //.
+move => q _.
+split.
+	exists (phi q).
+	by exists 0.
+move => a  [] n ev.
+by apply Some_inj.
+Qed.
+
+Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
+	{M | exists F, M type_two_computes F /\ F is_realizer_of f}.
+
+Definition is_prim_rec_fun (X Y: rep_space) (f: X -> Y) :=
+	{F | F is_realizer_of f}.
+
+Lemma prim_rect_fun_comp_fun (X Y: rep_space) (f:X -> Y) : is_prim_rec_fun f -> is_comp_fun f.
+Proof.
+move => [] F Frf.
+exists (fun n phi q => some (F phi q)).
+exists phi.
+split => //.
+move => q _.
+split.
+	exists (phi q).
+	by exists 0.
+move => a  [] n ev.
+by apply Some_inj.
+Qed.
+
 End REPRESENTED_SPACES.
+Notation "delta 'is_representation'" := (is_rep delta) (at level 2).
+Notation "delta 'is_representation_of' X" := (@is_rep_of _ X delta) (at level 2).
+Notation names X := ((questions X) -> (answers X)).
+Notation "'rep'" := @delta (at level 2).
+Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
+Notation "x 'equals' y" := (equal x y) (at level 2).
+Notation "x 'is_element'" := (equal x x) (at level 2).
+Notation "x 'is_from' X" := (@equal X x x) (at level 2).
+Notation "x 'equals' y" := (equal x y) (at level 2).
+Notation "'rep_valid' X" := (@representation_is_valid X) (at level 2).
+Notation "f 'is_realized_by' F" := (is_rlzr F f) (at level 2).
+Notation "F 'is_realizer_of' f" := (is_rlzr F f) (at level 2).
+Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
+Notation "x 'is_computable_element'" := (has_comp_name x) (at level 2).
+Notation "x 'is_primitive_recursive_element'" := (has_prim_rec_name x) (at level 2).
+Notation "f 'is_computable_function'" := (is_comp_fun f) (at level 2).
 (*
 
 Lemma eval_comp X Y:
