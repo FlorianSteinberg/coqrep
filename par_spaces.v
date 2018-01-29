@@ -30,17 +30,17 @@ rewrite /delts/deq => [] [] psi [] dpsix _.
 by exists psi.
 Qed.
 
-Lemma deq_sym S T (delta: S ->> T) x y:
-	(deq delta x y -> deq delta y x).
+Lemma deq_sym S T (delta: S ->> T):
+	forall x y, (deq delta x y -> deq delta y x).
 Proof.
-move=> [] phi [] phinx phiny.
+move=>  x y [] phi [] phinx phiny.
 by exists phi.
 Qed.
 
-Lemma deq_trans S T (delta: S ->> T) (is_rep: delta is_representation) x y z:
-	deq delta x y -> deq delta y z -> deq delta x z.
+Lemma deq_trans S T (delta: S ->> T) (is_rep: delta is_representation):
+	forall x y z, deq delta x y -> deq delta y z -> deq delta x z.
 Proof.
-move => [] phi [] phinx phiny [] psi [] psiny psinz.
+move => x y z [] phi [] phinx phiny [] psi [] psiny psinz.
 exists psi.
 split => //.
 by apply: (is_rep phi psi x y).
@@ -52,6 +52,12 @@ Definition Space_from_rep S T (delta: S ->> T) (is_rep: delta is_representation)
 Definition is_rep_of S (X: Space) (delta: S ->> (type X)) :=
 	delta is_representation /\ forall x y, deq delta x y <-> (@equal X) x y.
 Notation "delta 'is_representation_of' X" := (@is_rep_of _ X delta) (at level 2).
+
+Lemma rep_of_space_from_rep S T (delta: S ->> T) (is_rep: delta is_representation) :
+	delta is_representation_of (Space_from_rep is_rep).
+Proof.
+done.
+Qed.
 
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names can be an arbitrary type
@@ -375,8 +381,7 @@ exact: (@is_rlzr_is_rep X Y
 Qed.
 
 Canonical rep_space_cont_fun X Y := @make_rep_space
-  (@make_space (type(space X) -> type(space Y)) (deq (@is_ass X Y))
-  	(@deq_sym _ (type(space X) -> (type(space Y))) (is_ass)) (deq_trans (@is_ass X Y) is_ass_is_rep))
+  (Space_from_rep (@is_ass_is_rep X Y))
   (seq (questions X * answers X) * questions Y)
   (questions X + answers Y)
   (inr (No_answer Y))
@@ -387,10 +392,8 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
   		(countable_answers X)))
   	(countable_questions Y))
   (sum_count (countable_questions X) (countable_answers Y))
-  (@is_ass_is_rep X Y).
+  (rep_of_space_from_rep (@is_ass_is_rep X Y)).
 
-Definition is_cmptbl X Y (f: space X -> space Y):=
-	exists F, F is_computable /\ F is_realizer_of f.
 End REPRESENTED_SPACES.
 (*
 
