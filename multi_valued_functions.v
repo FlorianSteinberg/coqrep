@@ -142,7 +142,22 @@ Qed.
 
 (* To extend to tightenings for multivalued functions makes sense: for instance a Choice
 function of a multi valued funtion is a thightening of that funciton. *)
-Notation "g 'is_choice_for' f" := ((F2MF g) tightens f) (at level 2).
+Definition icf S T (f: S ->> T) g := forall s, (exists t, f s t) -> f s (g s).
+Notation "g 'is_choice_for' f" := (icf f g) (at level 2).
+
+Lemma icf_tight (g: S -> T) f:
+	g is_choice_for f <-> (F2MF g) tightens f.
+Proof.
+split.
+	move => icf s ex.
+	split.
+		by exists (g s).
+	move => t eq.
+	by rewrite -eq; apply: icf s ex.
+move => tight s ex.
+move: (tight s ex) => [] _ prop.
+by apply (prop (g s)).
+Qed.
 
 Lemma exists_choice (f: S ->> T):
 	(exists (t:T), True) -> exists F, F is_choice_for f.
@@ -156,11 +171,8 @@ have cond: forall s, exists t, R s t.
 	move => false.
 	exists t => sfd; by exfalso.
 move: (choice R cond) => [] F prop.
-exists F => s sfd.
-split.
-	by exists (F s).
-move => t0 Fst0.
-by rewrite -Fst0; apply (prop s sfd).
+rewrite /R in prop;move: R cond => _ _.
+by exists F.
 Qed.
 
 Definition is_tot S T (f: S ->> T) := forall s, s from_dom f.
@@ -279,7 +291,7 @@ split.
 	move => []F [] icf prop t Pt.
 	move: prop (prop t Pt) => _ [] s [] sfd Fst.
 	exists (s); split.
-		by apply: ((icf s sfd).2 t).
+		by rewrite -Fst; move: (icf s sfd).
 	move => s0 t' fs0t fs0t'.
 	by rewrite (sing s0 t t' fs0t fs0t') in Pt.
 move: (exists_choice f e) => [] F prop sur.
@@ -289,9 +301,8 @@ move: (sur t Pt) => [] s [] fst cond.
 exists s; split.
 	by exists t.
 have ex: (exists t, f s t) by exists t.
-move: (prop s ex) => [] [] t' Fst' cond'.
-move: (cond' t' Fst') => fst'.
-by rewrite (sing s t t' fst fst').
+move: (prop s ex) => fsFs.
+by rewrite (sing s t (F s)).
 Qed.
 
 Lemma surjective_composition_wrt (f: T ->> T') (g : S ->> T):
