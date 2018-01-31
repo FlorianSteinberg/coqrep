@@ -6,7 +6,7 @@ to extensive additional work so Igave up at some point. I feel that the approach
 file is more appropriate. *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions representations.
+Require Import multi_valued_functions continuity universal_machine spaces par_spaces.
 Require Import Reals Lra Classical ClassicalFacts Psatz.
 
 Set Implicit Arguments.
@@ -184,7 +184,7 @@ Proof.
   lra.
 Qed.
 
-Lemma rep_R_is_sur: rep_R is_surjective.
+Lemma rep_R_sur: rep_R is_surjective.
 Proof.
   move => x.
   exists (fun eps => Qmult eps (Qmake(Int_part(x/(Q2R eps))) xH)).
@@ -239,46 +239,50 @@ have : Rabs (x - y) <= Q2R q by apply: Hp; lra.
 rewrite Rabs_pos_eq; lra.
 Qed.
 
-Lemma rep_R_is_sing: is_sing rep_R.
+Lemma rep_R_sing: rep_R is_single_valued.
 Proof.
-split => phi x x' pinox H.
-	apply: cond_eq_rat => q qg0.
-	set r := Q2R (phi (Qdiv q (1+1))).
-	replace (x-x') with ((x-r) + (r-x')) by field.
-	apply: Rle_trans.
-	- apply: (Rabs_triang (x-r)).
-	rewrite (_ : q == q / (1 + 1) + q / (1 + 1))%Q; last first.
-	  by field.
-	rewrite plus_Q2R.
-	have q2_pos : (0 < q / (1 + 1))%Q.
-	  rewrite (_ : 0 == 0 / (1 + 1))%Q; last by field.
-	  apply: (Qmult_lt_compat_r 0 q (/(1+1))) => //.
-	  by apply: Q2R_lt0; lra.
-	apply: Rplus_le_compat.
-	- by apply: pinox.
-	- replace (Rabs (r - x')) with (Rabs (x' - r)).
-	    by apply: H.
-	by split_Rabs; lra.
-by rewrite -H.
+move => phi x x' pinox H.
+apply: cond_eq_rat => q qg0.
+set r := Q2R (phi (Qdiv q (1+1))).
+replace (x-x') with ((x-r) + (r-x')) by field.
+apply: Rle_trans.
+- apply: (Rabs_triang (x-r)).
+rewrite (_ : q == q / (1 + 1) + q / (1 + 1))%Q; last first.
+  by field.
+rewrite plus_Q2R.
+have q2_pos : (0 < q / (1 + 1))%Q.
+  rewrite (_ : 0 == 0 / (1 + 1))%Q; last by field.
+  apply: (Qmult_lt_compat_r 0 q (/(1+1))) => //.
+  by apply: Q2R_lt0; lra.
+apply: Rplus_le_compat.
+- by apply: pinox.
+- replace (Rabs (r - x')) with (Rabs (x' - r)).
+    by apply: H.
+by split_Rabs; lra.
 Qed.
 
-Lemma rep_R_is_rep: rep_R is_representation.
+Lemma rep_R_is_rep: rep_R is_representation_of (space_from_type R).
 Proof.
-  split.
-  - exact: rep_R_is_sing.
-  - exact: rep_R_is_sur.
+apply: sing_sur_rep rep_R_sing rep_R_sur.
 Qed.
 
-Canonical rep_space_R := @make_rep_space_from_sur
-  R
-  (Q -> Q)
-  (fun n => Qmake Z0 xH)
-  rep_R
-  rep_R_is_rep.
-
-Lemma id_is_computable : (id : R -> R) is_computable.
+Lemma rationals_countable: Q is_countable.
 Proof.
-  by exists (fun phi=>phi).
+Admitted.
+
+Canonical rep_space_R := @make_rep_space
+	(space_from_type R)
+	Q
+	Q
+	rep_R
+	1%Q
+	rationals_countable
+	rationals_countable
+	rep_R_is_rep.
+
+Lemma id_is_computable : (id : R -> R) is_computable_function.
+Proof.
+Apply prim_rec_is_comp.
 Qed.
 (* This is a trivial example. The proof looks nice, though... The next example uses the product
 construction that was introduced in the file representations.v *)

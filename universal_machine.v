@@ -258,7 +258,7 @@ by right; apply: H1.
 Qed.
 
 Lemma U_is_universal (None : I) (None' : I') (Fcont : F is_continuous) :
-  exists psiF, (fun n phi q' => U n psiF phi q') computes F.
+  exists psiF, (fun n phi q' => U n psiF phi q')  type_two_computes F.
 Proof.
 pose R phi psi := (exists psi', F phi psi') -> F phi psi.
 have cond phi : exists psi, R phi psi.

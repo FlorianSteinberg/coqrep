@@ -8,7 +8,7 @@ Unset Printing Implicit Defensive.
 Section SPACES.
 
 Structure Space:= make_space {
-	type : Type;
+	type :> Type;
 	equal: type ->> type;
 	equal_sym: forall s t, equal s t -> equal t s;
 	equal_trans: forall s t r, equal s t -> equal t r -> equal s r;
