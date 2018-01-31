@@ -253,10 +253,10 @@ Proof.
 admit.
 Admitted.
 
-Definition is_mf_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: (type (space X)) ->> (type (space Y))) :=
+Definition is_mf_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: X ->> Y) :=
 	(rep Y) o F tightens ((@equal Y) o f o (rep X)).
 
-Definition is_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: (type (space X)) -> (type (space Y))) :=
+Definition is_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: X -> Y) :=
 	@is_mf_rlzr X Y F (F2MF f)
 	/\
 	forall x y, x equals y -> (f x) equals (f y).
@@ -456,19 +456,22 @@ Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
 	{M | exists F, M type_two_computes F /\ F is_realizer_of f}.
 
 Definition is_prim_rec_fun (X Y: rep_space) (f: X -> Y) :=
-	{F | F is_realizer_of f}.
+	{F | (F2MF F) is_realizer_of f}.
 
-Lemma prim_rect_fun_comp_fun (X Y: rep_space) (f:X -> Y) : is_prim_rec_fun f -> is_comp_fun f.
+Lemma prim_rec_fun_comp_fun (X Y: rep_space) (f:X -> Y) : is_prim_rec_fun f -> is_comp_fun f.
 Proof.
 move => [] F Frf.
 exists (fun n phi q => some (F phi q)).
-exists phi.
+exists (F2MF F).
 split => //.
-move => q _.
+move => phi _.
 split.
-	exists (phi q).
+	exists (F phi).
+	move => q'.
 	by exists 0.
-move => a  [] n ev.
+move => Fphi ev.
+apply: functional_extensionality => q'.
+move: (ev q') => [] _ eq.
 by apply Some_inj.
 Qed.
 

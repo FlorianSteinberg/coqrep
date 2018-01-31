@@ -282,10 +282,17 @@ Canonical rep_space_R := @make_rep_space
 
 Lemma id_is_computable : (id : R -> R) is_computable_function.
 Proof.
-Apply prim_rec_is_comp.
+apply prim_rec_fun_comp_fun.
+exists (fun phi => phi).
+split => //.
+move => phi [] Fphi stuff.
+
+split => //.
+exists Fphi.
+split.
+	exists phi.
+	split => //.
 Qed.
-(* This is a trivial example. The proof looks nice, though... The next example uses the product
-construction that was introduced in the file representations.v *)
 
 Lemma triang r x y: (Rabs x) + (Rabs y) <= r -> Rabs(x + y) <= r.
 Proof.
