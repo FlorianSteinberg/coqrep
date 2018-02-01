@@ -255,6 +255,34 @@ have ghrt'': g o h r t''.
 by apply (cond t'' ghrt'').
 Qed.
 
+Lemma prod_comp R R'
+(f: S ->> T) (g: S' ->> T') (f': R ->> S) (g': R' ->> S'):
+	forall x fx, (f \, g) o (f' \, g') x fx <-> (f o f' \, g o g') x fx.
+Proof.
+move => x ffggx.
+split.
+	move => [] [] fgx [] [] fxfgx gxfgx [] ffgxffggx gfgxffggx prop.
+	split.
+		split.
+			by exists fgx.1.
+		move => s f'xs.
+		have temp: ((s, fgx.2) from_dom (f \, g)) by apply: ((prop (s, fgx.2))).
+		move: temp => [] [] x1 x2 [] /= fsx1.
+		by exists x1.
+	split.
+		by exists fgx.2.
+	move => s f'xs.
+	have temp: ((fgx.1,s) from_dom (f \, g)) by apply: ((prop (fgx.1, s))).
+	move: temp => [] [] x1 x2 [] /= fsx1.
+	by exists x2.
+move => [] [] [] s1 [] fxs1 fs1ffggx prop [] [] s2 [] fxs2 fs2ffggx prop'.
+split.
+	by exists (s1,s2).
+move => [] s'1 s'2 [] fs' gs'.
+move: (prop s'1 fs') (prop' s'2 gs') => [] t fst [] t' fst'.
+by exists (t,t').
+Qed.
+
 Lemma sing_comp (f: T ->> T') (g : S ->> T) :
 	f is_single_valued -> g is_single_valued -> f o g is_single_valued.
 Proof.
