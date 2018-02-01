@@ -85,8 +85,18 @@ Definition space_from_pred T P:=
 		(@prop_equal_trans T P).
 End SPACES_CONSTRUCORS.
 
-Definition well_def X Y (f: (type X) ->> (type Y)):=
+Definition well_def' (X Y: Space) (f: X ->> Y):=
 	forall x fx, x is_from X -> f x fx -> fx is_from Y.
+
+Lemma well_def'_weaker_than_well_def (X Y: Space) (f: X ->> Y):
+	well_def' ((@equal Y) o f).
+Proof.
+move => x fx xie [] [] y [] _ yefx _.
+by apply: (equal_trans (equal_sym yefx)).
+Qed.
+
+Definition well_def (X Y: Space) (f: X ->> Y) :=
+	forall x fx, ((@equal Y) o f) x fx -> f x fx.
 
 Notation "f 'is_well_defined'" := (well_def f) (at level 2).
 
@@ -98,13 +108,18 @@ Notation "X ->> Y" := (multifunction X Y).
 
 Context (X Y X' Y': Space).
 
-Lemma mf_prod_well_def (f: X ->> Y) (g: X' ->> Y'):
-(mf_prod f g) is_well_defined.
+Lemma mf_prod_well_def (f: X ->> Y) (g: X' ->> Y'): forall x fx,
+	((@equal Y\, @equal Y') o (f \, g)) x fx
+	->
+	(f \, g) x fx.
 Proof.
-move => [] x y [] fx gy [] /= xie yie [] /= fxfx gygy.
+move => x fx.
+move => eq.
 split.
-	by apply (@well_defined X Y f x fx).
-by apply (@well_defined X' Y' g y gy).
+	apply/ well_defined.
+	apply: ((prod_comp (@equal Y) (@equal Y') f g x fx).1 eq).1.
+apply/ well_defined.
+apply: ((prod_comp (@equal Y) (@equal Y') f g x fx).1 eq).2.
 Qed.
 
 Canonical prod_mf (f: X ->> Y) (g: X' ->> Y') := @make_multi_function
@@ -126,9 +141,16 @@ Qed.
 Lemma mf_comp_well_def (f: Y ->> Y') (g: X ->> Y):
 	f is_well_defined -> g is_well_defined -> f o g is_well_defined.
 Proof.
-move => fwd gwd x fgx xie [] [] y [] gxy fyfgx prop.
-move: (gwd x y xie gxy) => yie.
-by apply: (fwd y fgx).
+move => fwd gwd x fgx comp.
+move: comp ((mf_comp_assoc (@equal Y') f g x fgx).2 comp) => _ [] [] y [] gxy comp1 comp2.
+split.
+	exists y.
+	split => //.
+	by apply/ well_defined.
+move => y' gxy'.
+move: (comp2 y' gxy') => [] x'.
+exists (x').
+by apply/well_defined.
 Qed.
 
 Canonical comp_mf (f: Y ->> Y') (g: X ->> Y) := @make_multi_function
