@@ -280,13 +280,13 @@ Canonical rep_space_R := @make_rep_space
 	rationals_countable
 	rep_R_is_rep.
 
-Lemma id_is_computable : (id : R -> R) is_computable_function.
+Lemma id_is_computable : (id:rep_space_cont_fun rep_space_R rep_space_R) is_computable.
 Proof.
-apply prim_rec_fun_comp_fun.
-exists (fun phi => phi).
+apply prim_rec_to_comp.
+Search _ (nat -> N).
+rewrite/has_prim_rec_name.
+exists (fun p => if (leq (bin_of_nat (length p.1)) 0)%N then inl p.2 else inr (head (1,1)%Q p.1).2).
 split => //.
-move => phi [] Fphi stuff.
-
 split => //.
 exists Fphi.
 split.

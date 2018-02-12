@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions.
+Require Import Classical.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -9,41 +9,33 @@ Section SPACES.
 
 Structure Space:= make_space {
 	type :> Type;
-	equal: type ->> type;
-	equal_sym: forall s t, equal s t -> equal t s;
-	equal_trans: forall s t r, equal s t -> equal t r -> equal s r;
+	equal: type -> type -> Prop;
+	equal_sym: forall x y, equal x y -> equal y x;
+	equal_trans: forall x y z, equal x y -> equal y z -> equal x z;
 }.
-Notation "x 'equals' y" := (equal x y) (at level 2).
+Notation "x 'equals' y" := (equal x y) (at level 70).
 Notation "x 'is_from' X" := (@equal X x x) (at level 2).
-Notation "x 'is_element'" := (equal x x) (at level 2).
+Notation "x 'is_element'" := (x equals x) (at level 2).
 
-Lemma prod_equal_sym X Y x y:
-	(@equal X) x.1 y.1 /\ (@equal Y) x.2 y.2 -> (@equal X) y.1 x.1 /\ (@equal Y) y.2 x.2.
+Lemma equal_proj_fst (X: Space) (x y: X):
+	x equals y -> x is_element.
 Proof.
-move => [] xey1 xey2.
-split.
-	by apply (equal_sym xey1).
-by apply (equal_sym xey2).
+move => xey.
+apply/equal_trans.
+	by apply xey.
+by apply/equal_sym.
 Qed.
 
-Lemma prod_equal_trans X Y x y z:
-	(@equal X) x.1 y.1 /\ (@equal Y) x.2 y.2 -> (@equal X) y.1 z.1 /\ (@equal Y) y.2 z.2 ->
-	(@equal X) x.1 z.1 /\ (@equal Y) x.2 z.2.
+Lemma equal_proj_snd (X: Space) (x y: X):
+	x equals y -> y is_element.
 Proof.
-move => [] xey1 xey2 [] yez1 yez2.
-split.
-	by apply (equal_trans xey1 yez1).
-by apply (equal_trans xey2 yez2).
+move => xey.
+apply: equal_proj_fst.
+apply equal_sym.
+apply xey.
 Qed.
-
-Canonical prod_space X Y := @make_space
-	((type X) * (type Y))
-	(fun p p' => (@equal X) p.1 p'.1 /\ (@equal Y) p.2 p'.2)
-	(@prod_equal_sym X Y)
-	(@prod_equal_trans X Y).
 
 Section SPACES_CONSTRUCORS.
-
 Lemma strd_equal_sym T:
 	forall (s t: T), s = t -> t = s.
 Proof.
@@ -85,84 +77,90 @@ Definition space_from_pred T P:=
 		(@prop_equal_trans T P).
 End SPACES_CONSTRUCORS.
 
-Definition well_def' (X Y: Space) (f: X ->> Y):=
-	forall x fx, x is_from X -> f x fx -> fx is_from Y.
+Section SPACES_CONSTRUCTIONS.
 
-Lemma well_def'_weaker_than_well_def (X Y: Space) (f: X ->> Y):
-	well_def' ((@equal Y) o f).
+Context (X Y: Space).
+
+Lemma prod_equal_sym (x y: X * Y):
+	(x.1 equals y.1 /\ x.2 equals y.2) -> y.1 equals x.1 /\ y.2 equals x.2.
 Proof.
-move => x fx xie [] [] y [] _ yefx _.
-by apply: (equal_trans (equal_sym yefx)).
+case => xey1 xey2.
+split; by apply/ equal_sym.
 Qed.
 
-Definition well_def (X Y: Space) (f: X ->> Y) :=
-	forall x fx, ((@equal Y) o f) x fx -> f x fx.
-
-Notation "f 'is_well_defined'" := (well_def f) (at level 2).
-
-Structure multifunction X Y:= make_multi_function {
-	graph:> (type X) ->> (type Y);
-	well_defined: graph is_well_defined
-}.
-Notation "X ->> Y" := (multifunction X Y).
-
-Context (X Y X' Y': Space).
-
-Lemma mf_prod_well_def (f: X ->> Y) (g: X' ->> Y'): forall x fx,
-	((@equal Y\, @equal Y') o (f \, g)) x fx
-	->
-	(f \, g) x fx.
+Lemma prod_equal_trans (x y z: X * Y):
+	(@equal X) x.1 y.1 /\ (@equal Y) x.2 y.2 -> (@equal X) y.1 z.1 /\ (@equal Y) y.2 z.2 ->
+	(@equal X) x.1 z.1 /\ (@equal Y) x.2 z.2.
 Proof.
-move => x fx.
-move => eq.
+move => [] xey1 xey2 [] yez1 yez2.
 split.
-	apply/ well_defined.
-	apply: ((prod_comp (@equal Y) (@equal Y') f g x fx).1 eq).1.
-apply/ well_defined.
-apply: ((prod_comp (@equal Y) (@equal Y') f g x fx).1 eq).2.
+	by apply/ (equal_trans xey1).
+by apply/ (equal_trans xey2).
 Qed.
 
-Canonical prod_mf (f: X ->> Y) (g: X' ->> Y') := @make_multi_function
-	(prod_space X X') (prod_space Y Y') ((graph f) \, (graph g)) (@mf_prod_well_def f g).
-Notation "f \, g" := (prod_mf f g) (at level 50).
+Canonical prod_space := @make_space
+	(X * Y)
+	(fun p p' => p.1 equals p'.1 /\ p.2 equals p'.2)
+	prod_equal_sym
+	prod_equal_trans.
 
-Definition is_sing X Y (f: X ->> Y):=
-	forall x y fx fy, x equals y -> f x fx -> f y fy -> fx equals fy.
-Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
+Definition is_morph (f: X -> Y):=
+	forall x y, x equals y -> (f x) equals (f y).
+Notation "f 'is_morphism'":= (is_morph f) (at level 2).
 
-Lemma prod_sing (f: X ->> Y) (g : X' ->> Y'):
-  f is_single_valued /\ g is_single_valued -> (f \, g) is_single_valued.
+Definition f_rel (f g: X -> Y) :=
+	forall x y, x equals y -> (f x) equals (g y).
+
+Lemma morph_rel (f: X -> Y):
+	f is_morphism <-> f_rel f f.
 Proof.
-move => [fsing gsing] x x' y y' xey fgxy fgx'y'; split.
-	by apply/ (fsing x.1 x'.1 y.1 y'.1 xey.1 fgxy.1 fgx'y'.1).
-by apply/ (gsing x.2 x'.2 y.2 y'.2 xey.2 fgxy.2 fgx'y'.2).
+done.
 Qed.
 
-Lemma mf_comp_well_def (f: Y ->> Y') (g: X ->> Y):
-	f is_well_defined -> g is_well_defined -> f o g is_well_defined.
+Lemma morph_rel_simp (f g: X -> Y):
+	is_morph f -> (f_rel f g <-> forall x, x equals x -> (f x) equals (g x)).
 Proof.
-move => fwd gwd x fgx comp.
-move: comp ((mf_comp_assoc (@equal Y') f g x fgx).2 comp) => _ [] [] y [] gxy comp1 comp2.
+move => morph.
 split.
-	exists y.
-	split => //.
-	by apply/ well_defined.
-move => y' gxy'.
-move: (comp2 y' gxy') => [] x'.
-exists (x').
-by apply/well_defined.
+	move => rel x xie.
+	by apply (rel x x).
+move => cond x y xey.
+apply/ equal_trans.
+apply: (morph x y xey).
+apply (cond y).
+apply/ equal_trans.
+	apply/ equal_sym.
+	by apply xey.
+by apply xey.
 Qed.
 
-Canonical comp_mf (f: Y ->> Y') (g: X ->> Y) := @make_multi_function
-	X Y' ((graph f) o (graph g)) (@mf_comp_well_def f g (@well_defined Y Y' f) (@well_defined X Y g)).
-Notation "f 'o' g" := (comp_mf f g) (at level 2).
-
-Lemma single_valued_composition (f: Y ->> Y') (g : X ->> Y) :
-	f is_single_valued -> g is_single_valued -> f o g is_single_valued.
+Lemma f_rel_sym:
+	forall (f g: X -> Y), f_rel f g -> f_rel g f.
 Proof.
-move => fsing gsing x x' fgx fgx' xex' [] [] y [] gxy fyfgx _ [][] y' [] gx'y' fy'fgx' _.
-have yey': y equals y' by apply (gsing x x' y y').
-by apply: (fsing y y' fgx fgx').
+move => f g frel x y xey.
+apply equal_sym.
+apply/ frel => //.
+by apply equal_sym.
 Qed.
 
+Lemma f_rel_trans:
+	forall (f g h: X -> Y), f_rel f g -> f_rel g h -> f_rel f h.
+Proof.
+move => f g h frg grh x y xey.
+apply/ equal_trans.
+apply: (frg x y xey).
+apply/ (grh y y).
+apply/ equal_trans.
+	apply/ equal_sym.
+	by apply xey.
+by apply xey.
+Qed.
+
+Canonical fun_space :=
+@make_space (X -> Y) f_rel f_rel_sym f_rel_trans.
+End SPACES_CONSTRUCTIONS.
 End SPACES.
+Notation "x 'equals' y" := (equal x y) (at level 70).
+Notation "x 'is_from' X" := (@equal X x x) (at level 2).
+Notation "x 'is_element'" := (x equals x) (at level 2).
+Notation "f 'is_morphism'":= (is_morph f) (at level 2).

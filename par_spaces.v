@@ -253,11 +253,11 @@ Proof.
 admit.
 Admitted.
 
-Definition is_mf_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: X ->> Y) :=
-	(rep Y) o F tightens ((@equal Y) o f o (rep X)).
+Definition is_mf_rlzr (X Y: rep_space) (F: (names X) -> (names Y)) (f: multifunction X Y) :=
+	(rep Y) o (F2MF F) tightens (f o (rep X)).
 
-Definition is_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: X -> Y) :=
-	@is_mf_rlzr X Y F (F2MF f)
+Definition is_rlzr (X Y: rep_space) (F: (names X) -> (names Y)) (f: X -> Y) :=
+	is_mf_rlzr F f
 	/\
 	forall x y, x equals y -> (f x) equals (f y).
 Notation "f 'is_realized_by' F" := (is_rlzr F f) (at level 2).
@@ -270,79 +270,35 @@ move => F G f g [] Frf ftotal [] Frg gtotal [] Grg _.
 split => //.
 move => phi exfx.
 move: exfx (Frf phi exfx) => _ [] [] fx [] [] Fphi [] FphiFphi Fphinfx a b.
-have dFphifx: ((@delta Y) o F) phi fx.
+rewrite -FphiFphi in Fphinfx.
+move: FphiFphi => _.
+have dFphifx: ((@delta Y) o (F2MF F)) phi fx.
 	split => //.
-	by exists Fphi.
-move: dFphifx (b fx dFphifx) => _ [] [] x [] phinx [] [] f'x [] fxf'x f'xefx _ _.
-rewrite -fxf'x in f'xefx.
-move: f'x fxf'x => _ _.
-have: Fphi is_name_of (f x).
-	move: (((rep_valid Y).2 (f x) fx).2 f'xefx) => [] Fpsi []Fpsinf'x Fpsinfx.
-	apply/ (rep_valid Y).1.
-			by apply Fpsinf'x.
-		by apply Fpsinfx.
-	done.
-move: b fx f'xefx Fphinfx => _ _ _ _ Fphinfx.
-have dFphifx: ((@delta Y) o F) phi (f x).
-	split => //.
-	by exists Fphi.
-move: a => _.
-have exgx: (exists t : type (space Y),((@equal Y) o (F2MF g)) o (@delta X) phi t).
+	by exists (F phi).
+move: a dFphifx (b fx dFphifx) => _ _ [] [] x [] phinx [] [] fxfx _.
+rewrite -fxfx in Fphinfx.
+move: fx fxfx => _ _.
+have exgx: (exists t : Y,((F2MF g) o (@delta X)) phi t).
 	exists (g x).
 	split.
 		exists x.
-		split => //.
-		split.
-			exists (g x).
-			split => //.
-			apply: (gtotal x x) => //.
-			apply ((rep_valid X).2 x x).1.
-			by exists phi.
-		exists (g x).
-		rewrite -H.
-		apply: (gtotal x x) => //.
-		apply ((rep_valid X).2 x x).1.
-		by exists phi.
+		by split.
 	move => s phins.
-	exists (g s).
+	by exists (g s).
+move: (Frg phi exgx) => [] [] gx' [] [] Fpsi [] FphiFpsi Fphingx' a c.
+rewrite -FphiFpsi in Fphingx'.
+move: Fpsi FphiFpsi => _ _.
+have dFphigx': ((@delta Y) o (F2MF F)) phi gx'.
 	split.
-		exists (g s).
-		split => //.
-		apply/ (gtotal s s) => //.
-		apply ((rep_valid X).2 s s).1.
-		by exists phi.
-	move => s0 gss0.
-	rewrite -gss0.
-	exists (g s).
-	apply/ (gtotal s s) => //.
-	apply ((rep_valid X).2 s s).1.
-	by exists phi.
-move: (Frg phi exgx) => [] [] gx' [] [] Fpsi [] FphiFpsi Fpsingx' a b.
-have dFphigx': ((@delta Y) o F) phi gx'.
-	split.
-		by exists Fpsi.
+		by exists (F phi).
 	by apply a.
-move: a dFphigx' (b gx' dFphigx') => _ _ [] [] x' [] phinx' [] [] g'x [] gxg'x g'xegx _ _.
-rewrite -gxg'x in g'xegx.
-move: g'x gxg'x => _ _.
-have: Fpsi is_name_of (g x').
-	move: (((rep_valid Y).2 (g x') gx').2 g'xegx) => [] Fpsi' [] Fpsi'ng'x Fpsi'ngx.
-	apply/ (rep_valid Y).1.
-			by apply Fpsi'ng'x.
-		by apply Fpsi'ngx.
-	done.
+move: a dFphigx' (c gx' dFphigx') => _ _ [] [] x' [] phinx' [] [] gx'gx' _.
+rewrite -gx'gx' in Fphingx'.
+move: gx' c gx'gx' => _ _ _.
 have fxegx': (f x) equals (g x').
-	move: dFphifx (b (f x) dFphifx) => _ [] [] x'' [] phinx'' [] [] 	gx'' [] gx''fx gx''efx _ _.
-	rewrite -gx''fx in gx''efx.
-	move: gx'' gx''fx => _ _.
-	apply/ equal_trans.
-		by apply: (equal_sym gx''efx).
-	apply (gtotal x'' x').
-	apply ((rep_valid X).2 x'' x').1.
-	by exists phi.
-move: b gx' g'xegx Fpsingx' => _ _ _ _ Fpsingx'.
-move: (Grg phi exgx) => [] [] gx [] [] Gpsi [] GphiGpsi Gpsingx a b.
-move: exgx => _.
+	apply/ ((rep_valid Y).2 (f x) (g x')).
+	by exists (F phi).
+move: (Grg phi exgx) => [] [] gx [] [] Gpsi [] GphiGpsi Gpsingx a d.
 
 split.
 	exists (gx).
@@ -351,21 +307,16 @@ split.
 	by split.
 move: gx Gpsi GphiGpsi Gpsingx => _ _ _ _.
 move => y [] [] Gphi [] GphiGphi Gphiny _.
-have dGphiy:(@delta Y) o G phi y.
+have dGphiy:(@delta Y) o (F2MF G) phi y.
 	split => //.
 	by exists Gphi.
 move: a => _.
-move: (b y dGphiy) => [] [] x'' [] phinx'' [] []gx'' [] gx''gx'' 
-gx''ey _ _.
-rewrite -gx''gx'' in gx''ey.
-move: gx'' gx''gx'' => _ _.
-have: Gphi is_name_of (g x'').
-	move: (((rep_valid Y).2 (g x'') y).2 gx''ey) => [] Gpsi [] Gpsingx'' Gpsiny.
-	apply/ (rep_valid Y).1.
-			by apply Gpsingx''.
-		by apply Gpsiny.
-	done.
-move: b dGphiy => _ _ Gphingx''.
+move: (d y dGphiy) => [] [] x'' [] phinx'' [] [] gx''y.
+have: Gphi is_name_of (g x'') by rewrite gx''y.
+move: d dGphiy => _ _ Gphingx''.
+have gx''ey: (g x'') equals y.
+	apply/ (rep_valid Y).2.
+	by exists Gphi.
 have fxey: (f x) equals y.
 	apply/ (equal_trans);last first.
 		by apply gx''ey.
@@ -434,45 +385,17 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
   (rep_of_space_from_rep (@is_ass_is_rep X Y)).
 
 Definition has_comp_name (X: rep_space) (x: X):=
-	{M | exists phi, M computes (F2MF phi) /\ phi is_name_of x}.
+	{M | exists phi, M computes phi /\ phi is_name_of x}.
 Definition has_prim_rec_name (X: rep_space) (x: X) :=
 	{phi| phi is_name_of x}.
 
-Lemma prim_rec_elt_comp_elt (X: rep_space) (x: X): has_prim_rec_name x -> has_comp_name x.
+Lemma prim_rec_to_comp (X: rep_space) (x: X): has_prim_rec_name x -> has_comp_name x.
 Proof.
 move => [] phi phinx.
-exists (fun n q => some (phi q)).
+exists (fun n q => some(phi q)).
 exists phi.
 split => //.
-move => q _.
-split.
-	exists (phi q).
-	by exists 0.
-move => a  [] n ev.
-by apply Some_inj.
-Qed.
-
-Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
-	{M | exists F, M type_two_computes F /\ F is_realizer_of f}.
-
-Definition is_prim_rec_fun (X Y: rep_space) (f: X -> Y) :=
-	{F | (F2MF F) is_realizer_of f}.
-
-Lemma prim_rec_fun_comp_fun (X Y: rep_space) (f:X -> Y) : is_prim_rec_fun f -> is_comp_fun f.
-Proof.
-move => [] F Frf.
-exists (fun n phi q => some (F phi q)).
-exists (F2MF F).
-split => //.
-move => phi _.
-split.
-	exists (F phi).
-	move => q'.
-	by exists 0.
-move => Fphi ev.
-apply: functional_extensionality => q'.
-move: (ev q') => [] _ eq.
-by apply Some_inj.
+by exists 0.
 Qed.
 
 End REPRESENTED_SPACES.
@@ -489,33 +412,5 @@ Notation "'rep_valid' X" := (@representation_is_valid X) (at level 2).
 Notation "f 'is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F 'is_realizer_of' f" := (is_rlzr F f) (at level 2).
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
-Notation "x 'is_computable_element'" := (has_comp_name x) (at level 2).
-Notation "x 'is_primitive_recursive_element'" := (has_prim_rec_name x) (at level 2).
-Notation "f 'is_computable_function'" := (is_comp_fun f) (at level 2).
-(*
-
-Lemma eval_comp X Y:
-	is_cmptbl (fun (p: space (rep_space_prod (rep_space_cont_fun X Y) X)) => p.1 p.2).
-Proof.
-exists (e val (fun n psi q' => U n (psi.1) psi.2 q')).
-
-Lemma cont_fun_equal X Y (f g: space X -> space Y):
-	f equals g <-> has_cont_rlzr f /\ has_cont_rlzr g
-		/\ forall x y, x equals y -> (f x) equals (g y).
-Proof.
-split.
-	move=> [] psi []psinf psing.
-	split.
-		exists (opU psi).
-		split => //.
-		admit.
-	split.
-		exists (opU psi).
-		split => //.
-		admit.
-	move => x y xey.
-	apply/ equal_trans.
-		by apply: (psinf.2 x y).
-	admit.
-move => [] [] F [] Frf Fcont [][] G [] Grg Gcont prop.
-*)
+Notation "x 'is_computable'" := (has_comp_name x) (at level 2).
+Notation "x 'is_primitive_recursive'" := (has_prim_rec_name x) (at level 2).

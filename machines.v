@@ -22,49 +22,19 @@ Notation "B ~>> B'" := (nat -> B -> Q' -> option A') (at level 2).
 Definition eval (N: Q ~> A) q Nq :=
 	exists n, N n q = some (Nq).
 
-Definition comp (N: Q ~> A) (f: Q ->> A) :=
-	(eval N) tightens f.
+Definition comp (N: Q ~> A) (f: Q -> A) :=
+	forall q, exists n, N n q = some(f q).
 Notation "N 'computes' f" := (comp N f) (at level 2).
 
-Lemma comp_sing N f:
-	N computes (F2MF f) -> forall q, (eval N) q (f q).
-Proof.
-move => comp q.
-have ex: exists a, f q = a by exists (f q).
-move: (comp q ex) => [] [] a [] n Nnqa prop.
-exists n.
-rewrite Nnqa (prop a) //.
-by exists n.
-Qed.
-
-Definition is_comp (f: Q ->> A) :=
+Definition is_comp (f: Q -> A) :=
 	{N | N computes f}.
 Notation "f 'is_computable'" := (is_comp f) (at level 2).
 
-Definition is_prim_rec (f: Q ->> A) :=
-	{M | M is_choice_for f}.
-Notation "f 'is_primitive_recursive'" := (is_prim_rec f) (at level 2).
-
-Lemma prim_rec_sing f :
-	is_prim_rec (F2MF f).
+Lemma prim_rec_to_comp f:
+	f is_computable.
 Proof.
-by exists f.
-Qed.
-
-Lemma prim_rec_is_comp (f: Q ->> A):
-	f is_primitive_recursive -> f is_computable.
-Proof.
-move => [] M Mprop.
-exists (fun n q => Some (M q)).
-move => q ex.
-specialize (Mprop q ex).
-split.
-	exists (M q).
+	exists (fun n q => some(f q)).
 	by exists 0.
-move => t' ev.
-apply/ (Mprop.2 t').
-move: (ev) => [] n prop.
-by apply Some_inj.
 Qed.
 
 Definition evaltt (M: B ~>> B') phi Mphi :=
@@ -100,7 +70,7 @@ by apply Some_inj.
 Qed.
 
 End MACHINES.
-Notation "f 'is_computable'" := (is_comp f) (at level 2).
+Notation "f 'is_computable_fun'" := (is_comp f) (at level 2).
 Notation "Q ~> A" := (nat -> Q -> option A) (at level 2).
 Notation "N 'computes' f" := (comp N f) (at level 2).
 Notation "M 'type_two_computes' F" := (comptt M F) (at level 2).

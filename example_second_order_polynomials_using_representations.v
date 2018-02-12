@@ -8,7 +8,7 @@ nor surjective on the natural space of interpretations of the element, i.e. the
 type (nat -> nat) -> nat -> nat. *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions representations.
+Require Import multi_valued_functions representations par_spaces.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
