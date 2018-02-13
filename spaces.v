@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import Classical.
+Require Import Classical Setoid SetoidClass.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -9,30 +9,48 @@ Section SPACES.
 
 Structure Space:= make_space {
 	type :> Type;
-	equal: type -> type -> Prop;
-	equal_sym: forall x y, equal x y -> equal y x;
-	equal_trans: forall x y z, equal x y -> equal y z -> equal x z;
+	axioms : PartialSetoid type
 }.
-Notation "x 'equals' y" := (equal x y) (at level 70).
+
+Notation equal X := (@pequiv _ (@axioms X)).
+Notation equal_sym := (fun X : Space => (@PER_Symmetric X (equal X) (@pequiv_prf _ (@axioms X)))).
+Notation equal_trans := (fun X : Space => (@PER_Transitive X (equal X) (@pequiv_prf _ (@axioms X)))).
+Notation "x 'equals' y" := (equal _ x y) (at level 70).
 Notation "x 'is_from' X" := (@equal X x x) (at level 2).
 Notation "x 'is_element'" := (x equals x) (at level 2).
+
+Instance partial_setoid (X : Space) : PartialSetoid (@type X).
+Proof.
+by case: X.
+Qed.
+
+Instance space_per (X : Space) : RewriteRelation (equal X).
+
+Instance space_proper (X : Space) : 
+  Morphisms.Proper (equal X ==> equal X ==> iff) (equal X).
+Proof.
+move: (axioms X) => [] rel [] sym trans.
+split => eq.
+	apply/ (trans y x).
+		by apply/ sym.
+	by apply/ (trans x x0).
+apply/ (trans x y) => //.
+apply/ (trans y y0) => //.
+by apply/ sym.
+Qed.
 
 Lemma equal_proj_fst (X: Space) (x y: X):
 	x equals y -> x is_element.
 Proof.
 move => xey.
-apply/equal_trans.
-	by apply xey.
-by apply/equal_sym.
+by rewrite {2}xey.
 Qed.
 
 Lemma equal_proj_snd (X: Space) (x y: X):
 	x equals y -> y is_element.
 Proof.
 move => xey.
-apply: equal_proj_fst.
-apply equal_sym.
-apply xey.
+by rewrite -{1}xey.
 Qed.
 
 Section SPACES_CONSTRUCORS.
@@ -48,12 +66,18 @@ Proof.
 move => s t r st tr; by rewrite st -tr.
 Qed.
 
+Lemma strd_equal_per T:
+	PER (fun s t : T => s = t).
+Proof.
+split.
+	exact: strd_equal_sym.
+exact: strd_equal_trans.
+Qed.
+
+Print PartialSetoid.
+
 Canonical space_from_type T:=
-	@make_space
-		T
-		(fun (s t : T) => s = t) 
-		(@strd_equal_sym T)
-		(@strd_equal_trans T).
+	@make_space T (Build_PartialSetoid (strd_equal_per T)). 
 
 Lemma prop_equal_sym T P:
 	forall (s t: T), P s /\ s = t -> P t /\ t = s.
@@ -69,12 +93,16 @@ move => s t r [] Ps st []Pt tr;split => //.
 by rewrite st -tr.
 Qed.
 
+Lemma prop_equal_per T P:
+	PER (fun s t: T => P s /\ s = t).
+Proof.
+split.
+	exact: prop_equal_sym.
+exact: prop_equal_trans.
+Qed.
+
 Definition space_from_pred T P:=
-	@make_space
-		T
-		(fun (s t: T) => P s /\ s = t)
-		(@prop_equal_sym T P)
-		(@prop_equal_trans T P).
+	@make_space T (Build_PartialSetoid (prop_equal_per P)).
 End SPACES_CONSTRUCORS.
 
 Section SPACES_CONSTRUCTIONS.
@@ -85,7 +113,9 @@ Lemma prod_equal_sym (x y: X * Y):
 	(x.1 equals y.1 /\ x.2 equals y.2) -> y.1 equals x.1 /\ y.2 equals x.2.
 Proof.
 case => xey1 xey2.
-split; by apply/ equal_sym.
+split.
+	by rewrite xey1 -{1}xey1.
+by rewrite xey2 -{1}xey2.
 Qed.
 
 Lemma prod_equal_trans (x y z: X * Y):
@@ -94,15 +124,20 @@ Lemma prod_equal_trans (x y z: X * Y):
 Proof.
 move => [] xey1 xey2 [] yez1 yez2.
 split.
-	by apply/ (equal_trans xey1).
-by apply/ (equal_trans xey2).
+	by rewrite -yez1.
+by rewrite -yez2.
+Qed.
+
+Lemma prod_equal_per: PER (fun (x y :X*Y) => x.1 equals y.1 /\ x.2 equals y.2).
+Proof.
+split.
+	exact: prod_equal_sym.
+exact: prod_equal_trans.
 Qed.
 
 Canonical prod_space := @make_space
 	(X * Y)
-	(fun p p' => p.1 equals p'.1 /\ p.2 equals p'.2)
-	prod_equal_sym
-	prod_equal_trans.
+	(Build_PartialSetoid prod_equal_per).
 
 Definition is_morph (f: X -> Y):=
 	forall x y, x equals y -> (f x) equals (f y).
@@ -156,11 +191,23 @@ apply/ equal_trans.
 by apply xey.
 Qed.
 
+Lemma f_rel_per:
+	PER f_rel.
+Proof.
+split.
+	exact: f_rel_sym.
+exact: f_rel_trans.
+Qed.
+
 Canonical fun_space :=
-@make_space (X -> Y) f_rel f_rel_sym f_rel_trans.
+@make_space (X -> Y) (Build_PartialSetoid f_rel_per).
 End SPACES_CONSTRUCTIONS.
 End SPACES.
-Notation "x 'equals' y" := (equal x y) (at level 70).
+
+Notation equal X := (@pequiv _ (@axioms X)).
+Notation equal_sym := (fun X : Space => (@PER_Symmetric X (equal X) (@pequiv_prf _ (@axioms X)))).
+Notation equal_trans := (fun X : Space => (@PER_Transitive X (equal X) (@pequiv_prf _ (@axioms X)))).
+Notation "x 'equals' y" := (equal _ x y) (at level 70).
 Notation "x 'is_from' X" := (@equal X x x) (at level 2).
 Notation "x 'is_element'" := (x equals x) (at level 2).
 Notation "f 'is_morphism'":= (is_morph f) (at level 2).
