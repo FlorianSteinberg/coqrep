@@ -1,7 +1,7 @@
 (* This file is supposed to be come a module for multivalued functions *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import spaces ClassicalChoice.
+Require Import spaces ClassicalChoice Setoid SetoidClass.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -35,8 +35,16 @@ rewrite geh;last first.
 done.
 Qed.
 
+Lemma mf_rel_per:
+	PER mf_rel.
+Proof.
+split.
+	exact: mf_rel_sym.
+exact: mf_rel_trans.
+Qed.
+
 Canonical mf_space :=
-	@make_space (X -> Y -> Prop) mf_rel mf_rel_sym mf_rel_trans.
+	@make_space (X -> Y -> Prop) (Build_PartialSetoid mf_rel_per).
 
 Definition F2MF (f: X -> Y) := (fun x y => (f x) equals y).
 
