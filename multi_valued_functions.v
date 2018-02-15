@@ -60,17 +60,17 @@ apply: injective_projections.
 by apply (gsing s.2).
 Qed.
 
-Definition range S T (f: S ->> T) (t : T) := exists s, f s t.
-Notation "t 'from_range' f" := (range f t) (at level 2).
+Definition codom S T (f: S ->> T) (t : T) := exists s, f s t.
+Notation "t 'from_codom' f" := (codom f t) (at level 2).
 (* the range of a multivalued function is the union of all its value sets. *)
 
-Definition is_sur S T (f: S ->> T) :=
-  forall t, range f t.
-Notation "f 'is_surjective'" := (is_sur f) (at level 2).
+Definition sur_par_fun S T (f: S ->> T) :=
+  f is_single_valued /\ forall t, t from_codom f.
+Notation "f 'is_surjective_partial_function'" := (sur_par_fun f) (at level 2).
 (* this notion of surjectivity is only usefull in combination with single-valuedness *)
 
 Lemma prod_range (f: S ->> T) (g : S' ->> T') :
-  forall s t, s from_range f /\ t from_range g -> (s,t) from_range (f \, g).
+  forall s t, s from_codom f /\ t from_codom g -> (s,t) from_codom (f \, g).
 Proof.
   move => s t.
   move => [[s' fs's] [t' ft't]].
@@ -293,70 +293,13 @@ by rewrite eq' => //; rewrite eq.
 Qed.
 
 Notation "f 'restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
-
-Definition is_really_sur_wrt S T (f: S ->> T) (P: T -> Prop):=
-	exists F, F is_choice_for f /\ forall t, (P t -> exists s, s from_dom f /\ F s = t).
-(* Due to choice functions being involved, this notion is not nice to work with.
-Since we are mostly interested in the case where the function is single valued,
-we use the following notion instead, that can be proven equivalent in this case: *)
-
-Definition is_sur_wrt S T (f: S ->> T) (P: T -> Prop) :=
-  forall t,  P t -> (exists s, f s t /\ forall s t', f s t -> f s t' -> P t').
-Notation "f 'is_surjective_wrt' A" := (is_sur_wrt f A) (at level 2).
-(* This says: a multivalued function is said to be surjective on a set X if whenever
-one of its value sets f(s) has a nonempty intersection with X, then it is already
-included in X. This notion has to be more elaborate to work well with composition
-as defined below. It does kind of make sense if the value set is interpreted as the
-set of "acceptable return values": It should either be the case that all acceptable
-values are from X or that none is. *)
-
-Lemma sur_and_really_sur (f: S ->> T) P:
-	(exists (t: T), True) -> f is_single_valued ->
-		(is_really_sur_wrt f P <-> f is_surjective_wrt P).
-Proof.
-move => e sing.
-split.
-	move => []F [] icf prop t Pt.
-	move: prop (prop t Pt) => _ [] s [] sfd Fst.
-	exists (s); split.
-		by rewrite -Fst; move: (icf s sfd).
-	move => s0 t' fs0t fs0t'.
-	by rewrite (sing s0 t t' fs0t fs0t') in Pt.
-move: (exists_choice f e) => [] F prop sur.
-exists F; split => //.
-move => t Pt.
-move: (sur t Pt) => [] s [] fst cond.
-exists s; split.
-	by exists t.
-have ex: (exists t, f s t) by exists t.
-move: (prop s ex) => fsFs.
-by rewrite (sing s t (F s)).
-Qed.
-
-Lemma surjective_composition_wrt (f: T ->> T') (g : S ->> T):
-	f is_surjective -> g is_surjective_wrt (dom f) -> f o g is_surjective.
-Proof.
-move => fsur gsur t.
-move: (fsur t) => [s] fst.
-have sdomf: s from_dom f by exists t.
-move: (gsur s sdomf) => [] r [] grs cond.
-exists r; split.
-	by exists s.
-by move => s'; apply: (cond r s').
-Qed.
-
-(* Due to the definition of the composition there is no Lemma for surjectivity that
-does not have additional assumptions. It is probably possible to prove:
-Lemma surjective_composition R S T (f: S ->> T) (g: R ->> S):
-	f is_surjective -> f is_total -> g is_surjective -> f o g is_surjective.
-I did not try, though. *)
 End MULTIVALUED_FUNCTIONS.
 Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 Notation "f \, g" := (mf_prod f g) (at level 50).
 Notation "f 'is_single_valued'" := (is_sing f) (at level 2).
 Notation "f 'restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
-Notation "t 'from_range' f" := (range f t) (at level 2).
-Notation "f 'is_surjective'" := (is_sur f) (at level 2).
+Notation "t 'from_codom' f" := (codom f t) (at level 2).
+Notation "f 'is_surjective_partial_function'" := (sur_par_fun f) (at level 2).
 Notation "s 'from_dom' f" := (dom f s) (at level 2).
 Notation "f 'is_tightened_by' g" := (tight f g) (at level 2).
 Notation "g 'tightens' f" := (tight f g) (at level 2).
@@ -365,5 +308,3 @@ Notation "g 'is_choice_for' f" := ((F2MF g) tightens f) (at level 2).
 Notation "f 'is_total'" := (is_tot f) (at level 2).
 Notation "f 'o' g" := (mf_comp f g) (at level 2).
 Notation "f 'restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
-Notation "f 'is_surjective_wrt' A" := (is_sur_wrt f A) (at level 2).
-
