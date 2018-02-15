@@ -6,7 +6,7 @@ to extensive additional work so Igave up at some point. I feel that the approach
 file is more appropriate. *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions continuity universal_machine spaces par_spaces.
+Require Import multi_valued_functions continuity universal_machine par_spaces.
 Require Import Reals Lra Classical ClassicalFacts Psatz.
 
 Set Implicit Arguments.

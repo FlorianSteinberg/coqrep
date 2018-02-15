@@ -85,8 +85,12 @@ Definition is_min_sec (sec : Q -> nat) :=
 
 Notation "sec 'is_minimal_section'" := (is_min_sec sec) (at level 2).
 
+Definition is_sur S T f:=
+	forall (t: T), exists (s: S), f s = t.
+Notation "f 'is_surjective'" := (is_sur f) (at level 2).
+
 Lemma minimal_section:
-  (F2MF cnt) is_surjective -> exists sec, sec is_minimal_section.
+  cnt is_surjective -> exists sec, sec is_minimal_section.
 Proof.
   move => sur.
   set R := fun s n => cnt n = s /\ (forall m, cnt m = s -> n <= m).
@@ -196,3 +200,4 @@ have eq: (cnt n = cnt n) by trivial.
 by move: (min (cnt n) n eq) => leq; lia.
 Qed.
 End INITIAL_SEGMENTS_AND_SIZES.
+Notation "f 'is_surjective'" := (is_sur f) (at level 2).

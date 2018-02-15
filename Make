@@ -8,4 +8,3 @@ initial_segments.v
 examples_continuity.v
 universal_machine.v
 machines.v
-spaces.v

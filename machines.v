@@ -5,7 +5,7 @@ here, i.e. the set of all mappings from strings to strings. However, since I don
 to rely on a handwritten type of strings as I attempted in the file "operators.v" I use
 more generaly a space S -> T as substitute for B. *)
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions spaces continuity.
+Require Import multi_valued_functions continuity.
 Require Import FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.
@@ -70,19 +70,21 @@ Qed.
 Definition evaltt (M: B ~>> B') phi Mphi :=
 	forall q', exists n, M n phi q' = some (Mphi q').
 
-Definition comptt (M: B ~>> B') (F: B ->> B'):=
-  (evaltt M) tightens F.
+Definition PF2MF (F: B -> option B'):= (fun (phi:B) (psi:B') => F phi = some psi).
+
+Definition comptt (M: B ~>> B') (F: B -> option B'):=
+  (evaltt M) tightens (PF2MF F).
 Notation "M 'type_two_computes' F" := (comptt M F) (at level 2).
 
-Definition is_comptt (F: B ->> B') :=
+Definition is_comptt (F: B ->option B') :=
 	{M| M type_two_computes F}.
 Notation "F 'is_type_two_computable'" := (is_comptt F) (at level 2).
 
-Definition is_prim_rectt (F: B ->> B') :=
-	{M | M is_choice_for F}.
+Definition is_prim_rectt (F: B -> option B') :=
+	{M | M is_choice_for (PF2MF F)}.
 Notation "F 'is_type_two_primitive_recursive'" := (is_prim_rectt F) (at level 2).
 
-Lemma prim_rec_is_comp_tt (F: B ->> B'):
+Lemma prim_rec_is_comp_tt (F: B -> option B'):
 	F is_type_two_primitive_recursive -> F is_type_two_computable.
 Proof.
 move => [] M Mprop.
@@ -104,4 +106,3 @@ Notation "f 'is_computable'" := (is_comp f) (at level 2).
 Notation "Q ~> A" := (nat -> Q -> option A) (at level 2).
 Notation "N 'computes' f" := (comp N f) (at level 2).
 Notation "M 'type_two_computes' F" := (comptt M F) (at level 2).
-

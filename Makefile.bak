@@ -112,7 +112,6 @@ VFILES:=multi_valued_functions.v\
   examples_continuity.v\
   universal_machine.v\
   machines.v\
-  representations.v\
   spaces.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
