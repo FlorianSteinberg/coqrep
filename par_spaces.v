@@ -148,8 +148,8 @@ Admitted.
 Definition is_mf_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: X ->> Y) :=
 	(rep Y) o F tightens (f o (rep X)).
 
-Definition is_rlzr (X Y: rep_space) (F: (names X) -> option (names Y)) (f: X -> Y) :=
-	forall phi x, (rep X) phi x -> (exists psi, (F phi) = some psi /\ (rep Y) psi (f x)).
+Definition is_rlzr (X Y: rep_space) (F: (names X) -> (names Y)) (f: X -> Y) :=
+	forall phi x, (rep X) phi x -> ((rep Y) (F phi) (f x)).
 Notation "f 'is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F 'is_realizer_of' f" := (is_rlzr F f) (at level 2).
 
@@ -160,14 +160,11 @@ split.
 	move => F f g Frf Frg.
 	apply functional_extensionality => x.
 	move: ((rep_valid X).2 x) => [] phi phinx.
-	move: (Frf phi x phinx) => [] psi [] eq psinfx.
-	move: (Frg phi x phinx) => [] psi' [] eq' psi'nfx.
-	have pep: psi = psi'.
-		apply Some_inj.
-		by rewrite -eq -eq'.
+	move: (Frf phi x phinx) => Fphinfx.
+	move: (Frg phi x phinx) => Fphingx.
 	apply/ (rep_valid Y).1.
-		by apply psinfx.
-	by rewrite pep.
+		by apply Fphinfx.
+	by apply Fphingx.
 move => f.
 set R :=(fun phi psi => phi from_dom (rep X) -> forall x, (rep X) phi x -> (rep Y) psi (f x)).
 have cond: forall phi, exists psi, R phi psi.
@@ -183,10 +180,8 @@ have cond: forall phi, exists psi, R phi psi.
 	move => phifd.
 	by exfalso;apply ass.
 move: (choice R cond) => [] F Fcond.
-exists (fun phi => some (F phi)).
+exists (F).
 move => phi x phinx.
-exists (F phi).
-split => //.
 apply Fcond => //.
 by exists x.
 Qed.
@@ -199,12 +194,12 @@ exact: Classical_Prop.proof_irrelevance.
 Qed.
 
 Definition has_cont_rlzr (X Y : rep_space) (f : X -> Y) :=
-	exists F, is_rlzr F f /\ @is_cont (questions X) (answers X) (questions Y) (answers Y) F.
+	exists F, is_rlzr F f /\ @is_cont (questions X) (answers X) (questions Y) (answers Y) (F2MF F).
 
-Notation "X c-> Y" := {f: X -> Y | has_cont_rlzr f} (at level 2).
+Notation "X c-> Y" := {f: space X -> space Y | has_cont_rlzr f} (at level 2).
 
 Definition is_ass (X Y: rep_space) psi (f: X c-> Y) := 
-	exists F,  (fun n phi q' => U n psi phi q') type_two_computes F /\ F is_realizer_of (projT1 f).
+	exists F,  (fun n phi q' => U n psi phi q') type_two_computes (F2MF F) /\ F is_realizer_of (projT1 f).
 
 Lemma is_ass_is_rep (X Y : rep_space):
   (@is_ass X Y) is_representation.
@@ -215,101 +210,56 @@ split.
 	apply/ (is_rlzr_is_rep X Y).1.
 		by apply Frf.
 	move => phi x phinx.
-	move: (Grg phi x phinx) => [] Gphi [] GphiGphi Gphingx.
-	move: (Frf phi x phinx) => [] Fphi [] FphiFphi Fphinfx.
-	exists Gphi.
-	split => //.
-	have ex: exists psi, F phi = some psi by exists Fphi.
-	move: (psinF phi ex) => [] [] Uphi prop cond.
-	rewrite (cond Uphi prop).
-	rewrite -GphiGphi.
-	have ex': exists psi, G phi = some psi by exists Gphi.
-	move: (psinG phi ex') => [] [] Uphi' prop' cond'.
-	by rewrite (cond' Uphi prop).
+	have eq: G phi = F phi.
+		have ex: exists psi, F2MF F phi psi by exists (F phi).
+		move: (psinF phi ex) => [] [] Uphi prop cond.
+		rewrite (cond Uphi prop).
+		have ex': exists psi, F2MF G phi psi by exists (G phi).
+		move: (psinG phi ex') => [] [] Uphi' prop' cond'.
+		by rewrite (cond' Uphi prop).
+	rewrite -eq.
+	by apply (Grg phi x phinx).
 move => f.
 move: (countable_questions X) => [] cnt sur.
-move: (initial_segments.minimal_section sur) => [] sec ismin.
-set F := fun phi psi => exists x, (rep X) phi x -> (rep Y) psi (projT1 f x).
-move: exists_choice.
-move: (@U_is_universal (questions X) (answers X) (questions Y) (answers Y)
-	cnt).
+move: (some_answer X) (some_answer Y) => a a'.
+move: (projT2 f) => [] F [] Frf Fcont.
+move: (U_is_universal a a' sur Fcont) => [] psiF psinF.
+exists psiF.
+by exists F.
 Qed.
 
 Canonical rep_space_cont_fun X Y := @make_rep_space
-  (Space_from_rep (@is_ass_is_rep X Y))
-  (seq (questions X * answers X) * questions Y)
-  (questions X + answers Y)
-  (@is_ass X Y)
-  (inr (No_answer Y))
+	({f: space X -> space Y | has_cont_rlzr f})
+	(seq (questions X * answers X) * questions Y)
+	(questions X + answers Y)
+	(@is_ass X Y)
+	(inr (some_answer Y))
   (prod_count
   	(list_count (prod_count
   		(countable_questions X)
   		(countable_answers X)))
   	(countable_questions Y))
   (sum_count (countable_questions X) (countable_answers Y))
-  (rep_of_space_from_rep (@is_ass_is_rep X Y)).
+  (@is_ass_is_rep X Y).
 
-Definition has_comp_name (X: rep_space) (x: X):=
-	{M | exists phi, M computes (F2MF phi) /\ phi is_name_of x}.
-Definition has_prim_rec_name (X: rep_space) (x: X) :=
+Definition is_comp (X: rep_space) (x: X) :=
 	{phi| phi is_name_of x}.
 
-Lemma prim_rec_elt_comp_elt (X: rep_space) (x: X): has_prim_rec_name x -> has_comp_name x.
-Proof.
-move => [] phi phinx.
-exists (fun n q => some (phi q)).
-exists phi.
-split => //.
-move => q _.
-split.
-	exists (phi q).
-	by exists 0.
-move => a  [] n ev.
-by apply Some_inj.
-Qed.
-
-Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
-	{M | exists F, M type_two_computes F /\ F is_realizer_of f}.
-
-Definition is_prim_rec_fun (X Y: rep_space) (f: X -> Y) :=
-	{F | (F2MF F) is_realizer_of f}.
-
-Lemma prim_rec_fun_comp_fun (X Y: rep_space) (f:X -> Y) : is_prim_rec_fun f -> is_comp_fun f.
-Proof.
-move => [] F Frf.
-exists (fun n phi q => some (F phi q)).
-exists (F2MF F).
-split => //.
-move => phi _.
-split.
-	exists (F phi).
-	move => q'.
-	by exists 0.
-move => Fphi ev.
-apply: functional_extensionality => q'.
-move: (ev q') => [] _ eq.
-by apply Some_inj.
-Qed.
-
+Definition is_comp_fun X Y (f: space X -> space Y):=
+	{g : X c-> Y| projT1 g = f}.
 End REPRESENTED_SPACES.
 Notation "delta 'is_representation'" := (is_rep delta) (at level 2).
-Notation "delta 'is_representation_of' X" := (@is_rep_of _ X delta) (at level 2).
 Notation names X := ((questions X) -> (answers X)).
 Notation "'rep'" := @delta (at level 2).
 Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
-Notation "x 'equals' y" := (equal x y) (at level 2).
-Notation "x 'is_element'" := (equal x x) (at level 2).
-Notation "x 'is_from' X" := (@equal X x x) (at level 2).
-Notation "x 'equals' y" := (equal x y) (at level 2).
 Notation "'rep_valid' X" := (@representation_is_valid X) (at level 2).
 Notation "f 'is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F 'is_realizer_of' f" := (is_rlzr F f) (at level 2).
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
-Notation "x 'is_computable_element'" := (has_comp_name x) (at level 2).
-Notation "x 'is_primitive_recursive_element'" := (has_prim_rec_name x) (at level 2).
+Notation "X c-> Y" := {f: space X -> space Y | has_cont_rlzr f} (at level 2).
+Notation "x 'is_computable'" := (is_comp x) (at level 2).
 Notation "f 'is_computable_function'" := (is_comp_fun f) (at level 2).
 (*
-
 Lemma eval_comp X Y:
 	is_cmptbl (fun (p: space (rep_space_prod (rep_space_cont_fun X Y) X)) => p.1 p.2).
 Proof.

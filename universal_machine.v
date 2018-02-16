@@ -149,13 +149,13 @@ Qed.
 End FLST.
 
 Section MINIMAL_MODULI.
-Context (cnt: nat -> Q) (sec: Q -> nat) (F: B -> option B').
+Context (cnt: nat -> Q) (sec: Q -> nat) (F: B ->> B').
 Notation init_seg := (in_seg cnt).
 Notation size := (size sec).
 
 Definition is_min_mod mf :=
 	mf is_modulus_of F /\ forall phi q' K, (forall psi, phi and psi coincide_on K
-    -> forall Fphi, F phi = some Fphi -> forall Fpsi, F psi = some Fpsi -> Fphi q' = Fpsi q') ->
+    -> forall Fphi, F phi Fphi -> forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q') ->
      exists m, m <= size K /\ mf phi q'= init_seg m.
 
 Lemma minimal_mod_function:
@@ -165,8 +165,8 @@ Proof.
 move => cont [] issec ismin.
 pose P phiq L := forall psi, 
                     phiq.1 and psi coincide_on L -> 
-                 forall Fphi, F phiq.1 = some Fphi -> 
-                 forall Fpsi, F psi = some Fpsi -> Fphi phiq.2 = Fpsi phiq.2.
+                 forall Fphi, F phiq.1 Fphi -> 
+                 forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2.
 pose R phiq L := P phiq L /\
   	(forall K, P phiq K ->  exists m, m <= size K /\ L = init_seg m).
 have cond phiq : exists L, R phiq L.
@@ -213,21 +213,21 @@ Definition is_count Q :=
 	exists cnt: nat -> Q, cnt is_surjective.
 Notation "T 'is_countable'" := (is_count T) (at level 2).
 
-Context (cnt : nat -> Q) (F: B -> option B').
+Context (cnt : nat -> Q) (F: B ->> B').
 Notation init_seg := (in_seg cnt).
 
 Lemma listsf (a : A) :
 	exists phi',
-		forall L, ((exists phi, (exists psi, F phi = some psi) /\ phi is_choice_for (L2MF L)) ->
-			exists psi, F (phi' L) = some psi) /\ (phi' L) is_choice_for (L2MF L).
+		forall L, ((exists phi, (exists psi, F phi psi) /\ phi is_choice_for (L2MF L)) ->
+			exists psi, F (phi' L) psi) /\ (phi' L) is_choice_for (L2MF L).
 Proof.
 have [listf listfprop] := extend_list a.
 pose R L psi := 
-  ((exists phi, (exists psi', F phi = some psi') /\ phi is_choice_for (L2MF L)) -> exists psi', F psi = some psi')
+  ((exists phi, (exists psi', F phi psi') /\ phi is_choice_for (L2MF L)) -> exists psi', F psi psi')
 	/\ psi is_choice_for (L2MF L).
 have cond L : exists psi, R L psi.
   have [[psi [psifd psic]]|NE] := 
-     classic (exists phi, (exists psi', F phi = some psi') /\ phi is_choice_for (L2MF L)).
+     classic (exists phi, (exists psi', F phi psi') /\ phi is_choice_for (L2MF L)).
     by exists psi.
   by exists (listf L).
 have [phi' phi'prop] := choice R cond.
@@ -237,9 +237,9 @@ Qed.
 Lemma U_is_universal (None : A) (None' : A') (sur: cnt is_surjective) (Fcont : F is_continuous) :
   exists psiF, (fun n phi q' => U n psiF phi q')  type_two_computes F.
 Proof.
-pose R phi psi := (exists psi', F phi = some psi') -> F phi = some psi.
+pose R phi psi := (exists psi', F phi psi') -> F phi psi.
 have cond phi : exists psi, R phi psi.
-  have [[psi prop]|Nprop] := classic (exists psi' , F phi = some psi').
+  have [[psi prop]|Nprop] := classic (exists psi' , F phi psi').
     by exists psi.
   by exists (fun a => None').
 have [Ff Fprop] := choice R cond.
@@ -252,7 +252,7 @@ have coin phi q' :
 	apply/icf_flst_coin.
 	by apply: (phi'prop (flst phi (mf phi q'))).2.
 set size := size sec.
-have ineq phi q' n : (exists psi, F phi = some psi) -> size (mf phi q') <= n ->
+have ineq phi q' n : (exists psi, F phi psi) -> size (mf phi q') <= n ->
   	size (mf (phi' (flst phi (init_seg n))) q') <= size (mf phi q').
   move=> [Fphi FphiFphi] ass.
   set K := mf (phi' _) _.
@@ -298,7 +298,7 @@ have length_size: forall phi q', size (mf phi q') = length (mf phi q').
 	by rewrite length_in_seg.
 
 have U_step_prop phi q' n :
-	(exists psi, F phi = some psi) -> size (mf phi q') <= n ->
+	(exists psi, F phi psi) -> size (mf phi q') <= n ->
 	U_step psiF phi q' (flst phi (init_seg n)) = inl(Ff (phi' (flst phi (init_seg n))) q').
 	move => phifd ass.
 	rewrite /U_step/psiF/=.
@@ -310,7 +310,7 @@ have U_step_prop phi q' n :
   by apply /leP; lia.
 
 have Ffprop n phi q':
-	(exists psi, F phi = some psi) -> size (mf (phi' (flst phi (init_seg n))) q') <= n ->
+	(exists psi, F phi psi) -> size (mf (phi' (flst phi (init_seg n))) q') <= n ->
 			Ff (phi' (flst phi (init_seg n))) q' = Ff phi q'.
 	move => phifd leq.
 	pose m := size (mf (phi' (flst phi (init_seg n))) q').
@@ -335,7 +335,7 @@ have Ffprop n phi q':
 	by apply Fprop.
 
 have U_rec_prop n :
-	forall phi q', (exists psi, F phi = some psi) ->
+	forall phi q', (exists psi, F phi psi) ->
 		U_rec n psiF phi q' = inl(Ff phi q')
 		\/
 		U_rec n psiF phi q' = inr(flst phi (init_seg (S n))).
@@ -344,12 +344,12 @@ have U_rec_prop n :
     case E : (size (mf (phi' [::]) q') <= 0)%N.
       left.
       congr inl.
-      have Fphi1 : F (phi' [::]) = some (Ff (phi' [::])).
+      have Fphi1 : F (phi' [::]) (Ff (phi' [::])).
 				apply: Fprop.
 				apply: (phi'prop [::]).1.
 				exists phi.
 				by split => // q [] a [].
-      have Fphi : F phi = some (Ff phi) by apply: Fprop.
+      have Fphi : F phi (Ff phi) by apply: Fprop.
 			apply: (mprop.1) Fphi1 _ Fphi.
       move: ((icf_flst_coin phi (phi' nil) (nil)).1 (phi'prop (flst phi nil)).2).
       have t : size (mf (phi' nil) q') <= 0
@@ -377,7 +377,7 @@ have U_rec_prop n :
  	by right.
 
 have U_rec_prop' n :
-	forall phi q', (exists psi, F phi = some psi) -> size (mf phi q') <= n ->
+	forall phi q', (exists psi, F phi psi) -> size (mf phi q') <= n ->
 		U_rec n psiF phi q' = inl (Ff phi q').
 	elim: n => [phi q' phifd leq /=|n ih phi q' phifd leq /=].
 		rewrite (U_step_prop _ _ _ _ leq) //.

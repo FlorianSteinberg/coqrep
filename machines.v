@@ -70,21 +70,19 @@ Qed.
 Definition evaltt (M: B ~>> B') phi Mphi :=
 	forall q', exists n, M n phi q' = some (Mphi q').
 
-Definition PF2MF (F: B -> option B'):= (fun (phi:B) (psi:B') => F phi = some psi).
-
-Definition comptt (M: B ~>> B') (F: B -> option B'):=
-  (evaltt M) tightens (PF2MF F).
+Definition comptt (M: B ~>> B') (F: B ->> B'):=
+  (evaltt M) tightens F.
 Notation "M 'type_two_computes' F" := (comptt M F) (at level 2).
 
-Definition is_comptt (F: B ->option B') :=
+Definition is_comptt (F: B ->> B') :=
 	{M| M type_two_computes F}.
 Notation "F 'is_type_two_computable'" := (is_comptt F) (at level 2).
 
-Definition is_prim_rectt (F: B -> option B') :=
-	{M | M is_choice_for (PF2MF F)}.
+Definition is_prim_rectt (F: B ->> B') :=
+	{M | M is_choice_for F}.
 Notation "F 'is_type_two_primitive_recursive'" := (is_prim_rectt F) (at level 2).
 
-Lemma prim_rec_is_comp_tt (F: B -> option B'):
+Lemma prim_rec_is_comp_tt (F: B ->> B'):
 	F is_type_two_primitive_recursive -> F is_type_two_computable.
 Proof.
 move => [] M Mprop.

@@ -184,33 +184,6 @@ Proof.
   lra.
 Qed.
 
-Lemma rep_R_sur: rep_R is_surjective.
-Proof.
-  move => x.
-  exists (fun eps => Qmult eps (Qmake(Int_part(x/(Q2R eps))) xH)).
-  move => epsr eg0.
-  rewrite !Q2Rt.
-  rewrite Rabs_pos_eq.
-  set eps := Q2R epsr.
-  - set z := Int_part(x/eps).
-    replace (x - eps * z) with (eps * (x / eps - z));first last.
-    - field.
-      by apply: Rlt_dichotomy_converse; right; apply lt0_Q2R.
-    rewrite -{3}(Rmult_1_r eps).
-    apply: Rmult_le_compat_l.
-    - by left; apply lt0_Q2R.
-    apply: (approx (x * /eps)).
-  set eps := Q2R epsr.
-  apply: (Rmult_le_reg_l (/eps)).
-  - by apply: Rinv_0_lt_compat; apply: lt0_Q2R.
-  rewrite Rmult_0_r.
-  set z := Int_part(x/eps).
-  replace (/eps*(x - eps * z)) with (x/eps - z);last first.
-  - field.
-    by apply: Rlt_dichotomy_converse; right; apply lt0_Q2R.
-  apply (approx' (x * /eps)).
-Qed.
-
 Lemma Q_accumulates_to_zero r : 0 < r -> exists q : Q, 0 < Q2R q < r.
 Proof.
 move=> rPos.
@@ -261,9 +234,33 @@ apply: Rplus_le_compat.
 by split_Rabs; lra.
 Qed.
 
-Lemma rep_R_is_rep: rep_R is_representation_of (space_from_type R).
+Lemma rep_R_is_rep: rep_R is_representation.
 Proof.
-apply: sing_sur_rep rep_R_sing rep_R_sur.
+split.
+	exact: rep_R_sing.
+move => x.
+exists (fun eps => Qmult eps (Qmake(Int_part(x/(Q2R eps))) xH)).
+move => epsr eg0.
+rewrite !Q2Rt.
+rewrite Rabs_pos_eq.
+	set eps := Q2R epsr.
+	set z := Int_part(x/eps).
+	replace (x - eps * z) with (eps * (x / eps - z));first last.
+		field.
+		by apply: Rlt_dichotomy_converse; right; apply lt0_Q2R.
+	rewrite -{3}(Rmult_1_r eps).
+	apply: Rmult_le_compat_l.
+		by left; apply lt0_Q2R.
+	apply: (approx (x * /eps)).
+set eps := Q2R epsr.
+apply: (Rmult_le_reg_l (/eps)).
+	by apply: Rinv_0_lt_compat; apply: lt0_Q2R.
+rewrite Rmult_0_r.
+set z := Int_part(x/eps).
+replace (/eps*(x - eps * z)) with (x/eps - z);last first.
+	field.
+	by apply: Rlt_dichotomy_converse; right; apply lt0_Q2R.
+by apply (approx' (x * /eps)).
 Qed.
 
 Lemma rationals_countable: Q is_countable.
@@ -271,7 +268,7 @@ Proof.
 Admitted.
 
 Canonical rep_space_R := @make_rep_space
-	(space_from_type R)
+	R
 	Q
 	Q
 	rep_R
@@ -282,6 +279,7 @@ Canonical rep_space_R := @make_rep_space
 
 Lemma id_is_computable : (id : R -> R) is_computable_function.
 Proof.
+rewrite /is_comp_fun.
 apply prim_rec_fun_comp_fun.
 exists (fun phi => phi).
 split => //.
