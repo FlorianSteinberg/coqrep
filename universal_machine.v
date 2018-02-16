@@ -127,6 +127,25 @@ Lemma length_flst_in_seg cnt n:
 	length (flst (in_seg cnt n)) = n.
 Proof. by elim: n => // n ih; rewrite -{2}ih. Qed.
 
+Lemma extend_list:
+	A -> exists listf, forall (L: list (Q * A)), (listf L) is_choice_for (L2MF L).
+Proof.
+move => i.
+pose R (L : Q * list(Q * A)) (a: A) := 
+  forall b, (L2MF L.2) L.1 b -> (L2MF L.2) L.1 a.
+have cond L : exists b, R L b.
+  case: L => q L.
+  have [[a inlist]|H] :=  classic (exists a, List.In (q,a) L).
+  	by exists a.
+  exists i => a inList.
+  by case: H; exists a.
+have [listf listfprop]  := choice R cond.
+exists (fun L q => listf (q, L)) => L q [a inlist].
+rewrite /F2MF.
+split=> [|b v]; first by exists (listf (q,L)).
+rewrite -v.
+by apply: listfprop (_, _) _ inlist.
+Qed.
 End FLST.
 
 Section MINIMAL_MODULI.
@@ -173,36 +192,29 @@ apply=> psi coin Fphi FphiFphi Fpsi FpsiFpsi.
 by apply: (mod psi).
 Qed.
 
+Lemma min_mod_in_seg mf:
+	is_min_mod mf -> is_min_sec cnt sec ->
+	forall phi q', in_seg cnt (size (mf phi q')) = mf phi q'.
+Proof.
+move => mprop isminsec phi q'.
+have [m [ineq eq']] := mprop.2 phi q' (mf phi q') (mprop.1 phi q').
+have ineq' := size_in_seg isminsec m.
+rewrite -eq' in ineq'.
+rewrite -/size in ineq ineq'.
+have eq'': (size (mf phi q')) = m by lia.
+by rewrite eq'' eq'.
+Qed.
+
 End MINIMAL_MODULI.
 
 (*This should at some point go into an appropriate section: *)
-Lemma extend_list:
-	A -> exists listf, forall (L: list (Q * A)), (listf L) is_choice_for (L2MF L).
-Proof.
-move => i.
-pose R (L : Q * list(Q * A)) (a: A) := 
-  forall b, (L2MF L.2) L.1 b -> (L2MF L.2) L.1 a.
-have cond L : exists b, R L b.
-  case: L => q L.
-  have [[a inlist]|H] :=  classic (exists a, List.In (q,a) L).
-  	by exists a.
-  exists i => a inList.
-  by case: H; exists a.
-have [listf listfprop]  := choice R cond.
-exists (fun L q => listf (q, L)) => L q [a inlist].
-rewrite /F2MF.
-split=> [|b v]; first by exists (listf (q,L)).
-rewrite -v.
-by apply: listfprop (_, _) _ inlist.
-Qed.
 
-Context (cnt : nat -> Q).
+Definition is_count Q :=
+	exists cnt: nat -> Q, cnt is_surjective.
+Notation "T 'is_countable'" := (is_count T) (at level 2).
+
+Context (cnt : nat -> Q) (F: B -> option B').
 Notation init_seg := (in_seg cnt).
-
-Lemma length_in_seg n : length (init_seg n) = n.
-Proof. by elim: n => // n ih; rewrite -{2}ih. Qed.
-
-Context (F: B -> option B').
 
 Lemma listsf (a : A) :
 	exists phi',
@@ -222,39 +234,7 @@ have [phi' phi'prop] := choice R cond.
 by exists phi'.
 Qed.
 
-Context (sec: Q -> nat) (isminsec: is_min_sec cnt sec).
-Notation size := (size sec).
-
-Lemma min_mod_in_seg mf:
-	is_min_mod cnt sec F mf ->
-	forall phi q', in_seg cnt (size (mf phi q')) = mf phi q'.
-Proof.
-move => mprop phi q'.
-have [m [ineq eq']] := mprop.2 phi q' (mf phi q') (mprop.1 phi q').
-have ineq' := size_in_seg isminsec m.
-rewrite -eq' in ineq'.
-rewrite -/size in ineq ineq'.
-have eq'': (size (mf phi q')) = m by lia.
-by rewrite eq'' eq'.
-Qed.
-
-Definition is_count Q :=
-	exists cnt: nat -> Q, (F2MF cnt) is_surjective.
-Notation "T 'is_countable'" := (is_count T) (at level 2).
-Notation "B ~> B'" := (nat -> B -> Q'-> A') (at level 2).
-
-Context (sur: (F2MF cnt) is_surjective).
-
-Lemma mon_in_seg q n m:
-	  n <= m -> List.In q (init_seg n) -> List.In q (init_seg m).
-Proof.
-elim: m => [l0|m ih ass].
-  by rewrite (_ : n = 0) //; lia.
-have [/ih H1 H2|<- //] := (PeanoNat.Nat.le_succ_r n m).1 ass.
-by right; apply: H1.
-Qed.
-
-Lemma U_is_universal (None : A) (None' : A') (Fcont : F is_continuous) :
+Lemma U_is_universal (None : A) (None' : A') (sur: cnt is_surjective) (Fcont : F is_continuous) :
   exists psiF, (fun n phi q' => U n psiF phi q')  type_two_computes F.
 Proof.
 pose R phi psi := (exists psi', F phi = some psi') -> F phi = some psi.
@@ -264,12 +244,14 @@ have cond phi : exists psi, R phi psi.
   by exists (fun a => None').
 have [Ff Fprop] := choice R cond.
 rewrite {cond}/R /= in Fprop.
+have [sec isminsec] := minimal_section sur.
 have [mf mprop] := minimal_mod_function Fcont isminsec.
 have [phi' phi'prop] := listsf None.
 have coin phi q' :
     (phi' (flst phi (mf phi q'))) and phi coincide_on (mf phi q').
 	apply/icf_flst_coin.
 	by apply: (phi'prop (flst phi (mf phi q'))).2.
+set size := size sec.
 have ineq phi q' n : (exists psi, F phi = some psi) -> size (mf phi q') <= n ->
   	size (mf (phi' (flst phi (init_seg n))) q') <= size (mf phi q').
   move=> [Fphi FphiFphi] ass.
@@ -280,7 +262,7 @@ have ineq phi q' n : (exists psi, F phi = some psi) -> size (mf phi q') <= n ->
 		have elts := (coin_and_list_in (phi' (flst phi (init_seg n))) phi (init_seg n)).1 coin''.
 		apply/coin_and_list_in=> q listin.
 		apply: elts.
-		rewrite -(min_mod_in_seg mprop phi q') in listin.
+		rewrite -(min_mod_in_seg mprop isminsec phi q') in listin.
 	  by apply: mon_in_seg listin.
 	have coin''':
 		(phi' (flst phi (init_seg n))) and (phi' (flst phi (mf phi q'))) coincide_on (mf phi q').
@@ -290,7 +272,7 @@ have ineq phi q' n : (exists psi, F phi = some psi) -> size (mf phi q') <= n ->
 		by apply/coin_sym.
 	suffices [m [leq eq]]: exists m : nat, m <= size (mf phi q') /\ K = in_seg cnt m.
 		rewrite eq.
-    have ineq := size_in_seg isminsec m.
+    have ineq := size_in_seg isminsec m; rewrite -/size in ineq.
 		by lia.
 	apply: mprop.2 =>
 		  psi coin' FphiL FphiLFphiL Fpsi FpsiFpsi.
@@ -302,6 +284,7 @@ have ineq phi q' n : (exists psi, F phi = some psi) -> size (mf phi q') <= n ->
 	apply/esym/ (mprop.1 phi) => //.
     by apply/coin_sym/coin''.
   exact: FphiLFphiL.
+
 pose psiF L :=
   if (size (mf (phi' L.1) L.2) <= length L.1)%N
   then
@@ -311,7 +294,7 @@ pose psiF L :=
 
 have length_size: forall phi q', size (mf phi q') = length (mf phi q').
 	move => phi q'.
-	rewrite -{2}(min_mod_in_seg mprop phi q').
+	rewrite -{2}(min_mod_in_seg mprop isminsec phi q').
 	by rewrite length_in_seg.
 
 have U_step_prop phi q' n :
@@ -331,7 +314,7 @@ have Ffprop n phi q':
 			Ff (phi' (flst phi (init_seg n))) q' = Ff phi q'.
 	move => phifd leq.
 	pose m := size (mf (phi' (flst phi (init_seg n))) q').
-	have eq := min_mod_in_seg mprop (phi' (flst phi (init_seg n))) q'.
+	have eq := min_mod_in_seg mprop isminsec (phi' (flst phi (init_seg n))) q'.
 	rewrite -/m in leq eq.
 	apply: (mprop.1 (phi' (flst phi (init_seg n))) q' phi).
 	- rewrite -eq.

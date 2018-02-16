@@ -43,13 +43,15 @@ It is equivalent to the corresponding multifunction being continuous
 in the sense of "continuity.v" *)
 
 Lemma continuity1 (F: B -> B):
-	is_cont1 F <-> is_cont (F2MF F).
+	is_cont1 F <-> is_cont (fun phi => some (F phi)).
 Proof.
 split.
 - move => cont psi s'.
   move: cont (cont psi (S s')) => _ [m cont].
-  exists (init_seg m) => phi coin Fpsi iv Fphi iv'.
+  exists (init_seg m) => phi coin Fpsi isv Fphi isv'.
   move: cont (cont phi coin) => _ coinv.
+	have iv: F psi = Fpsi by apply Some_inj.
+	have iv': F phi = Fphi by apply Some_inj.
   rewrite iv iv' in coinv.
  	apply: ((initial_segments id Fpsi Fphi (S s')).2 coinv s').
  	lia.
@@ -75,10 +77,8 @@ case: (Compare_dec.le_lt_eq_dec n0 n ineq) => ass; last first.
 		rewrite (size_app).
 		lia.
 	move => coin''.
-	have: forall psi', (F2MF F psi' (F psi')) by trivial.
-	move => triv.
-	have: forall (n: nat), id id n = n => //.
-	move => true.
+	have triv: forall psi', (Some (F psi') = Some (F psi')) by trivial.
+	have true: forall (n: nat), id id n = n by trivial.
 	move: (cond psi (list_size true coin'') (F phi) (triv phi) (F psi) (triv psi)).
 	by rewrite ass.
 move: ineq ass => _.
@@ -102,22 +102,20 @@ Definition is_cont2 (G: (Q-> A) -> Q' -> A') :=
     phi and psi coincide_on L -> G phi q' = G psi q'.
 
 Lemma continuity2 (F: (Q-> A) -> Q' -> A'):
-	is_cont2 F <-> is_cont (F2MF F).
+	is_cont2 F <-> is_cont (fun phi => Some (F phi)).
 Proof.
-  split.
-  - move => cont psi s'.
-    move: cont (cont psi s') => _ [L cond].
-    exists L => phi coin Fpsi iv.
-    move => Fphi iv'.
-    rewrite -iv -iv'.
-    by apply (cond phi).
-  move => cont phi s'.
-  move: cont (cont phi s') => _ [L cond].
-  exists L => psi coin.
-  have: forall psi', (F2MF F psi' (F psi')) by trivial.
-  move => triv.
-  move: cond (cond psi coin (F phi) (triv phi)) => _ cond.
-  by apply: (cond (fun s' => F psi s')).
+split => cont psi s'.
+	move: cont (cont psi s') => _ [L cond].
+	exists L => phi coin Fpsi isv Fphi isv'.
+	have iv: F psi = Fpsi by apply Some_inj.
+	have iv': F phi = Fphi by apply Some_inj.
+	rewrite -iv -iv'.
+	by apply (cond phi).
+move: cont (cont psi s') => _ [L cond].
+exists L => phi coin.
+have triv: forall psi', (Some (F psi') = Some (F psi')) by trivial.
+move: cond (cond phi coin (F psi) (triv psi)) => _ cond.
+by apply: (cond (fun s' => F phi s')).
 Qed.
 
 (*To have function from baire space to natural numbers, we identify nat with one -> nat.*)

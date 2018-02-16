@@ -2,7 +2,7 @@
 the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
 Require Import continuity universal_machine multi_valued_functions machines.
-Require Import FunctionalExtensionality ClassicalChoice Psatz.
+Require Import FunctionalExtensionality ClassicalChoice Psatz ProofIrrelevance.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -148,8 +148,8 @@ Admitted.
 Definition is_mf_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: X ->> Y) :=
 	(rep Y) o F tightens (f o (rep X)).
 
-Definition is_rlzr (X Y: rep_space) (F: (names X) -> (names Y)) (f: X -> Y) :=
-	forall phi x, (rep X) phi x -> (rep Y) (F phi) (f x).
+Definition is_rlzr (X Y: rep_space) (F: (names X) -> option (names Y)) (f: X -> Y) :=
+	forall phi x, (rep X) phi x -> (exists psi, (F phi) = some psi /\ (rep Y) psi (f x)).
 Notation "f 'is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F 'is_realizer_of' f" := (is_rlzr F f) (at level 2).
 
@@ -160,9 +160,14 @@ split.
 	move => F f g Frf Frg.
 	apply functional_extensionality => x.
 	move: ((rep_valid X).2 x) => [] phi phinx.
+	move: (Frf phi x phinx) => [] psi [] eq psinfx.
+	move: (Frg phi x phinx) => [] psi' [] eq' psi'nfx.
+	have pep: psi = psi'.
+		apply Some_inj.
+		by rewrite -eq -eq'.
 	apply/ (rep_valid Y).1.
-		by apply: (Frf phi).
-	by apply: (Frg phi).
+		by apply psinfx.
+	by rewrite pep.
 move => f.
 set R :=(fun phi psi => phi from_dom (rep X) -> forall x, (rep X) phi x -> (rep Y) psi (f x)).
 have cond: forall phi, exists psi, R phi psi.
@@ -178,33 +183,56 @@ have cond: forall phi, exists psi, R phi psi.
 	move => phifd.
 	by exfalso;apply ass.
 move: (choice R cond) => [] F Fcond.
-exists F.
+exists (fun phi => some (F phi)).
 move => phi x phinx.
+exists (F phi).
+split => //.
 apply Fcond => //.
 by exists x.
 Qed.
 
+Fact eq_sub T P (a b : {x : T | P x}) : a = b <-> projT1 a = projT1 b.
+Proof.
+split=> [->//|]; move: a b => [a Pa] [b Pb] /= eqab.
+case: _ / eqab in Pb *; congr (exist _ _ _).
+exact: Classical_Prop.proof_irrelevance.
+Qed.
+
 Definition has_cont_rlzr (X Y : rep_space) (f : X -> Y) :=
-	exists F, is_rlzr F f /\ @is_cont (questions X) (answers X) (questions Y) (answers Y) (F2MF F).
+	exists F, is_rlzr F f /\ @is_cont (questions X) (answers X) (questions Y) (answers Y) F.
 
-Notation opU psi := (evaltt (fun n phi q' => U n psi phi q')).
+Notation "X c-> Y" := {f: X -> Y | has_cont_rlzr f} (at level 2).
 
-Definition is_ass (X Y: rep_space) psi (f: X -> Y) := 
-	exists F, F is_choice_for (opU psi : (names X) ->> (names Y))/\ F is_realizer_of f.
+Definition is_ass (X Y: rep_space) psi (f: X c-> Y) := 
+	exists F,  (fun n phi q' => U n psi phi q') type_two_computes F /\ F is_realizer_of (projT1 f).
 
 Lemma is_ass_is_rep (X Y : rep_space):
   (@is_ass X Y) is_representation.
 Proof.
 split.
-	move => psiF f g [] F [] _ Frf [] G [] _ Grg.
+	move => psiF f g [] F [] psinF Frf [] G [] psinG Grg.
+	apply/ eq_sub.
 	apply/ (is_rlzr_is_rep X Y).1.
 		by apply Frf.
-move => psif psig f g. psifaf psifag psigag.
-exact: (@is_rlzr_is_rep X Y 
-	(evaltt (fun n phi q' => U n psif phi q'))
-	(evaltt (fun n phi q' => U n psig phi q'))
-	f g psifaf psifag psigag
-	).
+	move => phi x phinx.
+	move: (Grg phi x phinx) => [] Gphi [] GphiGphi Gphingx.
+	move: (Frf phi x phinx) => [] Fphi [] FphiFphi Fphinfx.
+	exists Gphi.
+	split => //.
+	have ex: exists psi, F phi = some psi by exists Fphi.
+	move: (psinF phi ex) => [] [] Uphi prop cond.
+	rewrite (cond Uphi prop).
+	rewrite -GphiGphi.
+	have ex': exists psi, G phi = some psi by exists Gphi.
+	move: (psinG phi ex') => [] [] Uphi' prop' cond'.
+	by rewrite (cond' Uphi prop).
+move => f.
+move: (countable_questions X) => [] cnt sur.
+move: (initial_segments.minimal_section sur) => [] sec ismin.
+set F := fun phi psi => exists x, (rep X) phi x -> (rep Y) psi (projT1 f x).
+move: exists_choice.
+move: (@U_is_universal (questions X) (answers X) (questions Y) (answers Y)
+	cnt).
 Qed.
 
 Canonical rep_space_cont_fun X Y := @make_rep_space

@@ -1,7 +1,9 @@
 From Coq.micromega Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
 Require Import multi_valued_functions continuity.
+Require Import ClassicalChoice.
 Open Scope coq_nat_scope.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -46,8 +48,6 @@ rewrite /subn /subn_rec; lia.
 Qed.
 End MINIMIZATION.
 
-Require Import ClassicalChoice.
-
 Lemma well_order_nat (P : nat -> Prop):
 	(exists n, P n) -> exists n, P n /\ forall m, P m -> n <= m.
 Proof.
@@ -78,21 +78,20 @@ Proof.
 Qed.
 
 Section SECTIONS.
-Context Q (cnt: nat -> Q).
+Definition is_sur S T f:=
+	forall (t: T), exists (s: S), f s = t.
+Notation "f 'is_surjective'" := (is_sur f) (at level 2).
+
+Context Q (cnt: nat -> Q) (sur: cnt is_surjective).
 
 Definition is_min_sec (sec : Q -> nat) :=
   (forall s, cnt (sec s) = s) /\ forall s,(forall m, cnt m = s -> sec s <= m).
 
 Notation "sec 'is_minimal_section'" := (is_min_sec sec) (at level 2).
 
-Definition is_sur S T f:=
-	forall (t: T), exists (s: S), f s = t.
-Notation "f 'is_surjective'" := (is_sur f) (at level 2).
-
 Lemma minimal_section:
-  cnt is_surjective -> exists sec, sec is_minimal_section.
+  exists sec, sec is_minimal_section.
 Proof.
-  move => sur.
   set R := fun s n => cnt n = s /\ (forall m, cnt m = s -> n <= m).
   have: forall s, exists n, R s n
   	by move => s; move: (@well_order_nat (fun n => cnt n = s) (sur s)) => [] n [np1 np2]; exists n.
@@ -114,33 +113,39 @@ Fixpoint in_seg m := match m with
   | S n => cons (cnt n) (in_seg n)
 end.
 
-Lemma initial_segments A (phi psi : Q -> A):
-  forall m, (forall n, n < m -> phi (cnt n) = psi (cnt n))
-  	<-> phi and psi coincide_on (in_seg m).
+Lemma length_in_seg n : length (in_seg n) = n.
+Proof. by elim: n => // n ih; rewrite -{2}ih. Qed.
+
+Lemma mon_in_seg q n m:
+	  n <= m -> List.In q (in_seg n) -> List.In q (in_seg m).
 Proof.
-  split; last first.
-  - move: m.
-    elim.
-    - move => coin n false.
-    	exfalso; lia.
-    move => n ihn.
-    replace (in_seg n.+1) with (cons (cnt n) (in_seg n)) by trivial.
-    move => coin n0 ltn.
-    case: (classic (n0 = n)).
-    	move => eq.
-    	rewrite eq.
-    	apply coin.1.
-    move => neq.
-    apply ihn.
-    	apply coin.2.
-    lia.
-  move: m.
-  elim => //.
-  move => n ihn ass.
-    split.
-    - by apply (ass n).
-    apply ihn => n0 ineq.
-    apply (ass n0);lia.
+elim: m => [l0|m ih ass].
+  by rewrite (_ : n = 0) //; lia.
+have [/ih H1 H2|<- //] := (PeanoNat.Nat.le_succ_r n m).1 ass.
+by right; apply: H1.
+Qed.
+
+Lemma initial_segments A (phi psi : Q -> A):
+  forall m,
+  	(forall n, n < m -> phi (cnt n) = psi (cnt n))
+  	<->
+  	phi and psi coincide_on (in_seg m).
+Proof.
+split.
+  move: m; elim => // n ihn ass.
+  split; first by apply (ass n).
+  apply ihn => n0 ineq.
+  by apply (ass n0);lia.
+move: m.
+elim; first by move => coin n false; exfalso; lia.
+move => n ihn.
+replace (in_seg n.+1) with (cons (cnt n) (in_seg n)) by trivial.
+move => coin n0 ltn.
+case: (classic (n0 = n)) => eq.
+	by rewrite eq; apply coin.1.
+apply ihn.
+  by apply coin.2.
+by lia.
 Qed.
 
 Context (sec: Q -> nat).
@@ -168,24 +173,24 @@ Lemma list_size A:
     -> forall K (phi psi : Q -> A), phi and psi coincide_on (in_seg (size K))
     -> (phi and psi coincide_on K).
 Proof.
-  move => issec.
-  elim => //.
-  move => a L IH phi psi ci'.
-  move: IH (IH phi psi) => _ IH.
-  move: (initial_segments phi psi (size (cons a L))) => [_ d2].
-  move: d2 (d2 ci') => _ ci.
-  have: (sec a < size (a :: L)).
-  - replace (size (a :: L)) with (max (sec a).+1 (size L)) by trivial; lia.
-  move => ineq.
-  split.
-  - replace a with (cnt (sec a)) by apply (issec a).
-    by apply: (ci (sec a)).
-  apply (IH).
-  move: (initial_segments phi psi (size L)) => [d1 _].
-  apply d1 => n ine.
-  apply ci.
-  apply: (PeanoNat.Nat.lt_le_trans n (size L) (size (a :: L))) => //.
-  replace (size (a :: L)) with (max (sec a).+1 (size L)) by trivial; lia.
+move => issec.
+elim => //.
+move => a L IH phi psi ci'.
+move: IH (IH phi psi) => _ IH.
+move: (initial_segments phi psi (size (cons a L))) => [_ d2].
+move: d2 (d2 ci') => _ ci.
+have: (sec a < size (a :: L)).
+	replace (size (a :: L)) with (max (sec a).+1 (size L)) by trivial; lia.
+move => ineq.
+split.
+replace a with (cnt (sec a)) by apply (issec a).
+	by apply: (ci (sec a)).
+apply (IH).
+move: (initial_segments phi psi (size L)) => [d1 _].
+apply d1 => n ine.
+apply ci.
+apply: (PeanoNat.Nat.lt_le_trans n (size L) (size (a :: L))) => //.
+replace (size (a :: L)) with (max (sec a).+1 (size L)) by trivial; lia.
 Qed.
 
 Lemma size_in_seg:
@@ -199,5 +204,6 @@ replace (size (cnt n :: in_seg n))
 have eq: (cnt n = cnt n) by trivial.
 by move: (min (cnt n) n eq) => leq; lia.
 Qed.
+
 End INITIAL_SEGMENTS_AND_SIZES.
 Notation "f 'is_surjective'" := (is_sur f) (at level 2).
