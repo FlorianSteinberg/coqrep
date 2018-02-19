@@ -196,13 +196,16 @@ Qed.
 Definition has_cont_rlzr (X Y : rep_space) (f : X -> Y) :=
 	exists F, is_rlzr F f /\ @is_cont (questions X) (answers X) (questions Y) (answers Y) (F2MF F).
 
+Definition is_ass (X Y: rep_space) psi (f: X -> Y) := 
+	exists F,  (fun n phi q' => U n psi phi q') type_two_computes (F2MF F) /\ F is_realizer_of f.
+
 Notation "X c-> Y" := {f: space X -> space Y | has_cont_rlzr f} (at level 2).
 
-Definition is_ass (X Y: rep_space) psi (f: X c-> Y) := 
+Definition is_fun_name (X Y: rep_space) psi (f: X c-> Y) := 
 	exists F,  (fun n phi q' => U n psi phi q') type_two_computes (F2MF F) /\ F is_realizer_of (projT1 f).
 
-Lemma is_ass_is_rep (X Y : rep_space):
-  (@is_ass X Y) is_representation.
+Lemma is_fun_name_is_rep (X Y : rep_space):
+  (@is_fun_name X Y) is_representation.
 Proof.
 split.
 	move => psiF f g [] F [] psinF Frf [] G [] psinG Grg.
@@ -232,7 +235,7 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
 	({f: space X -> space Y | has_cont_rlzr f})
 	(seq (questions X * answers X) * questions Y)
 	(questions X + answers Y)
-	(@is_ass X Y)
+	(@is_fun_name X Y)
 	(inr (some_answer Y))
   (prod_count
   	(list_count (prod_count
@@ -240,13 +243,35 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
   		(countable_answers X)))
   	(countable_questions Y))
   (sum_count (countable_questions X) (countable_answers Y))
-  (@is_ass_is_rep X Y).
+  (@is_fun_name_is_rep X Y).
 
 Definition is_comp (X: rep_space) (x: X) :=
 	{phi| phi is_name_of x}.
 
-Definition is_comp_fun X Y (f: space X -> space Y):=
-	{g : X c-> Y| projT1 g = f}.
+Definition is_comp_fun X Y (f: space X -> space Y) :=
+	{psiF | is_ass psiF f}.
+
+Lemma comp_cont (X Y: rep_space) (f:X -> Y):
+	is_comp_fun f -> has_cont_rlzr f.
+Proof.
+rewrite /is_comp_fun.
+rewrite /is_ass.
+Qed.
+
+Lemma id_is_comp (X: rep_space) :
+	@is_comp_fun X X (fun x => x).
+Proof.
+pose psiF p := match p with
+	| (nil, q') => inl q'
+	| (cons q L, x) => inr q.1
+end.
+have P: @has_cont_rlzr X X (fun x => x).
+exists id.
+split => //.
+
+
+
+	
 End REPRESENTED_SPACES.
 Notation "delta 'is_representation'" := (is_rep delta) (at level 2).
 Notation names X := ((questions X) -> (answers X)).

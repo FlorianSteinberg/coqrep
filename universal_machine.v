@@ -234,6 +234,21 @@ have [phi' phi'prop] := choice R cond.
 by exists phi'.
 Qed.
 
+Lemma U_mon n psi phi q' a:
+	forall m, n <= m -> U n psi phi q' = some a -> U m psi phi q' = some a.
+Proof.
+elim.
+	move => ineq.
+	have n0: n = 0 by lia.
+	by rewrite n0.
+move => m ih ineq eq.
+case: ((PeanoNat.Nat.le_succ_r n m).1 ineq) => ass.
+	have eq':= (ih ass eq).
+	have inlasm: U_rec m.+1 psi phi q' = inl a.
+		rewrite /U_rec.
+	have inlam: U_rec m psi phi q' = inl a.
+Admitted.
+
 Lemma U_is_universal (None : A) (None' : A') (sur: cnt is_surjective) (Fcont : F is_continuous) :
   exists psiF, (fun n phi q' => U n psiF phi q')  type_two_computes F.
 Proof.
@@ -419,5 +434,16 @@ have [|ass|ass] := U_rec_prop n phi q'.
 	by apply/(coin_ref phi).
 by rewrite /U ass in eq.
 Qed.
+
+Lemma comp_cont:
+  (exists psiF, (fun n phi q' => U n psiF phi q')  type_two_computes F) -> F is_continuous.
+Proof.
+move => [] psiF comp phi q'.
+case: (classic (phi from_dom F)) => [] phifd.
+move: (comp phi phifd) => [] [] psi ev prop.
+move: (ev q') => [] n eq.
+rewrite /U in eq.
+rewrite /U_rec in eq.
+Admitted.
 End UNIVERSAL_MACHINE.
 Notation "T 'is_countable'" := (is_count T) (at level 2).
