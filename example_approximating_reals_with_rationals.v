@@ -7,7 +7,7 @@ file is more appropriate. *)
 
 From mathcomp Require Import all_ssreflect.
 Require Import multi_valued_functions continuity universal_machine par_spaces.
-Require Import Reals Lra Classical ClassicalFacts Psatz.
+Require Import Reals Lra Classical ClassicalFacts Psatz FunctionalExtensionality.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -228,9 +228,9 @@ have q2_pos : (0 < q / (1 + 1))%Q.
   apply: (Qmult_lt_compat_r 0 q (/(1+1))) => //.
   by apply: Q2R_lt0; lra.
 apply: Rplus_le_compat.
-- by apply: pinox.
-- replace (Rabs (r - x')) with (Rabs (x' - r)).
-    by apply: H.
+	by apply: pinox.
+replace (Rabs (r - x')) with (Rabs (x' - r)).
+	by apply: H.
 by split_Rabs; lra.
 Qed.
 
@@ -277,69 +277,68 @@ Canonical rep_space_R := @make_rep_space
 	rationals_countable
 	rep_R_is_rep.
 
+Print Q.
+
 Lemma id_is_computable : (id : R -> R) is_computable_function.
 Proof.
-rewrite /is_comp_fun.
-apply prim_rec_fun_comp_fun.
-exists (fun phi => phi).
-split => //.
-move => phi [] Fphi stuff.
-
-split => //.
-exists Fphi.
-split.
-	exists phi.
-	split => //.
+apply prim_rec_comp_fun.
+by exists (fun phi => phi).
 Qed.
 
 Lemma triang r x y: (Rabs x) + (Rabs y) <= r -> Rabs(x + y) <= r.
 Proof.
-  apply: Rle_trans.
-  apply: Rabs_triang.
+apply: Rle_trans.
+by apply: Rabs_triang.
 Qed.
 
-Lemma Rplus_is_computable : (fun x => Rplus (x.1) (x.2)) is_computable.
+Lemma Rplus_is_computable : is_comp_fun (fun x => Rplus (x.1) (x.2)).
 Proof.
-  set Rplus_realizer := (fun (phi : names rep_space_R * names rep_space_R) eps =>
-    (Qplus (phi.1 (Qdiv eps (1+1))) (phi.2(Qdiv eps (1+1))))).
-  exists Rplus_realizer.
-  move => phi x [phi0 phi1] xie eps eg0.
-  rewrite /Rplus_realizer.
-  rewrite plus_Q2R.
-  set r := Q2R (phi.1 (Qdiv eps (1 + 1))).
-  set q := Q2R (phi.2 (Qdiv eps (1 + 1))).
-  replace (x.1 + x.2 - (r + q)) with (x.1 - r + (x.2 - q)); last first.
-  - field.
-  apply: (triang).
-  replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
-  have exp2_pos : (0 < eps / (1 + 1))%Q.
-    rewrite (_ : 0 == 0 / (1 + 1))%Q.
-      by apply: (Qmult_lt_compat_r 0 eps (/(1+1))); last first.
-    by field.
-  - apply: Rplus_le_compat.
-    - by apply: phi0.
-    - by apply: phi1.
-  - by rewrite !Q2Rt /=; lra.
+apply prim_rec_comp_fun.
+set Rplus_realizer := (fun phi eps =>
+  (Qplus (phi (inl (Qdiv eps (1+1)))).1 (phi (inr (Qdiv eps (1+1)))).2)).
+exists Rplus_realizer.
+move => phi x phinx eps eg0.
+set phi0 := (fun q => (phi (inl q)).1).
+set phi1 := (fun q => (phi (inr q)).2).
+rewrite /Rplus_realizer.
+rewrite plus_Q2R.
+set r := Q2R (phi0 (Qdiv eps (1 + 1))).
+set q := Q2R (phi1 (Qdiv eps (1 + 1))).
+replace (x.1 + x.2 - (r + q)) with (x.1 - r + (x.2 - q)); last first.
+	field.
+apply: (triang).
+replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
+have exp2_pos : (0 < eps / (1 + 1))%Q.
+	rewrite (_ : 0 == 0 / (1 + 1))%Q.
+		by apply: (Qmult_lt_compat_r 0 eps (/(1+1))); last first.
+	by field.
+by apply: Rplus_le_compat; apply phinx.
+by rewrite !Q2Rt /=; lra.
 Qed.
 
-Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) is_computable.
+Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) is_computable_function.
 Proof.
-  set rab := (fun (phi : Q -> Q) => 1# Z.to_pos (up(Rabs(Q2R(phi(1%Q)))))).
-  set four := (1 + 1 + 1 + 1)%Q.
-  set Rmult_realizer := (fun (phi : names rep_space_R * names rep_space_R) eps =>
-    ((phi.1 (eps / four /(rab phi.2)) * (phi.2(eps /four/(rab phi.1))))%Q)).
-  exists Rmult_realizer.
-  move => phi x [phi0 phi1] xie eps eg0.
-  rewrite /Rmult_realizer.
-  rewrite mul_Q2R.
-  set dx := (eps / four /(rab phi.2))%Q.
-  set dy := (eps / four /(rab phi.1))%Q.
-  set r := Q2R (phi.1 dx).
-  set q := Q2R (phi.2 dy).
-  replace (x.1 * x.2 - (r * q)) with ((x.1 - r) * x.2 + r * (x.2 - q)); last first.
-  - field.
-  apply: (triang).
-  replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
-  - rewrite Rabs_mult Rabs_mult.
-    apply: Rplus_le_compat.
+apply prim_rec_comp_fun.
+set rab := (fun (phi : Q -> Q) => 1# Z.to_pos (up(Rabs(Q2R(phi(1%Q)))))).
+set four := (1 + 1 + 1 + 1)%Q.
+set Rmult_realizer := (fun phi eps =>
+  ((phi (inl (eps / four /(rab (fun q => (phi(inl q)).1))))).1
+  *
+  (phi (inr (eps /four/(rab (fun q => (phi(inr q) ).2))))).2))%Q.
+exists Rmult_realizer.
+move => phi x phinx eps eg0.
+set phi1 := (fun q => (phi (inl q)).1).
+set phi2 := (fun q => (phi (inr q)).2).
+rewrite /Rmult_realizer.
+rewrite mul_Q2R.
+set dx := (eps / four /(rab phi2))%Q.
+set dy := (eps / four /(rab phi1))%Q.
+set r := Q2R (phi1 dx).
+set q := Q2R (phi2 dy).
+replace (x.1 * x.2 - (r * q)) with ((x.1 - r) * x.2 + r * (x.2 - q)); last first.
+	field.
+apply: (triang).
+replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
+	rewrite Rabs_mult.
+apply: Rplus_le_compat.
 Admitted.

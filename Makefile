@@ -109,10 +109,7 @@ VFILES:=multi_valued_functions.v\
   universal_machine.v\
   machines.v\
   representations.v\
-  par_spaces.v\
-  example_approximating_reals_with_rationals.v\
-  example_second_order_polynomials_using_representations.v\
-  example_second_order_polynomials_without_representations.v
+  example_approximating_reals_with_rationals.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))

@@ -243,11 +243,13 @@ elim.
 	by rewrite n0.
 move => m ih ineq eq.
 case: ((PeanoNat.Nat.le_succ_r n m).1 ineq) => ass.
-	have eq':= (ih ass eq).
-	have inlasm: U_rec m.+1 psi phi q' = inl a.
-		rewrite /U_rec.
-	have inlam: U_rec m psi phi q' = inl a.
-Admitted.
+	have eq' := (ih ass eq).
+	case E: (U_rec m psi phi q') => [b|k].
+		rewrite /U_rec in E.
+		by rewrite -eq' /U /U_rec E.
+	by rewrite /U E in eq'.
+by case E: (U_rec m.+1 psi phi q') => [b|k]; rewrite -eq ass /U E.
+Qed.
 
 Lemma U_is_universal (None : A) (None' : A') (sur: cnt is_surjective) (Fcont : F is_continuous) :
   exists psiF, (fun n phi q' => U n psiF phi q')  type_two_computes F.
@@ -262,11 +264,13 @@ rewrite {cond}/R /= in Fprop.
 have [sec isminsec] := minimal_section sur.
 have [mf mprop] := minimal_mod_function Fcont isminsec.
 have [phi' phi'prop] := listsf None.
+set size := size sec.
+
 have coin phi q' :
     (phi' (flst phi (mf phi q'))) and phi coincide_on (mf phi q').
 	apply/icf_flst_coin.
 	by apply: (phi'prop (flst phi (mf phi q'))).2.
-set size := size sec.
+
 have ineq phi q' n : (exists psi, F phi psi) -> size (mf phi q') <= n ->
   	size (mf (phi' (flst phi (init_seg n))) q') <= size (mf phi q').
   move=> [Fphi FphiFphi] ass.
@@ -286,9 +290,8 @@ have ineq phi q' n : (exists psi, F phi psi) -> size (mf phi q') <= n ->
 			(phi'prop (flst phi (mf phi q'))).2.
 		by apply/coin_sym.
 	suffices [m [leq eq]]: exists m : nat, m <= size (mf phi q') /\ K = in_seg cnt m.
-		rewrite eq.
-    have ineq := size_in_seg isminsec m; rewrite -/size in ineq.
-		by lia.
+		have ineq := size_in_seg isminsec m; rewrite -/size in ineq.
+		by rewrite eq; lia.
 	apply: mprop.2 =>
 		  psi coin' FphiL FphiLFphiL Fpsi FpsiFpsi.
   apply: etrans (_ :  Fphi q' = _); last first.
@@ -313,7 +316,7 @@ have length_size: forall phi q', size (mf phi q') = length (mf phi q').
 	by rewrite length_in_seg.
 
 have U_step_prop phi q' n :
-	(exists psi, F phi psi) -> size (mf phi q') <= n ->
+	phi from_dom F -> size (mf phi q') <= n ->
 	U_step psiF phi q' (flst phi (init_seg n)) = inl(Ff (phi' (flst phi (init_seg n))) q').
 	move => phifd ass.
 	rewrite /U_step/psiF/=.
@@ -325,7 +328,7 @@ have U_step_prop phi q' n :
   by apply /leP; lia.
 
 have Ffprop n phi q':
-	(exists psi, F phi psi) -> size (mf (phi' (flst phi (init_seg n))) q') <= n ->
+	phi from_dom F -> size (mf (phi' (flst phi (init_seg n))) q') <= n ->
 			Ff (phi' (flst phi (init_seg n))) q' = Ff phi q'.
 	move => phifd leq.
 	pose m := size (mf (phi' (flst phi (init_seg n))) q').
@@ -436,7 +439,7 @@ by rewrite /U ass in eq.
 Qed.
 
 Lemma comp_cont:
-  (exists psiF, (fun n phi q' => U n psiF phi q')  type_two_computes F) -> F is_continuous.
+  (exists psiF, (fun n phi q' => U n psiF phi q') type_two_computes F) -> F is_continuous.
 Proof.
 move => [] psiF comp phi q'.
 case: (classic (phi from_dom F)) => [] phifd.

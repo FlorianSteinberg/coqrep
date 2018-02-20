@@ -160,9 +160,9 @@ by apply (prop (g s)).
 Qed.
 
 Lemma exists_choice (f: S ->> T):
-	(exists (t:T), True) -> exists F, F is_choice_for f.
+	T -> exists F, F is_choice_for f.
 Proof.
-move => [] t _.
+move => t.
 set R := fun s t => s from_dom f -> f s t.
 have cond: forall s, exists t, R s t.
 	move => s.

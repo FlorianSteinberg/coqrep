@@ -15,7 +15,7 @@ Notation "delta 'is_representation'" := (is_rep delta) (at level 2).
 Structure rlzr_space := make_rlzr_space {
   space :> Type;
   names : Type;
-  inhe: names;
+  some_name: names;
   delta : names ->> space;
   representation_is_valid : delta is_representation
   }.
@@ -38,24 +38,26 @@ move: ((rep_val X).2 x) ((rep_val Y).2 y)=> [] phi phinx [] psi psiny.
 by exists (phi,psi).
 Qed.
 
-(* This is the product of represented spaces. At some point I should prove that this
-is the product in some category, but I am unsure what the morphisms are supposed to be. *)
-
+(* Canonical construction for the product of represented spaces *)
 Canonical rep_space_prod X Y := @make_rlzr_space
   ((space X) * (space Y))
   (names X * names Y)
-  (pair (inhe X) (inhe Y))
+  (pair (some_name X) (some_name Y))
   (rep X \, rep Y)
   (@prod_rep X Y).
 
 Definition is_mf_rlzr (X Y: rlzr_space) (F: (names X) ->> (names Y)) (f: X ->> Y) :=
 	(rep Y) o F tightens (f o (rep X)).
 
+(* rlzr is short for realizer. Realizers can be used to compute multifunctions. Encoding
+multifunctions by their relizers leads to problems when the functions are not total.*)
 Definition is_rlzr (X Y: rlzr_space) (F: (names X) -> (names Y)) (f: X -> Y) :=
 	forall phi x, (rep X) phi x -> (rep Y) (F phi) (f x).
 Notation "f 'is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F 'is_realizer_of' f" := (is_rlzr F f) (at level 2).
 
+(* The total functions can be represented by their realizers and this can be used for a
+function space construction . *)
 Lemma is_rlzr_is_rep X Y:
   (@is_rlzr X Y) is_representation.
 Proof.
@@ -77,7 +79,7 @@ have cond: forall phi, exists psi, R phi psi.
 		move => _ x' phinx'.
 		by rewrite -((rep_val X).1 phi x x').
 	move => ass.
-	exists (inhe Y).
+	exists (some_name Y).
 	move => phifd.
 	by exfalso;apply ass.
 move: (choice R cond) => [] F Fcond.
@@ -87,10 +89,13 @@ apply Fcond => //.
 by exists x.
 Qed.
 
+(* canonical function space construction. The use should be avoided as it is often inappropriate.
+A more appropriate function space construction is availabe for the alternate structure in the
+file "par_spaces.v" *)
 Canonical rep_space_all_functions X Y := @make_rlzr_space
   (space X -> space Y)
   (names X -> names Y)
-  (fun x => @inhe Y)
+  (fun x => @some_name Y)
   (@is_rlzr X Y)
   (@is_rlzr_is_rep X Y).
 End REP.
