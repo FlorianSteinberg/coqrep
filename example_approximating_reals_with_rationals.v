@@ -6,7 +6,7 @@ to extensive additional work so Igave up at some point. I feel that the approach
 file is more appropriate. *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions continuity universal_machine par_spaces.
+Require Import multi_valued_functions continuity universal_machine representations.
 Require Import Reals Lra Classical ClassicalFacts Psatz FunctionalExtensionality.
 
 Set Implicit Arguments.
@@ -17,29 +17,13 @@ Local Open Scope Z_scope.
 Import QArith.
 Local Open Scope R_scope.
 
-(* \begin{syntacticsuggar} *)
 Fixpoint P2R n := match n with
   | xH => 1
   | xO m => 2* P2R m
   | xI k => 2* P2R k + 1
 end.
-(* It eludes me why this function is not provided under the name IPR in the standard Library *)
-Fixpoint Z2R z := match z with
-  | Z0 => 0
-  | Zpos n => P2R n
-  | Zneg m => - P2R m
-end.
 Coercion IZR : Z >-> R.
-(* The translation IZR from the standard library translates to natural numbers in unary
-and then to a real numbers. I think that is stuped so I tried to replace it. However, it turns
-out that IZR is used in some lemmas, so I need to rely on it anyway. *)
 Definition Q2R q := QArith_base.Qnum q / QArith_base.QDen q.
-(* Coercion Q2R : Q >-> R. *)
-(* This is not coerced since it leads to ambiguous paths. *)
-(* \end{syntacticalsuggar} *)
-(* It turns out that these coercions are not enough. To avoid heaps of burocracy I need to find
-a way to also coerce the operators. Any hints about how to do this in a reasonable way are
-appreciated *)
 
 (* \begin{usefulllemmas} about the rational numbers provided by Laurent Thery *)
 Lemma Q2R_make n d : Q2R (Qmake n d) = IZR n / IZR(' d).
@@ -167,23 +151,13 @@ Definition Q2Rt := (minus_Q2R, opp_Q2R, mul_Q2R, inv_Q2R, div_Q2R, plus_Q2R, Q2R
 Definition rep_R : (Q -> Q) -> R -> Prop :=
   fun phi x => forall eps, (0 < eps)%Q -> Rabs(x-Q2R(phi eps)) <= Q2R eps.
 (* This is close to the standard definition of the chauchy representation. Usually integers
-are prefered to avoid to many possible answers. I tried this in the other example file
-"example_approximating_reals_with_integers" but it leads to extensive additional work so I
-gave up at some point. I feel like the above is the most natural formulation of the Cauchy
-representation. *)
+are prefered to avoid to many possible answers. I tried using integers, but it got very ugly
+so I gave up at some point. I feel like the above is the most natural formulation of the Cauchy
+representation anyway. *)
 
-Lemma approx : forall r, r - Int_part r <= 1.
-Proof.
-  move => r; move: (base_Int_part r) => [bipl bipr].
-  lra.
-Qed.
-
-Lemma approx' : forall r, 0 <= r - Int_part r.
-Proof.
-  move => r; move: (base_Int_part r) => [bipl bipr].
-  lra.
-Qed.
-
+(* The following are auxiliary lemmas that are needed for the proof that the relation defined
+above is the graph of a partial function. I.e. that it is single valued as a multi-valued
+function. Laurent Thery provided the proofs of the following lemmas and improved their statments *)
 Lemma Q_accumulates_to_zero r : 0 < r -> exists q : Q, 0 < Q2R q < r.
 Proof.
 move=> rPos.
@@ -219,7 +193,7 @@ apply: cond_eq_rat => q qg0.
 set r := Q2R (phi (Qdiv q (1+1))).
 replace (x-x') with ((x-r) + (r-x')) by field.
 apply: Rle_trans.
-- apply: (Rabs_triang (x-r)).
+	apply: (Rabs_triang (x-r)).
 rewrite (_ : q == q / (1 + 1) + q / (1 + 1))%Q; last first.
   by field.
 rewrite plus_Q2R.
@@ -234,6 +208,18 @@ replace (Rabs (r - x')) with (Rabs (x' - r)).
 by split_Rabs; lra.
 Qed.
 
+(* Auxillary lemmas for the proof that the Cauchy representation is surjective. *)
+Lemma approx : forall r, r - Int_part r <= 1.
+Proof.
+move => r; move: (base_Int_part r) => [bipl bipr]; lra.
+Qed.
+
+Lemma approx' : forall r, 0 <= r - Int_part r.
+Proof.
+move => r; move: (base_Int_part r) => [bipl bipr]; lra.
+Qed.
+
+(* The notation is_representation is for being single_valued and surjective. *)
 Lemma rep_R_is_rep: rep_R is_representation.
 Proof.
 split.
@@ -276,8 +262,6 @@ Canonical rep_space_R := @make_rep_space
 	rationals_countable
 	rationals_countable
 	rep_R_is_rep.
-
-Print Q.
 
 Lemma id_is_computable : (id : R -> R) is_computable_function.
 Proof.
