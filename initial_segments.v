@@ -206,3 +206,4 @@ by move: (min (cnt n) n eq) => leq; lia.
 Qed.
 
 End INITIAL_SEGMENTS_AND_SIZES.
+Notation "f '\is_surjective'" := (is_sur f) (at level 2).
