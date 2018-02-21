@@ -186,7 +186,7 @@ have : Rabs (x - y) <= Q2R q by apply: Hp; lra.
 rewrite Rabs_pos_eq; lra.
 Qed.
 
-Lemma rep_R_sing: rep_R is_single_valued.
+Lemma rep_R_sing: rep_R \is_single_valued.
 Proof.
 move => phi x x' pinox H.
 apply: cond_eq_rat => q qg0.
@@ -220,7 +220,7 @@ move => r; move: (base_Int_part r) => [bipl bipr]; lra.
 Qed.
 
 (* The notation is_representation is for being single_valued and surjective. *)
-Lemma rep_R_is_rep: rep_R is_representation.
+Lemma rep_R_is_rep: rep_R \is_representation.
 Proof.
 split.
 	exact: rep_R_sing.
@@ -249,7 +249,7 @@ replace (/eps*(x - eps * z)) with (x/eps - z);last first.
 by apply (approx' (x * /eps)).
 Qed.
 
-Lemma rationals_countable: Q is_countable.
+Lemma rationals_countable: Q \is_countable.
 Proof.
 Admitted.
 
@@ -263,7 +263,7 @@ Canonical rep_space_R := @make_rep_space
 	rationals_countable
 	rep_R_is_rep.
 
-Lemma id_is_computable : (id : R -> R) is_computable_function.
+Lemma id_is_computable : (id : R -> R) \is_computable_function.
 Proof.
 apply prim_rec_comp_fun.
 by exists (fun phi => phi).
@@ -300,7 +300,7 @@ by apply: Rplus_le_compat; apply phinx.
 by rewrite !Q2Rt /=; lra.
 Qed.
 
-Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) is_computable_function.
+Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) \is_computable_function.
 Proof.
 apply prim_rec_comp_fun.
 set rab := (fun (phi : Q -> Q) => 1# Z.to_pos (up(Rabs(Q2R(phi(1%Q)))))).
