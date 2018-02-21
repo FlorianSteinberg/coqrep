@@ -104,8 +104,8 @@ endif
 
 VFILES:=multi_valued_functions.v\
   continuity.v\
-  examples_continuity.v\
   initial_segments.v\
+  examples_continuity.v\
   universal_machine.v\
   machines.v\
   representations.v\
