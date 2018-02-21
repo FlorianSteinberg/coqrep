@@ -51,30 +51,22 @@ End MINIMIZATION.
 Lemma well_order_nat (P : nat -> Prop):
 	(exists n, P n) -> exists n, P n /\ forall m, P m -> n <= m.
 Proof.
-	set R:= fun n b => P n <-> is_true b.
-	have: forall n, exists b, R n b.
-	-	move => n.
-		case: (classic (P n)) => pn.
-		exists true.
-		by split.
-		exists false.
-		by split.
-	move => cond.
-	move: cond (choice R cond) => _ [p] prop.
-	rewrite /R in prop;move: R => _.
-  set n := searchU p.
-	move => [m] Pm.
-  exists (n m m).
-
-	split.
-  - apply: (prop (n m m)).2 (@searchU_correct p m m ((prop m).1 Pm)).
-  - have: forall k, k< n m m -> ~ p k.
+set R:= fun n b => P n <-> is_true b.
+have cond: forall n, exists b, R n b.
+	move => n.
+	by case: (classic (P n)) => pn; [exists true|exists false]; split.
+move: cond (choice R cond) => _ [p] prop.
+rewrite /R in prop;move: R => _.
+set n := searchU p.
+move => [m] Pm.
+exists (n m m); split.
+	apply: (prop (n m m)).2 (@searchU_correct p m m ((prop m).1 Pm)).
+	have neg: forall k, k< n m m -> ~ p k.
     apply: (@searchU_minimal p m m).
-    move => k; rewrite subnn; lia.
-  move => neg k Pk.
+    by move => k; rewrite subnn; lia.
+	move => k Pk.
   case: (leqP (n m m) k) => // /leP stuff //.
-  elim: (neg k) => //.
-  by apply ((prop k).1 Pk).
+  by elim: (neg k) => //; apply ((prop k).1 Pk).
 Qed.
 
 Section SECTIONS.
@@ -92,18 +84,16 @@ Notation "sec '\is_minimal_section'" := (is_min_sec sec) (at level 2).
 Lemma minimal_section:
   exists sec, sec \is_minimal_section.
 Proof.
-  set R := fun s n => cnt n = s /\ (forall m, cnt m = s -> n <= m).
-  have: forall s, exists n, R s n
-  	by move => s; move: (@well_order_nat (fun n => cnt n = s) (sur s)) => [] n [np1 np2]; exists n.
-  move => cond.
-  move: (choice R cond) => [sec] sprop.
-  by exists sec; split => s;move: (sprop s) => [a b].
+set R := fun s n => cnt n = s /\ (forall m, cnt m = s -> n <= m).
+have cond: forall s, exists n, R s n
+	by move => s; move: (@well_order_nat (fun n => cnt n = s) (sur s)) => [] n [np1 np2]; exists n.
+move: (choice R cond) => [sec] sprop.
+by exists sec; split => s;move: (sprop s) => [a b].
 Qed.
 End SECTIONS.
 
 Notation "sec '\is_section_of' cnt" := (forall s, cnt (sec s) = s) (at level 2).
 Notation "sec '\is_minimal_section_of' cnt" := (is_min_sec cnt sec) (at level 2).
-
 
 Section INITIAL_SEGMENTS_AND_SIZES.
 Context Q (cnt: nat -> Q).
@@ -113,10 +103,10 @@ Fixpoint in_seg m := match m with
   | S n => cons (cnt n) (in_seg n)
 end.
 
-Lemma length_in_seg n : length (in_seg n) = n.
+Lemma length_inseg n : length (in_seg n) = n.
 Proof. by elim: n => // n ih; rewrite -{2}ih. Qed.
 
-Lemma mon_in_seg q n m:
+Lemma mon_inseg q n m:
 	  n <= m -> List.In q (in_seg n) -> List.In q (in_seg m).
 Proof.
 elim: m => [l0|m ih ass].
@@ -125,8 +115,35 @@ have [/ih H1 H2|<- //] := (PeanoNat.Nat.le_succ_r n m).1 ass.
 by right; apply: H1.
 Qed.
 
-Lemma initial_segments A (phi psi : Q -> A):
-  forall m,
+Lemma inseg_ex a:
+	forall n, List.In a (in_seg n.+1) <-> exists m, m <= n /\ cnt m = a.
+Proof.
+elim.
+	split => /=.
+		by case => ass //; exists 0.
+	move => [] m [] eq p; left.
+	have m0: m=0 by lia.
+	by rewrite -m0.
+move => n ih.
+case (classic (a = cnt (S n))) => ass.
+	split => ass'; [by exists (S n)|by left].
+split.
+	move => [] stuff.
+		by exfalso; apply ass.
+	move: (ih.1 stuff) => [] m [] ineq eq.
+	exists m.
+	by split; first by lia.
+move => [] m [] ineq eq.
+right.
+apply ih.2.
+exists m.
+split => //.
+case: (classic (m = S n)) => ass'.
+	by exfalso; apply ass; rewrite -ass'.
+by lia.
+Qed.
+
+Lemma inseg_coin A (phi psi : Q -> A) m:
   	(forall n, n < m -> phi (cnt n) = psi (cnt n))
   	<->
   	phi \and psi \coincide_on (in_seg m).
@@ -149,6 +166,20 @@ by lia.
 Qed.
 
 Context (sec: Q -> nat).
+
+Lemma inseg a:
+	is_min_sec cnt sec -> forall n, List.In a (in_seg n.+1) <-> sec a <= n.
+Proof.
+move => issec n.
+split => ass.
+	move: ((inseg_ex a n).1 ass) => [] m [] ineq eq.
+	suffices: sec a <= m by lia.
+	by apply: (issec.2 a m).
+apply: ((inseg_ex a n).2).
+exists (sec a).
+split => //.
+by apply (issec.1 a).
+Qed.
 
 Fixpoint size K := match K with
   | nil => 0
@@ -176,34 +207,49 @@ Proof.
 move => issec.
 elim => //.
 move => a L IH phi psi ci'.
-move: IH (IH phi psi) => _ IH.
-move: (initial_segments phi psi (size (cons a L))) => [_ d2].
+specialize (IH phi psi).
+have [_ d2]:= (inseg_coin phi psi (size (cons a L))).
 move: d2 (d2 ci') => _ ci.
-have: (sec a < size (a :: L)).
+have ineq: (sec a < size (a :: L)).
 	replace (size (a :: L)) with (max (sec a).+1 (size L)) by trivial; lia.
-move => ineq.
-split.
-replace a with (cnt (sec a)) by apply (issec a).
-	by apply: (ci (sec a)).
+split; first by replace a with (cnt (sec a)) by apply (issec a); apply: (ci (sec a)).
 apply (IH).
-move: (initial_segments phi psi (size L)) => [d1 _].
+have [d1 _]:= (inseg_coin phi psi (size L)).
 apply d1 => n ine.
 apply ci.
 apply: (PeanoNat.Nat.lt_le_trans n (size L) (size (a :: L))) => //.
-replace (size (a :: L)) with (max (sec a).+1 (size L)) by trivial; lia.
+by replace (size (a :: L)) with (max (sec a).+1 (size L)) by trivial; lia.
 Qed.
 
-Lemma size_in_seg:
+Lemma inseg_sec a:
+	is_min_sec cnt sec -> List.In a (in_seg (sec a).+1).
+Proof.
+move => ims; apply/ (inseg a) => //.
+Qed.
+
+Lemma size_inseg:
 	is_min_sec cnt sec -> forall n, size (in_seg n) <= n.
 Proof.
 move => [issec min].
 elim => // n ih.
 replace (in_seg n.+1) with (cons (cnt n) (in_seg n)) by trivial.
-replace (size (cnt n :: in_seg n))
-	with (max (sec (cnt n)).+1 (size (in_seg n))) by trivial.
+replace (size (cnt n :: in_seg n)) with (max (sec (cnt n)).+1 (size (in_seg n))) by trivial.
 have eq: (cnt n = cnt n) by trivial.
 by move: (min (cnt n) n eq) => leq; lia.
 Qed.
 
+Lemma inseg_size a K:
+	is_min_sec cnt sec -> List.In a K -> List.In a (in_seg (size K).+1).
+Proof.
+move => ims listin.
+apply/ (inseg a) => //.
+move: K a listin.
+elim => // a K ih a' listin.
+replace (size (a::K)) with (max (sec a).+1 (size K)) by trivial.
+suffices: sec a' <= (sec a).+1 \/ sec a' <= size K by lia.
+case: listin => ass.
+	by left; rewrite ass; lia.
+by right; apply ih.
+Qed.
 End INITIAL_SEGMENTS_AND_SIZES.
 Notation "f '\is_surjective'" := (is_sur f) (at level 2).
