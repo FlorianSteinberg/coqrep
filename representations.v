@@ -11,8 +11,8 @@ Unset Printing Implicit Defensive.
 Section REPRESENTED_SPACES.
 
 Definition is_rep S T (delta: S ->> T):=
-	delta is_surjective_partial_function.
-Notation "delta 'is_representation'" := (is_rep delta) (at level 2).
+	delta \is_surjective_partial_function.
+Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
 
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names can be an arbitrary type
@@ -27,33 +27,33 @@ Structure rep_space := make_rep_space {
   answers: Type;
   delta: (questions -> answers) ->> space;
 	some_answer: answers;
-  countable_questions: questions is_countable;
-  countable_answers: answers is_countable;
-  representation_is_valid : delta is_representation
+  countable_questions: questions \is_countable;
+  countable_answers: answers \is_countable;
+  representation_is_valid : delta \is_representation
 }.
 Notation names X := ((questions X) -> (answers X)).
-Notation "'rep'" := @delta (at level 2).
-Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
-Notation "'rep_valid' X" := (@representation_is_valid X) (at level 2).
+Notation "'\rep'" := @delta (at level 2).
+Notation "phi '\is_name_of' x" := (delta phi x) (at level 2).
+Notation "'\rep_valid' X" := (@representation_is_valid X) (at level 2).
 
 Definition prod_rep X Y :=
 	(fun (phipsi : (questions X + questions Y -> answers X * answers Y)) x =>
       delta (fun q => (phipsi (inl q)).1) x.1 /\ delta (fun q => (phipsi (inr q)).2) x.2).
 
 Lemma prod_rep_is_rep (X Y: rep_space):
-	(@prod_rep X Y) is_representation.
+	(@prod_rep X Y) \is_representation.
 Proof.
 split.
 	move => phipsi x x' [] phinx1 psinx2 [] phinx'1 psinx'2.
 	apply: injective_projections.
-		apply/ (rep_valid X).1.
+		apply/ (\rep_valid X).1.
 			by apply phinx1.
 		done.
-	apply/ (rep_valid Y).1.
+	apply/ (\rep_valid Y).1.
 		by apply psinx2.
 	done.
 move => x.
-move: ((rep_valid X).2 x.1) ((rep_valid Y).2 x.2) => [] phi phinx1 [] psi psinx2.
+move: ((\rep_valid X).2 x.1) ((\rep_valid Y).2 x.2) => [] phi phinx1 [] psi psinx2.
 by exists (fun q => match q with
 	| inl q' => (phi q', some_answer Y)
 	| inr q' => (some_answer X, psi q')
@@ -64,7 +64,7 @@ Qed.
 is the product in some category, but I am unsure what the morphisms are supposed to be. *)
 
 Lemma sum_count Q Q':
-  Q is_countable -> Q' is_countable -> (Q + Q') is_countable.
+  Q \is_countable -> Q' \is_countable -> (Q + Q') \is_countable.
 Proof.
 move => [cnt1] sur1 [cnt2] sur2.
 set cnt' := fix cnt' n acc := match n with
@@ -118,7 +118,7 @@ apply sum_rect.
 Qed.
 
 Lemma prod_count Q Q':
-  Q is_countable -> Q' is_countable -> (Q * Q') is_countable.
+  Q \is_countable -> Q' \is_countable -> (Q * Q') \is_countable.
 Proof.
 admit.
 Admitted.
@@ -134,48 +134,47 @@ Canonical rep_space_prod X Y := @make_rep_space
   (@prod_rep_is_rep X Y).
 
 Lemma list_count Q:
-	Q is_countable -> (list Q) is_countable.
+	Q \is_countable -> (list Q) \is_countable.
 Proof.
 admit.
 Admitted.
 
 Definition is_mf_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: X ->> Y) :=
-	(rep Y) o F tightens (f o (rep X)).
+	(\rep Y) o F \tightens (f o (\rep X)).
 
 Definition is_rlzr (X Y: rep_space) (F: (names X) -> (names Y)) (f: X -> Y) :=
-	forall phi x, (rep X) phi x -> ((rep Y) (F phi) (f x)).
-Notation "f 'is_realized_by' F" := (is_rlzr F f) (at level 2).
-Notation "F 'is_realizer_of' f" := (is_rlzr F f) (at level 2).
+	forall phi x, (\rep X) phi x -> ((\rep Y) (F phi) (f x)).
+Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
+Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
 
 Lemma is_rlzr_is_rep X Y:
-  (@is_rlzr X Y) is_representation.
+  (@is_rlzr X Y) \is_representation.
 Proof.
 split.
 	move => F f g Frf Frg.
 	apply functional_extensionality => x.
-	move: ((rep_valid X).2 x) => [] phi phinx.
+	move: ((\rep_valid X).2 x) => [] phi phinx.
 	move: (Frf phi x phinx) => Fphinfx.
 	move: (Frg phi x phinx) => Fphingx.
-	apply/ (rep_valid Y).1.
+	apply/ (\rep_valid Y).1.
 		by apply Fphinfx.
 	by apply Fphingx.
 move => f.
-set R :=(fun phi psi => phi from_dom (rep X) -> forall x, (rep X) phi x -> (rep Y) psi (f x)).
+set R :=(fun phi psi => phi \from_dom (\rep X) -> forall x, (\rep X) phi x -> (\rep Y) psi (f x)).
 have cond: forall phi, exists psi, R phi psi.
 	move => phi.
-	case: (classic (phi from_dom (rep X))).
+	case: (classic (phi \from_dom (\rep X))).
 		move => [] x phinx.
-		move: ((rep_valid Y).2 (f x)) => [] psi psiny.
+		move: ((\rep_valid Y).2 (f x)) => [] psi psiny.
 		exists psi.
 		move => _ x' phinx'.
-		by rewrite -((rep_valid X).1 phi x x').
+		by rewrite -((\rep_valid X).1 phi x x').
 	move => ass.
 	exists (fun q => some_answer Y).
 	move => phifd.
 	by exfalso;apply ass.
 move: (choice R cond) => [] F Fcond.
-exists (F).
-move => phi x phinx.
+exists (F) => phi x phinx.
 apply Fcond => //.
 by exists x.
 Qed.
@@ -191,15 +190,15 @@ Definition has_cont_rlzr (X Y : rep_space) (f : X -> Y) :=
 	exists F, is_rlzr F f /\ @is_cont (questions X) (answers X) (questions Y) (answers Y) (F2MF F).
 
 Definition is_ass (X Y: rep_space) psi (f: X -> Y) := 
-	exists F,  (fun n phi q' => U n psi phi q') type_two_computes (F2MF F) /\ F is_realizer_of f.
+	exists F,  (fun n phi q' => U n psi phi q') \type_two_computes (F2MF F) /\ F \is_realizer_of f.
 
 Notation "X c-> Y" := {f: space X -> space Y | has_cont_rlzr f} (at level 2).
 
 Definition is_fun_name (X Y: rep_space) psi (f: X c-> Y) := 
-	exists F,  (fun n phi q' => U n psi phi q') type_two_computes (F2MF F) /\ F is_realizer_of (projT1 f).
+	exists F,  (fun n phi q' => U n psi phi q') \type_two_computes (F2MF F) /\ F \is_realizer_of (projT1 f).
 
 Lemma is_fun_name_is_rep (X Y : rep_space):
-  (@is_fun_name X Y) is_representation.
+  (@is_fun_name X Y) \is_representation.
 Proof.
 split.
 	move => psiF f g [] F [] psinF Frf [] G [] psinG Grg.
@@ -240,7 +239,7 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
   (@is_fun_name_is_rep X Y).
 
 Definition is_comp (X: rep_space) (x: X) :=
-	{phi| phi is_name_of x}.
+	{phi| phi \is_name_of x}.
 
 Definition is_comp_fun X Y (f: space X -> space Y) :=
 	{G | exists F, is_rlzr F f/\ comptt G (F2MF F)}.
@@ -307,14 +306,14 @@ Admitted.
 *)
 
 End REPRESENTED_SPACES.
-Notation "delta 'is_representation'" := (is_rep delta) (at level 2).
+Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
 Notation names X := ((questions X) -> (answers X)).
-Notation "'rep'" := @delta (at level 2).
-Notation "phi 'is_name_of' x" := (delta phi x) (at level 2).
-Notation "'rep_valid' X" := (@representation_is_valid X) (at level 2).
-Notation "f 'is_realized_by' F" := (is_rlzr F f) (at level 2).
-Notation "F 'is_realizer_of' f" := (is_rlzr F f) (at level 2).
+Notation "'\rep'" := @delta (at level 2).
+Notation "phi '\is_name_of' x" := (delta phi x) (at level 2).
+Notation "'\rep_valid' X" := (@representation_is_valid X) (at level 2).
+Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
+Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
 Notation "X c-> Y" := {f: space X -> space Y | has_cont_rlzr f} (at level 2).
-Notation "x 'is_computable'" := (is_comp x) (at level 2).
-Notation "f 'is_computable_function'" := (is_comp_fun f) (at level 2).
+Notation "x '\is_computable'" := (is_comp x) (at level 2).
+Notation "f '\is_computable_function'" := (is_comp_fun f) (at level 2).
