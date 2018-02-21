@@ -102,9 +102,9 @@ Definition is_mod mf :=
   	forall Fphi : B', F phi Fphi -> (forall Fpsi, F psi Fpsi -> Fphi q' = Fpsi q').
 End CONTINUITY_DEFINITION.
 
-Notation "phi 'and' psi 'coincide_on' L" := (equal_on phi psi L) (at level 2).
-Notation "F 'is_continuous'" := (is_cont F) (at level 2).
-Notation "mf 'is_modulus_of' F" := (is_mod F mf) (at level 2).
+Notation "phi '\and' psi '\coincide_on' L" := (equal_on phi psi L) (at level 2).
+Notation "F '\is_continuous'" := (is_cont F) (at level 2).
+Notation "mf '\is_modulus_of' F" := (is_mod F mf) (at level 2).
 
 Section CONTINUITY_LEMMAS.
 Context (Q A Q' A' : Type).
@@ -112,13 +112,13 @@ Notation B := (Q -> A).
 Notation B' := (Q' -> A').
 
 Lemma coin_ref (phi: B):
-	forall L, phi and phi coincide_on L.
+	forall L, phi \and phi \coincide_on L.
 Proof.
 	by elim.
 Qed.
 
 Lemma app_coincide L K (phi psi: B):
-	phi and psi coincide_on (L ++ K) <-> (phi and psi coincide_on L /\ phi and psi coincide_on K).
+	phi \and psi \coincide_on (L ++ K) <-> (phi \and psi \coincide_on L /\ phi \and psi \coincide_on K).
 Proof.
 split.
 	move: L.
@@ -141,7 +141,7 @@ by split; try apply ih; try apply ass2.
 Qed.
 
 Lemma continuous_extension (F G: B ->> B'):
-	G tightens F -> G is_continuous -> F is_single_valued -> F is_continuous.
+	G \tightens F -> G \is_continuous -> F \is_single_valued -> F \is_continuous.
 Proof.
 move => GeF Gcont Fsing phi q'.
 move: (Gcont phi q') => [] L Lprop.
@@ -153,21 +153,21 @@ by apply: (GeF psi Fpsi).
 Qed.
 
 Lemma cont_to_sing (F: B ->> B'):
-	F is_continuous -> F is_single_valued.
+	F \is_continuous -> F \is_single_valued.
 Proof.
 move => cont.
 move => phi Fphi Fphi' FphiFphi H.
 apply functional_extensionality => a.
 move: cont (cont phi a) => _ [L] cont.
-have eq: (forall K, phi and phi coincide_on K) by elim.
+have eq: (forall K, phi \and phi \coincide_on K) by elim.
 by rewrite -((cont phi (eq L) Fphi') H).
 Qed.
 
 Lemma exists_modulus (F: B ->> B'):
-	F is_continuous -> exists mf, mf is_modulus_of F.
+	F \is_continuous -> exists mf, mf \is_modulus_of F.
 Proof.
 move => cont.
-set R:= fun phiq L => forall psi, phiq.1 and psi coincide_on L -> forall Fphi, F phiq.1 Fphi -> 
+set R:= fun phiq L => forall psi, phiq.1 \and psi \coincide_on L -> forall Fphi, F phiq.1 Fphi -> 
 	(forall Fpsi, F psi Fpsi -> Fphi phiq.2 = Fpsi phiq.2).
 have: forall phiq, exists L, R phiq L.
 	move => [phi q'].
@@ -182,9 +182,8 @@ move => phi q.
 by apply (cond (phi, q)).
 Qed.
 
-(*
-Lemma continuous_composition (F: B ->> B') (G: B' ->> B''):
-		F is_continuous -> G is_continuous -> G o F is_continuous.
+Lemma continuous_composition Q'' A'' (F: B ->> B') (G: B' ->> (Q'' -> A'')):
+	F \is_continuous -> G \is_continuous -> G o F \is_continuous.
 Proof.
 move => Fcont Gcont.
 move => phi q''.
@@ -200,7 +199,7 @@ case (classic (exists Fphi, F phi Fphi)).
 	move => psi.
 	case: (classic (exists Fpsi, F psi Fpsi)).
 		move => [] Fpsi FpsiFpsi coin GFphi [] [] Fphi' [] FphiFphi' GFphi'GFphi cond'.
-		have: Fphi and Fpsi coincide_on L.
+		have: Fphi \and Fpsi \coincide_on L.
 			specialize (Lprop Fpsi).
 			move: L Fphi FphiFphi Fpsi FpsiFpsi Lprop coin .
 			elim=> //.
@@ -226,5 +225,5 @@ exists nil.
 move => a b c [][] Fphi [] FphiFphi.
 exfalso; apply false.
 by exists Fphi.
-Qed.*)
+Qed.
 End CONTINUITY_LEMMAS.
