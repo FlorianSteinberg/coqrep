@@ -80,17 +80,17 @@ Qed.
 Section SECTIONS.
 Definition is_sur S T f:=
 	forall (t: T), exists (s: S), f s = t.
-Notation "f 'is_surjective'" := (is_sur f) (at level 2).
+Notation "f '\is_surjective'" := (is_sur f) (at level 2).
 
-Context Q (cnt: nat -> Q) (sur: cnt is_surjective).
+Context Q (cnt: nat -> Q) (sur: cnt \is_surjective).
 
 Definition is_min_sec (sec : Q -> nat) :=
   (forall s, cnt (sec s) = s) /\ forall s,(forall m, cnt m = s -> sec s <= m).
 
-Notation "sec 'is_minimal_section'" := (is_min_sec sec) (at level 2).
+Notation "sec '\is_minimal_section'" := (is_min_sec sec) (at level 2).
 
 Lemma minimal_section:
-  exists sec, sec is_minimal_section.
+  exists sec, sec \is_minimal_section.
 Proof.
   set R := fun s n => cnt n = s /\ (forall m, cnt m = s -> n <= m).
   have: forall s, exists n, R s n
@@ -101,8 +101,8 @@ Proof.
 Qed.
 End SECTIONS.
 
-Notation "sec 'is_section_of' cnt" := (forall s, cnt (sec s) = s) (at level 2).
-Notation "sec 'is_minimal_section_of' cnt" := (is_min_sec cnt sec) (at level 2).
+Notation "sec '\is_section_of' cnt" := (forall s, cnt (sec s) = s) (at level 2).
+Notation "sec '\is_minimal_section_of' cnt" := (is_min_sec cnt sec) (at level 2).
 
 
 Section INITIAL_SEGMENTS_AND_SIZES.
@@ -129,7 +129,7 @@ Lemma initial_segments A (phi psi : Q -> A):
   forall m,
   	(forall n, n < m -> phi (cnt n) = psi (cnt n))
   	<->
-  	phi and psi coincide_on (in_seg m).
+  	phi \and psi \coincide_on (in_seg m).
 Proof.
 split.
   move: m; elim => // n ihn ass.
@@ -169,9 +169,9 @@ apply: PeanoNat.Nat.max_assoc.
 Qed.
 
 Lemma list_size A:
-  sec is_section_of cnt
-    -> forall K (phi psi : Q -> A), phi and psi coincide_on (in_seg (size K))
-    -> (phi and psi coincide_on K).
+  sec \is_section_of cnt
+    -> forall K (phi psi : Q -> A), phi \and psi \coincide_on (in_seg (size K))
+    -> (phi \and psi \coincide_on K).
 Proof.
 move => issec.
 elim => //.
@@ -206,4 +206,3 @@ by move: (min (cnt n) n eq) => leq; lia.
 Qed.
 
 End INITIAL_SEGMENTS_AND_SIZES.
-Notation "f 'is_surjective'" := (is_sur f) (at level 2).
