@@ -37,7 +37,7 @@ Qed.
 
 Definition is_cont1 (G: (nat -> nat) -> nat -> nat) :=
   forall phi n, exists m, forall psi,
-    phi and psi coincide_on (init_seg m) -> (G phi) and (G psi) coincide_on (init_seg n).
+    phi \and psi \coincide_on (init_seg m) -> (G phi) \and (G psi) \coincide_on (init_seg n).
 (* This is the more conventional continuity using intial segments.
 It is equivalent to the corresponding multifunction being continuous
 in the sense of "continuity.v" *)
@@ -45,50 +45,32 @@ in the sense of "continuity.v" *)
 Lemma continuity1 (F: B -> B):
 	is_cont1 F <-> is_cont (F2MF F).
 Proof.
-split.
-- move => cont psi s'.
-  move: cont (cont psi (S s')) => _ [m cont].
-  exists (init_seg m) => phi coin Fpsi iv Fphi iv'.
-  move: cont (cont phi coin) => _ coinv.
-  rewrite iv iv' in coinv.
- 	apply: ((initial_segments id Fpsi Fphi (S s')).2 coinv s').
- 	lia.
-move => cont phi.
-elim.
-	exists 0 => psi coin.
-	apply: (initial_segments id (F phi) (F psi) 0).1.
-	move => n.
-	lia.
+split => cont phi.
+	move => s'.
+	move: cont (cont phi (S s')) => _ [m cont].
+	exists (init_seg m) => psi coin Fphi iv Fpsi iv'.
+	move: cont (cont psi coin) => _ coinv.
+	rewrite iv iv' in coinv.
+	by apply: ((initial_segments id Fphi Fpsi (S s')).2 coinv s'); lia.
+elim; first by exists 0 => psi coin; apply: (initial_segments id (F phi) (F psi) 0).1 => n; lia.
 move => n [m] ih.
-move:(cont phi n) => [L cond].
+move: (cont phi n) => [L cond].
 exists (size id (app (init_seg m) L)) => psi coin.
 move: ((initial_segments id phi psi (size id (init_seg m ++ L))).2 coin) => coin'.
-apply: (initial_segments id (F phi) (F psi) (S n)).1.
-move => n0 ineq.
+apply: (initial_segments id (F phi) (F psi) (S n)).1=> n0 ineq.
 have: n0 <= n by lia.
 move: ineq => _ ineq.
 case: (Compare_dec.le_lt_eq_dec n0 n ineq) => ass; last first.
-	have: phi and psi coincide_on (init_seg (size id L)).
-		apply: (initial_segments id phi psi (size id L)).1.
-		move => n1 n1ls.
-		apply coin'.
-		rewrite (size_app).
-		lia.
-	move => coin''.
-	have triv: forall psi', (F2MF F psi' (F psi')) by trivial.
-	have true: forall (n: nat), id id n = n by trivial.
-	move: (cond psi (list_size true coin'') (F phi) (triv phi) (F psi) (triv psi)).
-	by rewrite ass.
-move: ineq ass => _.
-move: n0.
-apply: (initial_segments id (F phi) (F psi) n).2.
-apply: ih.
-apply: (initial_segments id phi psi m).1.
-move => n1 n1ls.
-apply coin'.
-rewrite (size_app).
-rewrite (size_init_seg m).
-lia.
+	have coin'': phi \and psi \coincide_on (init_seg (size id L)).
+		apply: (initial_segments id phi psi (size id L)).1 => n1 n1ls.
+		by apply coin';	rewrite (size_app); lia.
+	rewrite ass.
+	apply (cond psi) => //.
+	by apply (@list_size nat (fun n:nat => n) (fun n:nat => n)).
+move: ineq ass => _; move: n0.
+apply: (initial_segments id (F phi) (F psi) n).2; apply: ih.
+apply: (initial_segments id phi psi m).1 => n1 n1ls.
+by apply coin'; rewrite (size_app) (size_init_seg m); lia.
 Qed.
 
 (*The above relied on specific properties of the involved functions. I am pretty sure that
@@ -97,7 +79,7 @@ bijection with nat, right? Anyway, the following uses lists for regular function
 is easier to prove equal to the continuity from "continuity.v" *)
 Definition is_cont2 (G: (Q-> A) -> Q' -> A') :=
   forall phi (q': Q'), exists (L : list Q), forall psi,
-    phi and psi coincide_on L -> G phi q' = G psi q'.
+    phi \and psi \coincide_on L -> G phi q' = G psi q'.
 
 Lemma continuity2 (F: (Q-> A) -> Q' -> A'):
 	is_cont2 F <-> is_cont (F2MF F).
@@ -105,13 +87,11 @@ Proof.
 split => cont psi s'.
 	move: cont (cont psi s') => _ [L cond].
 	exists L => phi coin Fpsi iv Fphi iv'.
-	rewrite -iv -iv'.
-	by apply (cond phi).
+	by rewrite -iv -iv'; apply (cond phi).
 move: cont (cont psi s') => _ [L cond].
 exists L => phi coin.
 have triv: forall psi', (F2MF F psi' (F psi')) by trivial.
-move: cond (cond phi coin (F psi) (triv psi)) => _ cond.
-by apply: (cond (fun s' => F phi s')).
+by apply: (cond phi coin (F psi) (triv psi) (fun s' => F phi s')).
 Qed.
 
 (*To have function from baire space to natural numbers, we identify nat with one -> nat.*)
@@ -121,50 +101,35 @@ phi is not assinged any value. On the other hand the function is single valued, 
 the smalles number where phi is zero allowed as return value. More generally, the function
 is continuous:*)
 
-
-Lemma F_is_continuous: F is_continuous.
+Lemma F_is_continuous: F \is_continuous.
 Proof.
-  move => phi str.
-  set cnt := (fun n:nat => n).
-  set sec := (fun n:nat => n).
-  set L := in_seg cnt.
-  case: (classic (exists m, phi m = 0)); last first.
-  	move => false.
-    exists nil => psi _ fp1 [v1] cond.
-    exfalso; apply false.
-    by exists (fp1 star).
-  move => [m me0].
-  exists (L m.+1).
-  move => psi pep.
-  move: ((initial_segments cnt phi psi m.+1).2 pep).
-  move => cond Fphi [v1 c1].
-  have: Fphi star <= m by apply (c1 m); lia.
-  move => le1.
-  move => Fpsi [v2 c2].
-	have: Fpsi star <= m.
-		apply: (c2 m).
-    replace (psi m) with (phi m) => //.
-    by apply (cond m).
-  move => leq2.
-  have: Fpsi star < m.+1 by lia.
-  move => l2.
-	rewrite -(cond (Fpsi star) l2) in v2.
-  have: Fphi star < m.+1 by lia.
-  move => l1.
-	rewrite (cond (Fphi star) l1) in v1.
-	move: (c1 (Fpsi star) v2) (c2 (Fphi star) v1) => ieq1 ieq2.
-  replace str with star.
-  lia.
-by elim str.
+set L := in_seg (fun n:nat => n).
+move => phi str.
+case: (classic (exists m, phi m = 0)); last first.
+	move => false.
+  exists nil => psi _ fp1 [v1] cond.
+  by exfalso; apply false; exists (fp1 star).
+move => [m me0].
+exists (L m.+1) => psi pep.
+move: ((initial_segments (fun n:nat => n) phi psi m.+1).2 pep) => cond Fphi [v1 c1].
+have: Fphi star <= m by apply (c1 m); lia.
+move => le1 Fpsi [v2 c2].
+have leq2: Fpsi star <= m	by apply: (c2 m); replace (psi m) with (phi m) by by apply (cond m).
+have l2: Fpsi star < m.+1 by lia.
+rewrite -(cond (Fpsi star) l2) in v2.
+have l1: Fphi star < m.+1 by lia.
+rewrite (cond (Fphi star) l1) in v1.
+move: (c1 (Fpsi star) v2) (c2 (Fphi star) v1) => ieq1 ieq2.
+by replace str with star; try lia; elim str.
 Qed.
 
-Lemma F_is_single_valued: F is_single_valued.
+Lemma F_is_single_valued: F \is_single_valued.
 Proof.
-	exact: cont_to_sing F_is_continuous.
+exact: cont_to_sing F_is_continuous.
 Qed.
 
 Lemma no_extension :
-	~ exists G, (F2MF G) extends F /\ (F2MF G) is_continuous.
+	~ exists G, (F2MF G) \extends F /\ (F2MF G) \is_continuous.
 Proof.
 move => [] G [] ext cont.
 set psi := fun n:nat => 1.
@@ -172,7 +137,7 @@ move: (cont psi star) => []L Lprop.
 set sL := size id L.
 set m := (max ((G psi) star).+1 sL).
 set psi' := fun n => if (leq m n) then 0 else 1.
-have: psi and psi' coincide_on init_seg sL.
+have: psi \and psi' \coincide_on init_seg sL.
 	apply: (initial_segments id psi psi' sL).1.
 	move => n nls.
 	rewrite /psi /psi'.
@@ -180,7 +145,7 @@ have: psi and psi' coincide_on init_seg sL.
 	have: m <= n by apply /leP.
 	rewrite /m; lia.
 move => coin.
-have: psi and psi' coincide_on L.
+have: psi \and psi' \coincide_on L.
 	have: forall (n: nat), id id n = n by trivial.
 	move => true.
 	apply: (list_size true coin).
@@ -200,8 +165,7 @@ have: (G psi') = fun star => m.
 	by apply /leP; rewrite hyp_ab.
 move => neq.
 move: (Lprop psi' coin (G psi) (triv psi) (G psi') (triv psi')).
-rewrite neq /m.
-lia.
+by rewrite neq /m; lia.
 Qed.
 
 (* Since classically, any multi function can be extended to a total multi function,
