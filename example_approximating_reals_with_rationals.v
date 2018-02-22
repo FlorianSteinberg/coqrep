@@ -300,7 +300,7 @@ by apply: Rplus_le_compat; apply phinx.
 by rewrite !Q2Rt /=; lra.
 Qed.
 
-Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) \is_computable_function.
+(*Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) \is_computable_function.
 Proof.
 apply prim_rec_comp_fun.
 set rab := (fun (phi : Q -> Q) => 1# Z.to_pos (up(Rabs(Q2R(phi(1%Q)))))).
@@ -325,4 +325,4 @@ apply: (triang).
 replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))).
 	rewrite Rabs_mult.
 apply: Rplus_le_compat.
-Admitted.
+Admitted.*)

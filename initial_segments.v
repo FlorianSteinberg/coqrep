@@ -116,17 +116,12 @@ by right; apply: H1.
 Qed.
 
 Lemma inseg_ex a:
-	forall n, List.In a (in_seg n.+1) <-> exists m, m <= n /\ cnt m = a.
+	forall n, List.In a (in_seg n) <-> exists m, m < n /\ cnt m = a.
 Proof.
-elim.
-	split => /=.
-		by case => ass //; exists 0.
-	move => [] m [] eq p; left.
-	have m0: m=0 by lia.
-	by rewrite -m0.
+elim; first by split => //;	by move => [] m [] eq p; lia.
 move => n ih.
-case (classic (a = cnt (S n))) => ass.
-	split => ass'; [by exists (S n)|by left].
+case (classic (a = cnt n)) => ass.
+	split => ass'; [by exists n;split; try lia|by left].
 split.
 	move => [] stuff.
 		by exfalso; apply ass.
@@ -139,9 +134,9 @@ apply ih.2.
 exists m.
 split => //.
 case: (classic (m = S n)) => ass'.
-	by exfalso; apply ass; rewrite -ass'.
-by lia.
-Qed.
+	by exfalso; lia.
+admit. (* Why doesn't lia work here? *)
+Admitted.
 
 Lemma inseg_coin A (phi psi : Q -> A) m:
   	(forall n, n < m -> phi (cnt n) = psi (cnt n))
@@ -168,7 +163,7 @@ Qed.
 Context (sec: Q -> nat).
 
 Lemma inseg a:
-	is_min_sec cnt sec -> forall n, List.In a (in_seg n.+1) <-> sec a <= n.
+	is_min_sec cnt sec -> forall n, List.In a (in_seg n) <-> sec a < n.
 Proof.
 move => issec n.
 split => ass.
@@ -238,18 +233,24 @@ have eq: (cnt n = cnt n) by trivial.
 by move: (min (cnt n) n eq) => leq; lia.
 Qed.
 
+Lemma listin_sec_size:
+forall (K : seq Q) (a : Q), List.In a K -> sec a < size K.
+Proof.
+elim => // a K ih a' listin.
+replace (size (a::K)) with (max (sec a).+1 (size K)) by trivial.
+suffices: sec a' <= (sec a) \/ sec a' < size K by lia.
+case: listin => ass.
+	by left; rewrite ass; lia.
+by right; apply ih.
+Qed.
+
 Lemma inseg_size a K:
-	is_min_sec cnt sec -> List.In a K -> List.In a (in_seg (size K).+1).
+	is_min_sec cnt sec -> List.In a K -> List.In a (in_seg (size K)).
 Proof.
 move => ims listin.
 apply/ (inseg a) => //.
 move: K a listin.
-elim => // a K ih a' listin.
-replace (size (a::K)) with (max (sec a).+1 (size K)) by trivial.
-suffices: sec a' <= (sec a).+1 \/ sec a' <= size K by lia.
-case: listin => ass.
-	by left; rewrite ass; lia.
-by right; apply ih.
+exact: listin_sec_size.
 Qed.
 End INITIAL_SEGMENTS_AND_SIZES.
 Notation "f '\is_surjective'" := (is_sur f) (at level 2).

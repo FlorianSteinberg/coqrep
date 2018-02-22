@@ -48,28 +48,28 @@ Proof.
 split => cont phi.
 	move => s'.
 	move: cont (cont phi (S s')) => _ [m cont].
-	exists (init_seg m) => psi coin Fphi iv Fpsi iv'.
+	exists (init_seg m) => psi coin Fphi Fpsi iv iv'.
 	move: cont (cont psi coin) => _ coinv.
 	rewrite iv iv' in coinv.
-	by apply: ((initial_segments id Fphi Fpsi (S s')).2 coinv s'); lia.
-elim; first by exists 0 => psi coin; apply: (initial_segments id (F phi) (F psi) 0).1 => n; lia.
+	by apply: ((inseg_coin id Fphi Fpsi (S s')).2 coinv s'); lia.
+elim; first by exists 0 => psi coin; apply: (inseg_coin id (F phi) (F psi) 0).1 => n; lia.
 move => n [m] ih.
 move: (cont phi n) => [L cond].
 exists (size id (app (init_seg m) L)) => psi coin.
-move: ((initial_segments id phi psi (size id (init_seg m ++ L))).2 coin) => coin'.
-apply: (initial_segments id (F phi) (F psi) (S n)).1=> n0 ineq.
+move: ((inseg_coin id phi psi (size id (init_seg m ++ L))).2 coin) => coin'.
+apply: (inseg_coin id (F phi) (F psi) (S n)).1=> n0 ineq.
 have: n0 <= n by lia.
 move: ineq => _ ineq.
 case: (Compare_dec.le_lt_eq_dec n0 n ineq) => ass; last first.
 	have coin'': phi \and psi \coincide_on (init_seg (size id L)).
-		apply: (initial_segments id phi psi (size id L)).1 => n1 n1ls.
+		apply: (inseg_coin id phi psi (size id L)).1 => n1 n1ls.
 		by apply coin';	rewrite (size_app); lia.
 	rewrite ass.
 	apply (cond psi) => //.
 	by apply (@list_size nat (fun n:nat => n) (fun n:nat => n)).
 move: ineq ass => _; move: n0.
-apply: (initial_segments id (F phi) (F psi) n).2; apply: ih.
-apply: (initial_segments id phi psi m).1 => n1 n1ls.
+apply: (inseg_coin id (F phi) (F psi) n).2; apply: ih.
+apply: (inseg_coin id phi psi m).1 => n1 n1ls.
 by apply coin'; rewrite (size_app) (size_init_seg m); lia.
 Qed.
 
@@ -86,12 +86,11 @@ Lemma continuity2 (F: (Q-> A) -> Q' -> A'):
 Proof.
 split => cont psi s'.
 	move: cont (cont psi s') => _ [L cond].
-	exists L => phi coin Fpsi iv Fphi iv'.
+	exists L => phi coin Fpsi Fphi iv iv'.
 	by rewrite -iv -iv'; apply (cond phi).
 move: cont (cont psi s') => _ [L cond].
 exists L => phi coin.
-have triv: forall psi', (F2MF F psi' (F psi')) by trivial.
-by apply: (cond phi coin (F psi) (triv psi) (fun s' => F phi s')).
+by apply: (cond phi coin (F psi) (fun s' => F phi s')).
 Qed.
 
 (*To have function from baire space to natural numbers, we identify nat with one -> nat.*)
@@ -103,17 +102,16 @@ is continuous:*)
 
 Lemma F_is_continuous: F \is_continuous.
 Proof.
-set L := in_seg (fun n:nat => n).
-move => phi str.
+set L := in_seg (fun n:nat => n) => phi str.
 case: (classic (exists m, phi m = 0)); last first.
 	move => false.
-  exists nil => psi _ fp1 [v1] cond.
+  exists nil => psi _ fp1 fp2 [v1] cond.
   by exfalso; apply false; exists (fp1 star).
 move => [m me0].
 exists (L m.+1) => psi pep.
-move: ((initial_segments (fun n:nat => n) phi psi m.+1).2 pep) => cond Fphi [v1 c1].
+move: ((inseg_coin (fun n:nat => n) phi psi m.+1).2 pep) => cond Fphi Fpsi [v1 c1].
 have: Fphi star <= m by apply (c1 m); lia.
-move => le1 Fpsi [v2 c2].
+move => le1 [v2 c2].
 have leq2: Fpsi star <= m	by apply: (c2 m); replace (psi m) with (phi m) by by apply (cond m).
 have l2: Fpsi star < m.+1 by lia.
 rewrite -(cond (Fpsi star) l2) in v2.
@@ -138,7 +136,7 @@ set sL := size id L.
 set m := (max ((G psi) star).+1 sL).
 set psi' := fun n => if (leq m n) then 0 else 1.
 have: psi \and psi' \coincide_on init_seg sL.
-	apply: (initial_segments id psi psi' sL).1.
+	apply: (inseg_coin id psi psi' sL).1.
 	move => n nls.
 	rewrite /psi /psi'.
 	case_eq (leq m n); intros hyp_ab => //.
@@ -150,22 +148,15 @@ have: psi \and psi' \coincide_on L.
 	move => true.
 	apply: (list_size true coin).
 move: coin => _ coin.
-have: forall psi', (F2MF G psi' (G psi')) by trivial.
-move => triv.
-have: (G psi') = fun star => m.
-	apply: (ext psi' (fun star => m)).
- 	rewrite /F.
+have neq: (G psi') = fun star => m.
+	apply: (ext psi' (fun star => m)); rewrite /F /psi'.
 	split.
-		rewrite /psi'.
 		replace (leq m m) with true => //.
 		by have: (leq m m) by apply /leP; lia.
-	move => m0.
-	rewrite /psi'.
-	case_eq (leq m m0); intros hyp_ab => // wahr.
-	by apply /leP; rewrite hyp_ab.
-move => neq.
-move: (Lprop psi' coin (G psi) (triv psi) (G psi') (triv psi')).
-by rewrite neq /m; lia.
+	move => m0;	case E: (leq m m0) => // _.
+	by apply /leP; rewrite E.
+suffices: G psi star = G psi' star by rewrite neq /m; lia.
+by apply: (Lprop psi' coin (G psi) (G psi')).
 Qed.
 
 (* Since classically, any multi function can be extended to a total multi function,
