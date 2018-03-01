@@ -219,7 +219,7 @@ move => f.
 move: (countable_questions X) => [] cnt sur.
 move: (some_answer X) (some_answer Y) => a a'.
 move: (projT2 f) => [] F [] Frf Fcont.
-move: (U_is_universal a a' sur Fcont) => [] psiF psinF.
+move: (U_is_universal a (fun q => a') sur Fcont) => [] psiF psinF.
 exists psiF.
 by exists F.
 Qed.

@@ -1,12 +1,14 @@
 From Coq.micromega Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions continuity.
+Require Import multi_valued_functions baire_space continuity.
 Require Import ClassicalChoice.
 Open Scope coq_nat_scope.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
+Notation "L '\is_sublist_of' K" := (forall q, List.In q L -> List.In q K) (at level 2).
 
 Section MINIMIZATION.
 (* The code from this section was provided by Vincent *)
@@ -95,7 +97,7 @@ End SECTIONS.
 Notation "sec '\is_section_of' cnt" := (forall s, cnt (sec s) = s) (at level 2).
 Notation "sec '\is_minimal_section_of' cnt" := (is_min_sec cnt sec) (at level 2).
 
-Section INITIAL_SEGMENTS_AND_SIZES.
+Section INITIAL_SEGMENTS.
 Context Q (cnt: nat -> Q).
 
 Fixpoint in_seg m := match m with
@@ -106,8 +108,8 @@ end.
 Lemma length_inseg n : length (in_seg n) = n.
 Proof. by elim: n => // n ih; rewrite -{2}ih. Qed.
 
-Lemma mon_inseg q n m:
-	  n <= m -> List.In q (in_seg n) -> List.In q (in_seg m).
+Lemma inseg_mon n m:
+	  n <= m -> (in_seg n) \is_sublist_of (in_seg m).
 Proof.
 elim: m => [l0|m ih ass].
   by rewrite (_ : n = 0) //; lia.
@@ -176,44 +178,44 @@ split => //.
 by apply (issec.1 a).
 Qed.
 
-Fixpoint size K := match K with
+Fixpoint max_elt K := match K with
   | nil => 0
-  | cons s K' => max (sec s).+1 (size K')
+  | cons s K' => max (sec s).+1 (max_elt K')
 end.
 
-Lemma size_app:
-	forall L K, size (L ++ K) = max (size L) (size K).
+Lemma melt_app:
+	forall L K, max_elt (L ++ K) = max (max_elt L) (max_elt K).
 Proof.
 elim => //.
 move => a L ih K.
 replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
 rewrite -List.app_comm_cons.
-replace (size (a :: (L ++ K)%list))
-	with (max ((sec a).+1) (size (L ++ K))) by trivial.
+replace (max_elt (a :: (L ++ K)%list))
+	with (max ((sec a).+1) (max_elt (L ++ K))) by trivial.
 rewrite (ih K).
 apply: PeanoNat.Nat.max_assoc.
 Qed.
 
-Lemma list_size A:
+Lemma list_melt A:
   sec \is_section_of cnt
-    -> forall K (phi psi : Q -> A), phi \and psi \coincide_on (in_seg (size K))
+    -> forall K (phi psi : Q -> A), phi \and psi \coincide_on (in_seg (max_elt K))
     -> (phi \and psi \coincide_on K).
 Proof.
 move => issec.
 elim => //.
 move => a L IH phi psi ci'.
 specialize (IH phi psi).
-have [_ d2]:= (inseg_coin phi psi (size (cons a L))).
+have [_ d2]:= (inseg_coin phi psi (max_elt (cons a L))).
 move: d2 (d2 ci') => _ ci.
-have ineq: (sec a < size (a :: L)).
-	replace (size (a :: L)) with (max (sec a).+1 (size L)) by trivial; lia.
+have ineq: (sec a < max_elt (a :: L)).
+	replace (max_elt (a :: L)) with (max (sec a).+1 (max_elt L)) by trivial; lia.
 split; first by replace a with (cnt (sec a)) by apply (issec a); apply: (ci (sec a)).
 apply (IH).
-have [d1 _]:= (inseg_coin phi psi (size L)).
+have [d1 _]:= (inseg_coin phi psi (max_elt L)).
 apply d1 => n ine.
 apply ci.
-apply: (PeanoNat.Nat.lt_le_trans n (size L) (size (a :: L))) => //.
-by replace (size (a :: L)) with (max (sec a).+1 (size L)) by trivial; lia.
+apply: (PeanoNat.Nat.lt_le_trans n (max_elt L) (max_elt (a :: L))) => //.
+by replace (max_elt (a :: L)) with (max (sec a).+1 (max_elt L)) by trivial; lia.
 Qed.
 
 Lemma inseg_sec a:
@@ -222,35 +224,36 @@ Proof.
 move => ims; apply/ (inseg a) => //.
 Qed.
 
-Lemma size_inseg:
-	is_min_sec cnt sec -> forall n, size (in_seg n) <= n.
+Lemma melt_inseg:
+	is_min_sec cnt sec -> forall n, max_elt (in_seg n) <= n.
 Proof.
 move => [issec min].
 elim => // n ih.
 replace (in_seg n.+1) with (cons (cnt n) (in_seg n)) by trivial.
-replace (size (cnt n :: in_seg n)) with (max (sec (cnt n)).+1 (size (in_seg n))) by trivial.
+replace (max_elt (cnt n :: in_seg n)) with (max (sec (cnt n)).+1 (max_elt (in_seg n))) by trivial.
 have eq: (cnt n = cnt n) by trivial.
 by move: (min (cnt n) n eq) => leq; lia.
 Qed.
 
-Lemma listin_sec_size:
-forall (K : seq Q) (a : Q), List.In a K -> sec a < size K.
+Lemma listin_sec_melt:
+forall (K : seq Q) (a : Q), List.In a K -> sec a < max_elt K.
 Proof.
 elim => // a K ih a' listin.
-replace (size (a::K)) with (max (sec a).+1 (size K)) by trivial.
-suffices: sec a' <= (sec a) \/ sec a' < size K by lia.
+replace (max_elt (a::K)) with (max (sec a).+1 (max_elt K)) by trivial.
+suffices: sec a' <= (sec a) \/ sec a' < max_elt K by lia.
 case: listin => ass.
 	by left; rewrite ass; lia.
 by right; apply ih.
 Qed.
 
-Lemma inseg_size a K:
-	is_min_sec cnt sec -> List.In a K -> List.In a (in_seg (size K)).
+Lemma inseg_melt K:
+	is_min_sec cnt sec -> K \is_sublist_of (in_seg (max_elt K)).
 Proof.
-move => ims listin.
+move => ims a listin.
 apply/ (inseg a) => //.
 move: K a listin.
-exact: listin_sec_size.
+exact: listin_sec_melt.
 Qed.
-End INITIAL_SEGMENTS_AND_SIZES.
+End INITIAL_SEGMENTS.
+Notation "L '\is_sublist_of' K" := (forall q, List.In q L -> List.In q K) (at level 2).
 Notation "f '\is_surjective'" := (is_sur f) (at level 2).

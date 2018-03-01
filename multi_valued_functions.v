@@ -327,22 +327,27 @@ split.
 exact: tightening_of_single_valued.
 Qed.
 
-(* To extend to tightenings for multivalued functions makes sense: for instance a Choice
+(* To extend to tightenings for multivalued functions makes sense: for instance a choice
 function of a multi valued funtion is a thightening of that funciton. *)
-Definition icf S T (f: S ->> T) g := forall s, (exists t, f s t) -> f s (g s).
+Definition icf S T (f: S ->> T) g := forall s t, f s t -> f s (g s).
 Notation "g '\is_choice_for' f" := (icf f g) (at level 2).
+(* A more comprehensible way to state icf would be "forall s, s \from_dom f -> f s (g s)"
+or "forall s, (exists t, f s t) -> f s (g s)" but avoiding the existential quatification
+makes the above more convenient. *)
 
 Lemma icf_tight (g: S -> T) f:
 	g \is_choice_for f <-> (F2MF g) \tightens f.
 Proof.
 split.
-	move => icf s ex.
+	move => icf s [] t fst.
 	split.
 		by exists (g s).
-	move => t eq.
-	by rewrite -eq; apply: icf s ex.
-move => tight s ex.
-move: (tight s ex) => [] _ prop.
+	move => gs eq.
+	rewrite -eq.
+	by apply: (icf s t).
+move => tight s t fst.
+have ex: s \from_dom f by exists t.
+have [_ prop]:= (tight s ex).
 by apply (prop (g s)).
 Qed.
 
@@ -350,13 +355,14 @@ Lemma exists_choice (f: S ->> T):
 	T -> exists F, F \is_choice_for f.
 Proof.
 move => t.
-set R := fun s t => s \from_dom f -> f s t.
+set R := fun s t => forall t', f s t' -> f s t.
 have cond: forall s, exists t, R s t.
 	move => s.
 	case: (classic (s \from_dom f)).
 		by move => [] t' fst; exists t'.
 	move => false.
-	exists t => sfd; by exfalso.
+	exists t => t' fst'.
+	by exfalso; apply false; exists t'.
 move: (choice R cond) => [] F prop.
 rewrite /R in prop;move: R cond => _ _.
 by exists F.
@@ -381,7 +387,7 @@ Notation "s '\from_dom' f" := (dom f s) (at level 2).
 Notation "f '\is_tightened_by' g" := (tight f g) (at level 2).
 Notation "g '\tightens' f" := (tight f g) (at level 2).
 Notation "g '\extends' f" := (forall s t, f s t -> g s t) (at level 2).
-Notation "g '\is_choice_for' f" := ((F2MF g) \tightens f) (at level 2).
+Notation "g '\is_choice_for' f" := (icf f g) (at level 2).
 Notation "f '\is_total'" := (is_tot f) (at level 2).
 Notation "f 'o' g" := (mf_comp f g) (at level 2).
 Notation "f '\restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).

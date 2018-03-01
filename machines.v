@@ -56,10 +56,11 @@ Lemma prim_rec_is_comp (f: Q ->> A):
 Proof.
 move => [] M Mprop.
 exists (fun n q => Some (M q)) => q ex.
-specialize (Mprop q ex).
+move: ((icf_tight M f).1 Mprop) => thight.
+specialize (thight q ex).
 split; first by exists (M q); exists 0.
 move => t' ev.
-apply/ (Mprop.2 t').
+apply thight.
 move: (ev) => [] n prop.
 by apply Some_inj.
 Qed.
@@ -84,10 +85,11 @@ Lemma prim_rec_is_comp_tt (F: B ->> B'):
 Proof.
 move => [] M Mprop.
 exists (fun n phi q => Some (M phi q)) => phi ex.
-specialize (Mprop phi ex).
+move: ((icf_tight M F).1 Mprop) => thight.
+specialize (thight phi ex).
 split; first by exists (M phi) => q'; exists 0.
 move => t' ev.
-apply/ (Mprop.2 t').
+apply/ (thight.2 t').
 apply functional_extensionality => q'.
 move: (ev q') => [] n prop.
 by apply Some_inj.
