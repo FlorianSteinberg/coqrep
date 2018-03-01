@@ -103,6 +103,7 @@ endif
 ######################
 
 VFILES:=multi_valued_functions.v\
+  baire_space.v\
   continuity.v\
   initial_segments.v\
   examples_continuity.v\
