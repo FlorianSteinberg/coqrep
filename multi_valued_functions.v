@@ -98,6 +98,13 @@ Lemma fun_to_sing (f: S-> T):
 	(F2MF f) \is_single_valued.
 Proof. by move => s t t' H H0; rewrite -H0. Qed.
 
+Lemma sing_comp (f: T ->> T') (g : S ->> T) :
+	f \is_single_valued -> g \is_single_valued -> f o g \is_single_valued.
+Proof.
+move => fsing gsing r t t' [[] s [] grs fst _ [][] s' [] grs' fs't' _].
+by rewrite (fsing s t t') => //; rewrite (gsing r s s').
+Qed.
+
 Definition codom S T (f: S ->> T) (t : T) := exists s, f s t.
 Notation "t '\from_codom' f" := (codom f t) (at level 2).
 (* the codomain of a multi-valued function is the union of all its value sets. It should
@@ -122,7 +129,25 @@ split => [] [] [] t' [] val1 val2 prop;
 	by exfalso; apply notcodom; exists s; rewrite val2.1.
 Qed.
 
-(* The opposite implication does not hold in general but for single valued functions it is true. *)
+(* The opposite implication does not hold in general*)
+Lemma cotot_not_sur (f: S ->> T) (s: S) (t t': T):
+	~ t = t' -> exists f, f \is_cototal /\ ~ f \is_surjective.
+Proof.
+move => neq.
+pose f' (x: S) (y: T) := (True: Prop).
+exists f'; split => [ k | sur ].
+	by exists s.
+pose g k b := k = t /\ b = true.
+pose h k b := k = t /\ b = false.
+suffices eq: g o f' =~= h o f'.
+	move: (((sur bool g h) eq) t false) => [] a b.
+	by suffices htt: h t false by move: (b htt).2.
+have tru: True by trivial.
+by split; move => [ [] _ [] _ [] _ _ prop];
+	move: (prop t' tru) => [] b' [] eq; exfalso; apply neq.
+Qed.
+
+(* but for single valued functions it is true. *)
 Lemma sing_cotot_sur f:
 f \is_single_valued -> (f \is_cototal <-> f \is_surjective).
 Proof.
@@ -206,7 +231,7 @@ if "forall s, (exists t, f(s) = t) -> g(s) = f(s)". This formula can also be wri
 "forall s t, f(s) = t -> g(s) = t" and the equivalence is proven in the next lemmas.*)
 Notation "g '\extends' f" := (forall s t, f s t -> g s t) (at level 2).
 
-(* tight is an equivalence relation *)
+(* tight is almost an equivalence relation, it only fails to be symmetric *)
 Lemma tight_ref (f: S ->> T):
 	f \tightens f.
 Proof. done. Qed.
@@ -258,6 +283,15 @@ have ex: s \from_dom f by exists t.
 by apply ((tight s ex).2 (g s)).
 Qed.
 
+Lemma tight_icf (g f: S ->> T):
+	g \tightens f -> forall h, (h \is_choice_for g -> h \is_choice_for f).
+Proof.
+move => tight h icf.
+apply/ icf_tight.
+apply/ tight_trans; last by apply tight.
+by apply/ icf_tight.
+Qed.
+
 Lemma exists_choice (f: S ->> T) (t: T):
 	exists F, F \is_choice_for f.
 Proof.
@@ -266,13 +300,6 @@ suffices Rtot: R \is_total by move: (choice R Rtot) => [] F prop; exists F.
 move => s.
 case: (classic (s \from_dom f)) => [[] t' fst | false]; first by exists t'.
 by exists t => t' fst'; exfalso; apply false; exists t'.
-Qed.
-
-Lemma sing_comp (f: T ->> T') (g : S ->> T) :
-	f \is_single_valued -> g \is_single_valued -> f o g \is_single_valued.
-Proof.
-move => fsing gsing r t t' [[] s [] grs fst _ [][] s' [] grs' fs't' _].
-by rewrite (fsing s t t') => //; rewrite (gsing r s s').
 Qed.
 End MULTIVALUED_FUNCTIONS.
 Notation "f =~= g" := (forall s t, f s t <-> g s t) (at level 70).
