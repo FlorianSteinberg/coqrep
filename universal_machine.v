@@ -197,9 +197,9 @@ Definition is_min_mod mf :=
 Context (ims: sec \is_minimal_section_of cnt).
 
 Lemma exists_minmod:
-  F \is_continuous -> exists mf, is_min_mod mf.
+  cnt \is_surjective -> F \is_continuous -> exists mf, is_min_mod mf.
 Proof.
-move => cont.
+move => sur cont.
 pose P phiq n := mf_mod F phiq (init_seg n).
 have Pdom: forall phi, phi \from_dom F -> forall q', (phi, q') \from_dom P.
 	move => phi fd q'.
@@ -320,7 +320,7 @@ Lemma U_is_universal (somea: A) (somephi : B') (sur: cnt \is_surjective) (Fcont 
 Proof.
 have [Ff Fprop] := (exists_choice F somephi).
 have [sec isminsec] := minimal_section sur.
-have [mf [mprop minmod]] := exists_minmod isminsec Fcont.
+have [mf [mprop minmod]] := exists_minmod isminsec sur Fcont.
 have [listf listfprop] := listsf somea.
 set psi_F := psiF mf listf Ff.
 

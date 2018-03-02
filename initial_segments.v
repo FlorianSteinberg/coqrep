@@ -95,6 +95,7 @@ Qed.
 End SECTIONS.
 
 Notation "sec '\is_section_of' cnt" := (forall s, cnt (sec s) = s) (at level 2).
+Notation "f '\is_surjective'" := (is_sur f) (at level 2).
 Notation "sec '\is_minimal_section_of' cnt" := (is_min_sec cnt sec) (at level 2).
 
 Section INITIAL_SEGMENTS.
@@ -117,28 +118,13 @@ have [/ih H1 H2|<- //] := (PeanoNat.Nat.le_succ_r n m).1 ass.
 by right; apply: H1.
 Qed.
 
-Lemma inseg_ex a:
-	forall n, List.In a (in_seg n) <-> exists m, m < n /\ cnt m = a.
+Lemma inseg_ex a n:
+	 List.In a (in_seg n) -> exists m, m < n /\ cnt m = a.
 Proof.
-elim; first by split => //;	by move => [] m [] eq p; lia.
-move => n ih.
-case (classic (a = cnt n)) => ass.
-	split => ass'; [by exists n;split; try lia|by left].
-split.
-	move => [] stuff.
-		by exfalso; apply ass.
-	move: (ih.1 stuff) => [] m [] ineq eq.
-	exists m.
-	by split; first by lia.
-move => [] m [] ineq eq.
-right.
-apply ih.2.
-exists m.
-split => //.
-case: (classic (m = S n)) => ass'.
-	by exfalso; lia.
-admit. (* Why doesn't lia work here? *)
-Admitted.
+elim: n => [ listin | n ih /= listin ]; first by trivial.
+case: listin => [eq | listin ]; first by exists n; split.
+by move: (ih listin) => [] m [ineq eq]; exists m; split; try lia.
+Qed.
 
 Lemma inseg_coin A (phi psi : Q -> A) m:
   	(forall n, n < m -> phi (cnt n) = psi (cnt n))
@@ -165,17 +151,12 @@ Qed.
 Context (sec: Q -> nat).
 
 Lemma inseg a:
-	is_min_sec cnt sec -> forall n, List.In a (in_seg n) <-> sec a < n.
+	is_min_sec cnt sec -> forall n, List.In a (in_seg n) -> sec a < n.
 Proof.
-move => issec n.
-split => ass.
-	move: ((inseg_ex a n).1 ass) => [] m [] ineq eq.
-	suffices: sec a <= m by lia.
-	by apply: (issec.2 a m).
-apply: ((inseg_ex a n).2).
-exists (sec a).
-split => //.
-by apply (issec.1 a).
+move => issec n listin.
+move: (inseg_ex listin) => [] m [] ineq eq.
+suffices: sec a <= m by lia.
+by apply/ issec.2.
 Qed.
 
 Fixpoint max_elt K := match K with
@@ -219,9 +200,11 @@ by replace (max_elt (a :: L)) with (max (sec a).+1 (max_elt L)) by trivial; lia.
 Qed.
 
 Lemma inseg_sec a:
-	is_min_sec cnt sec -> List.In a (in_seg (sec a).+1).
+	cnt \is_surjective -> sec \is_minimal_section_of cnt -> List.In a (in_seg (sec a).+1).
 Proof.
-move => ims; apply/ (inseg a) => //.
+move => sur [] issec min.
+case: (sur a).
+elim => [eq | n ih eq]; by left.
 Qed.
 
 Lemma melt_inseg:
@@ -235,7 +218,7 @@ have eq: (cnt n = cnt n) by trivial.
 by move: (min (cnt n) n eq) => leq; lia.
 Qed.
 
-Lemma listin_sec_melt:
+Lemma lstn_sec_melt:
 forall (K : seq Q) (a : Q), List.In a K -> sec a < max_elt K.
 Proof.
 elim => // a K ih a' listin.
@@ -246,13 +229,29 @@ case: listin => ass.
 by right; apply ih.
 Qed.
 
-Lemma inseg_melt K:
-	is_min_sec cnt sec -> K \is_sublist_of (in_seg (max_elt K)).
+Lemma melt_mon L K:
+	L \is_sublist_of K -> max_elt L <= max_elt K.
 Proof.
-move => ims a listin.
-apply/ (inseg a) => //.
-move: K a listin.
-exact: listin_sec_melt.
+elim: L => [ _ | a L ih /= sl ]; first by rewrite /=; lia.
+have inlist: List.In a K by apply sl; left.
+have ineq: sec a < max_elt K by apply lstn_sec_melt.
+suffices sl': max_elt L <= max_elt K by case E: (max_elt L); rewrite /=; by lia.
+by apply ih => q listin; apply sl; right.
+Qed.
+
+Lemma inseg_melt K:
+	cnt \is_surjective -> is_min_sec cnt sec -> K \is_sublist_of (in_seg (max_elt K)).
+Proof.
+move => sur ims a listin.
+apply/ inseg_mon.
+	suffices ineq: sec a < max_elt K by apply: ineq.
+	move: listin; elim K => [ | k L ih listin ]; first by trivial.
+	rewrite /= in listin; case: listin => [ eq | listin ].
+		by case E: (max_elt L); rewrite /= E eq; lia.
+	move: (ih listin) => ineq.
+	suffices mon: max_elt L <= max_elt (k::L) by lia.
+	by apply/ melt_mon; first by move => q lstn; right.
+left; apply ims.1.
 Qed.
 End INITIAL_SEGMENTS.
 Notation "L '\is_sublist_of' K" := (forall q, List.In q L -> List.In q K) (at level 2).

@@ -78,6 +78,8 @@ End BAIRE_SPACE.
 Notation "L '\is_sublist_of' K" := (forall q, List.In q L -> List.In q K) (at level 2).
 Notation "phi '\and' psi '\coincide_on' L" := (coin phi psi L) (at level 2).
 
+
+
 Section BAIRE_SPACE_SETS.
 Context (Q A : Type).
 Notation B := (Q -> A).
