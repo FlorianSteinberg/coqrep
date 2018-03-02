@@ -194,5 +194,29 @@ have [L Lprop]:= (Gcont phi q' fdG).
 exists L => Fphi' /= FphiFphi' psi coin Fpsi FpsiFpsi.
 by apply/ Lprop; [ apply GeF | apply coin | apply: GeF ].
 Qed.
+
+Lemma cont_comp Q'' A'' (F: B ->> B') (G: B' ->> (Q'' -> A'')):
+	F \is_continuous -> G \is_continuous -> G o F \is_continuous.
+Proof.
+move => Fcont Gcont phi q'' [] _ [] _ prop.
+move: ((cont_mod F).1 Fcont) => [mf] ismod.
+case (classic (exists Fphi, F phi Fphi)) => [[Fphi FphiFphi]| nfd]; last first.
+	exists nil => GFpsi [] [] Fphi [] /= FphiFphi.
+	by exfalso; apply nfd; exists Fphi.
+have FphifdG: Fphi \from_dom G by apply prop.
+have [L Lprop]:= (Gcont Fphi q'' FphifdG).
+set gather := fix gather K := match K with
+	| nil => nil
+	| cons q' K' => app (mf phi q') (gather K')
+end.
+exists (gather L)  => [] GFphi /= [] [] Fphi' [] FphiFphi' GFphi'GFphi _ psi coing.
+move => GFpsi [] [] Fpsi [] FpsiFpsi GFpsiGFpsi _.
+have gprop: forall K, phi \and psi \coincide_on (gather K) -> Fphi \and Fpsi \coincide_on K.
+	elim => // a K ih coin.
+	move: coin ((coin_app phi psi (mf phi a) (gather K)).1 coin) => _ [coin1 coin2].
+	split; last by apply ih.
+	by apply/ ismod; [ exists Fphi | | apply coin1 | ].
+by apply/ Lprop => //; [rewrite ((cont_to_sing Fcont) phi Fphi Fphi') | apply (gprop L) | ].
+Qed.
 End CONTINUITY_LEMMAS.
 Notation "mf '\is_modulus_of' F" := (is_mod F mf) (at level 2).
