@@ -130,7 +130,7 @@ have /= [eq1|listin] /= := @flst_in_to_list_in _ (q :: L) (inlist).
   by left; rewrite -psiq'a' -eq1 coin.1.
 right.
 have listin2 : List.In q' (q::L) by right.
-have eq' := (coin_and_list_in psi phi (q::L)).1 coin q' listin2.
+have eq' := (coin_lstn psi phi (q::L)).1 coin q' listin2.
 by rewrite - psiq'a' eq'; apply: (list_in_to_flst_in).
 Qed.
 

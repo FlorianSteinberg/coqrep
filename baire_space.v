@@ -14,6 +14,9 @@ Notation B := (Q -> A).
 (* B is for Baire space. The topology is the product topology, the convergence relation can be
 described as follows.*)
 
+(* The topology on Baire space is the topology of pointwise convergence the following are
+the basic open ets (in the sens that for each finite list L and each element phi of Baire
+space the set {psi | coin phi psi L} is a basic open set *)
 Fixpoint coin (phi psi: B) L :=
   match L with
     | nil => True
@@ -21,35 +24,14 @@ Fixpoint coin (phi psi: B) L :=
   end.
 Notation "phi '\and' psi '\coincide_on' L" := (coin phi psi L) (at level 2).
 
+(* The convergence relation belonging to the topology is given as follows *)
 Definition conv phin psi :=
 	forall L, exists n, forall m, m <= n -> psi \and (phin m) \coincide_on L.
 
+(* coinciding on a finite list is an equivalence relation on the elemets of Baire space. *)
 Lemma coin_ref (phi: B):
 	forall L, phi \and phi \coincide_on L.
 Proof. by elim. Qed.
-
-Lemma coin_and_list_in (phi psi: B):
-	forall L, phi \and psi \coincide_on L <-> (forall q, List.In q L -> phi q = psi q).
-Proof.
-elim=>// q L [] ih1 ih2.
-split => ass.
-	move: ass => [] ass1 ass2 q' listin.
-	by case listin => ass'; [ rewrite -ass' | apply ih1 => //].
-split; first by apply ass;left.
-by apply ih2 => q' listin; apply ass; right.
-Qed.
-
-Lemma coin_listin (phi psi: B):
-	forall L, phi \and psi \coincide_on L <-> (forall q, List.In q L -> phi q = psi q).
-Proof. exact: coin_and_list_in. Qed.
-
-Lemma coin_to_listin (phi psi: B):
-	forall L, phi \and psi \coincide_on L -> (forall q, List.In q L -> phi q = psi q).
-Proof. by move => L; apply: (coin_and_list_in phi psi L).1. Qed.
-
-Lemma listin_to_coin (phi psi: B):
-	forall L, (forall q, List.In q L -> phi q = psi q) -> phi \and psi \coincide_on L .
-Proof. by move => L; apply: (coin_and_list_in phi psi L).2. Qed.
 
 Lemma coin_sym phi psi L:
 	phi \and psi \coincide_on L -> psi \and phi \coincide_on L.
@@ -62,22 +44,25 @@ elim: L => // q L ih [] eq1 c1 [] eq2 c2.
 by split; [rewrite eq1 eq2| apply: ih].
 Qed.
 
-Lemma coin_app L K (phi psi: B):
+Lemma coin_lstn (phi psi: B) L:
+	phi \and psi \coincide_on L <-> (forall q, List.In q L -> phi q = psi q).
+Proof.
+elim L => //; split => [ [ass1 ass2] q' listin | ass ].
+	by case listin => ass'; [ rewrite -ass' | apply H.1 => //].
+by split; [ apply ass; left | apply H.2 => q' listin; apply ass; right].
+Qed.
+
+Lemma coin_app (phi psi: B) L K:
 	phi \and psi \coincide_on (L ++ K) <-> (phi \and psi \coincide_on L /\ phi \and psi \coincide_on K).
 Proof.
-split; elim: L.
-			by replace (nil ++ K) with (K); split.
-		move => a L ih.
-		replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
-		rewrite -(List.app_comm_cons L K a).
-		move => [ass1 ass2].
-		split; try apply ih; try apply ass2.
-		by split => //; apply ih; apply ass2.
-	by move => [_ coin]; replace (nil ++ K) with (K).
-move => a L ih [[ass1 ass2] ass3].
+split.
+	elim: L => [| a L ih]; first by replace (nil ++ K) with (K).
+	replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
+	rewrite -(List.app_comm_cons L K a).
+	by move => [ass1 ass2];	split; [ split => // | ]; apply ih; apply ass2.
+elim: L => [[_ coin]| a L ih [[ass1 ass2] ass3]]; first by replace (nil ++ K) with (K).
 replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
-rewrite -(List.app_comm_cons L K a).
-by split => //; apply ih.
+by rewrite -(List.app_comm_cons L K a); split => //; apply ih.
 Qed.
 
 Notation "L '\is_sublist_of' K" := (forall q, List.In q L -> List.In q K) (at level 2).
@@ -85,9 +70,8 @@ Notation "L '\is_sublist_of' K" := (forall q, List.In q L -> List.In q K) (at le
 Lemma coin_mon phi psi L K:
 	L \is_sublist_of K -> phi \and psi \coincide_on K -> phi \and psi \coincide_on L.
 Proof.
-move => subl coin.
-apply listin_to_coin => q listin.
-by apply/ (coin_to_listin); [apply coin | apply subl].
+move => subl coin; apply/ coin_lstn => q listin.
+by rewrite ((coin_lstn phi psi K).1 coin q) => //; apply subl.
 Qed.
 
 End BAIRE_SPACE.
@@ -100,27 +84,23 @@ Notation B := (Q -> A).
 Definition closure (P: B -> Prop) phi :=
 	forall L, exists psi, phi \and psi \coincide_on L /\ P psi.
 
-Lemma P_cP (P: B -> Prop):
-	forall phi, P phi -> closure P phi.
-Proof.
-move => phi Pphi L.
-exists phi; split => //.
-exact: coin_ref.
-Qed.
+Lemma P_cP (P: B -> Prop) phi:
+	P phi -> closure P phi.
+Proof. exists phi; split => //; exact: coin_ref. Qed.
 
-Lemma ccP_cP (P: B -> Prop):
-	forall phi, closure (closure P) phi -> closure P phi.
+Lemma ccP_cP (P: B -> Prop) phi:
+	closure (closure P) phi -> closure P phi.
 Proof.
-move => phi ccPphi L.
+move => ccPphi L.
 move: (ccPphi L) => [] psi [] coin cPphi.
 move: (cPphi L) => [] psi' [] coin' Pphi.
 by exists psi'; split => //; apply: coin_trans coin coin'.
 Qed.
 
 Lemma conv_cP (P: B -> Prop) phin psi:
-	conv phin psi /\ (forall n, P (phin n)) -> closure P psi.
+	conv phin psi -> (forall n, P (phin n)) -> closure P psi.
 Proof.
-move => [] conv elts L.
+move => conv elts L.
 move: (conv L) => [] n prop.
 by exists (phin n); split => //; apply (prop n).
 Qed.
