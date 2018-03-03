@@ -188,7 +188,7 @@ Lemma cont_exte (F G: B ->> B'):
 	G \tightens F -> G \is_continuous -> F \is_single_valued -> F \is_continuous.
 Proof.
 move => GtF Gcont Fsing phi q' [] Fphi FphiFphi.
-have GeF:= (tightening_of_single_valued Fsing GtF).
+have GeF:= (tight_sing Fsing GtF).
 have fdG: phi \from_dom G by exists Fphi; apply GeF.
 have [L Lprop]:= (Gcont phi q' fdG).
 exists L => Fphi' /= FphiFphi' psi coin Fpsi FpsiFpsi.

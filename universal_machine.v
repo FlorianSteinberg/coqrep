@@ -92,7 +92,7 @@ Qed.
 Lemma icf_flst L:
 	phi \is_choice_for (L2MF (flst L)).
 Proof.
-apply icf_tight.
+apply icf_F2MF_tight.
 move => q [] a listin.
 split=> [|a' phiqa'].
 	exists a; apply: flst_cons_elts listin.
@@ -109,7 +109,7 @@ Lemma coin_icf_flst psi L:
 	<->
 	psi \and phi \coincide_on L.
 Proof.
-rewrite (icf_tight psi (L2MF (flst L))).
+rewrite (icf_F2MF_tight psi (L2MF (flst L))).
 elim: L => [|q L [ih hi]]; first by split => // _ /= q [] _ [].
 split => [icf|/= coin q' [a inlist]].
   split.
@@ -156,7 +156,7 @@ have cond L : exists b, R L b.
   by case: H; exists a.
 have [listf listfprop]  := choice R cond.
 exists (fun L q => listf (q, L)) => L.
-rewrite (icf_tight (fun q => listf (q, L)) (L2MF L)) => q [a inlist].
+rewrite (icf_F2MF_tight (fun q => listf (q, L)) (L2MF L)) => q [a inlist].
 rewrite /F2MF.
 split=> [|b v]; first by exists (listf (q,L)).
 rewrite -v.
@@ -382,4 +382,6 @@ move: (ev q') => [] n eq.
 Admitted.
 *)
 End UNIVERSAL_MACHINE.
+Notation L2MF L := (fun q a => List.In (q, a) L).
+
 Notation "T '\is_countable'" := (is_count T) (at level 2).

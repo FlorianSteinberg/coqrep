@@ -23,26 +23,20 @@ is not empty. *)
 Definition dom S T (f: S ->> T) s := (exists t, f s t).
 Notation "s '\from_dom' f" := (dom f s) (at level 2).
 
-Definition is_tot S T (f: S ->> T) := forall s, s \from_dom f.
-Notation "f '\is_total'" := (is_tot f) (at level 2).
-
-Lemma fun_total (f: S -> T):
-	(F2MF f) \is_total.
-Proof.
-move => s; by exists (f s).
-Qed.
-
-(* The difference between multivalued functions and relations is how they are composed.
-Compare the following definition with the usual one for relations where relations R and
-Q are usually combined to "fun r t => exists s, R r s /\ Q s t.". Note that the composition
-breaks the symmetry: it needs not be true that (f o g)^-1 = g^-1 o f^-1 *)
+(* The difference between multivalued functions and relations is how they are composed.*)
 Definition mf_comp R S T (f : S ->> T) (g : R ->> S) :=
   fun r t => (exists s, g r s /\ f s t) /\ (forall s, g r s -> s \from_dom f).
 Notation "f 'o' g" := (mf_comp f g) (at level 2).
 
-(* The above operation is still associative and the composition in the category of sets
-with multivalued functions as morphisms *)
-Lemma mf_comp_assoc (f: S' ->> T') g (h: S ->> T) r q:
+Lemma F2MF_comp R (f : S ->> T) (g : R -> S):
+	f o (F2MF g) =~= (fun r t => f (g r) t).
+Proof.
+split => [[[r [grs fst]] prop] | fgrt ]; first by rewrite grs.
+by split => [ | r eq]; [exists (g s) | exists t; rewrite -eq].
+Qed.
+
+(* This operation is associative *)
+Lemma comp_assoc (f: S' ->> T') g (h: S ->> T) r q:
 	(f o g) o h r q <-> f o (g o h) r q.
 Proof.
 split => [ [] [] s [] hrs [] [] t []| [] [] t [] [] [] s [] ].
@@ -63,6 +57,29 @@ move: (b2 t' ghrt') => [] q' ft'q'; exists q'.
 split => [ | t'' gs't'']; first by exists t'.
 suffices ghrt'': g o h r t'' by apply b2.
 by split => [ | s'' hrs'']; [exists s' | apply b0].
+Qed.
+
+(* The composition breaks the symmetry between input and output, i.e. it needs not be true
+that (f o g)^-1 = g^-1 o f^-1. This is in contrast to the following definition which pre-
+serves the symmetry, is the usual one for relations, but not appropriate for our purpose. *)
+Definition rel_comp R S T (f : S ->> T) (g : R ->> S) :=
+  fun r t => exists s, g r s /\ f s t.
+Notation "f 'o_R' g" := (rel_comp f g) (at level 2).
+
+Definition is_tot S T (f: S ->> T) := forall s, s \from_dom f.
+Notation "f '\is_total'" := (is_tot f) (at level 2).
+
+Lemma F2MF_tot (f: S -> T):
+	(F2MF f) \is_total.
+Proof. move => s; by exists (f s). Qed.
+
+(* For total multi valued functions, the relational composition is identical to the multi-
+function composition.  *)
+Lemma comp_tot R  (f : S ->> T) (g : R ->> S):
+	f \is_total -> f o g =~= f o_R g.
+Proof.
+split => [[[r [grs fst]] prop] | [s' [gs0s eq]] ]; first by exists r.
+by split => [ | r gs0r]; [exists s' | apply H].
 Qed.
 
 (* the following should be called "is_mono" and "is_epi", but we consider the multi
@@ -94,15 +111,23 @@ Definition is_sing S T (f: S ->> T) :=
   (forall s t t', f s t -> f s t' -> t = t').
 Notation "f '\is_single_valued'" := (is_sing f) (at level 2).
 
-Lemma fun_to_sing (f: S-> T):
+Lemma F2MF_sing (f: S-> T):
 	(F2MF f) \is_single_valued.
 Proof. by move => s t t' H H0; rewrite -H0. Qed.
 
-Lemma sing_comp (f: T ->> T') (g : S ->> T) :
+Lemma comp_sing (f: T ->> T') (g : S ->> T) :
 	f \is_single_valued -> g \is_single_valued -> f o g \is_single_valued.
 Proof.
 move => fsing gsing r t t' [[] s [] grs fst _ [][] s' [] grs' fs't' _].
 by rewrite (fsing s t t') => //; rewrite (gsing r s s').
+Qed.
+
+Lemma sing_comp R (f : S ->> T) (g : R ->> S):
+	g \is_single_valued -> g \is_total -> f o g =~= (fun r t => forall y, g r y -> f y t).
+Proof.
+split => [[[r [grs fst]] prop] y gsy | fgrt ]; first by rewrite (H s y r).
+split => [ | r gsr]; last by exists t; apply/ (fgrt r).
+by have [r gsr]:= H0 s; by exists r; split; last by apply fgrt.
 Qed.
 
 Definition codom S T (f: S ->> T) (t : T) := exists s, f s t.
@@ -121,16 +146,16 @@ move => fsur t.
 pose g t' b := t = t' /\ b = true.
 pose h t' b := t = t' /\ b = false.
 apply NNPP => notcodom.
-suffices eq: g =~= h.
-	case: (classic (g t true)) => ass; last by apply ass.
-	by case: ((eq t true).1 ass).
-apply (fsur bool g h) => s b.
-split => [] [] [] t' [] val1 val2 prop;
+have eq: g =~= h.
+	apply (fsur bool g h) => s b.
+	split => [] [[t' [val1 val2]] prop];
 	by exfalso; apply notcodom; exists s; rewrite val2.1.
+case: (classic (g t true)) => ass; last by apply ass.
+by case: ((eq t true).1 ass).
 Qed.
 
 (* The opposite implication does not hold in general*)
-Lemma cotot_not_sur (f: S ->> T) (s: S) (t t': T):
+Lemma cotot_notsur (f: S ->> T) (s: S) (t t': T):
 	~ t = t' -> exists f, f \is_cototal /\ ~ f \is_surjective.
 Proof.
 move => neq.
@@ -218,7 +243,21 @@ Qed.
 Lemma prod_codom (f: S ->> T) (g : S' ->> T') :
   forall s t, s \from_codom f /\ t \from_codom g -> (s,t) \from_codom (f \, g).
 Proof. by move => s t [[s' fs's] [t' ft't]]; exists (s',t'). Qed.
+End MULTIVALUED_FUNCTIONS.
+Notation "f =~= g" := (forall s t, f s t <-> g s t) (at level 70).
+Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
+Notation "f \, g" := (mf_prod f g) (at level 50).
+Notation "f '\is_single_valued'" := (is_sing f) (at level 2).
+Notation "f '\restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
+Notation "t '\from_codom' f" := (codom f t) (at level 2).
+Notation "f '\is_surjective_partial_function'" := (sur_par_fun f) (at level 2).
+Notation "s '\from_dom' f" := (dom f s) (at level 2).
+Notation "f '\is_total'" := (is_tot f) (at level 2).
+Notation "f 'o' g" := (mf_comp f g) (at level 2).
+Notation "f '\restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
 
+Section TIGHT_EXTENDS_ICF.
+Context (S T: Type).
 Definition tight S T (f: S ->> T) (g: S ->> T) :=
 	forall s, s \from_dom f -> s \from_dom g /\ forall t, g s t -> f s t.
 Notation "f '\is_tightened_by' g" := (tight f g) (at level 2).
@@ -243,38 +282,64 @@ split => [ | t fst]; first by apply: (H s (H0 s H1).1).1.
 by apply: ((H0 s H1).2 t); apply: ((H s (H0 s H1).1).2 t).
 Qed.
 
-Lemma tightening_of_single_valued (f: S ->> T) g:
+Lemma tight_sing (f: S ->> T) g:
 	f \is_single_valued -> g \tightens f -> g \extends f.
 Proof.
 move => fsing gef s t fst.
-case: (gef s); first by exists t.
-case => t' gst' cond.
+case: (gef s) =>[|[t' gst' cond]]; first by exists t.
 by rewrite (fsing s t t'); [ | | apply (cond t') ].
 Qed.
 
-Lemma single_valued_tightening (f: S ->> T) g:
+Lemma sing_tight (f: S ->> T) g:
 	g \is_single_valued -> g \extends f -> g \tightens f.
 Proof.
-move => gsing gef s [] t fst.
+move => gsing gef s [t fst].
 split => [ | t' gst']; first by exists t; apply: (gef s t).
 by rewrite -(gsing s t t'); [ | apply gef | ].
 Qed.
 
-Lemma extension_and_tightening (f: S ->> T) g:
+Lemma exte_tight (f: S ->> T) g:
 	f \is_single_valued -> g \is_single_valued -> (g \extends f <-> g \tightens f).
 Proof.
-split; [exact: single_valued_tightening | exact: tightening_of_single_valued] .
+split; [exact: sing_tight | exact: tight_sing] .
 Qed.
 
-(* To extend to tightenings for multivalued functions makes sense: for instance a choice
-function of a multi valued funtion is a thightening of that funciton. *)
+Lemma exte_comp R (f f': T ->> R) (g: S ->> T):
+	f \extends f' -> (f o g) \extends (f' o g).
+Proof.
+move => fef s r [[t [gst ftr] prop]].
+split => [ | t' gst']; first by exists t; split => //; apply fef.
+specialize (prop t' gst').
+have [r' f't'r']:= prop.
+by exists r'; apply fef.
+Qed.
+
 Definition icf S T (f: S ->> T) g := forall s t, f s t -> f s (g s).
 Notation "g '\is_choice_for' f" := (icf f g) (at level 2).
 (* A more comprehensible way to state icf would be "forall s, s \from_dom f -> f s (g s)"
 or "forall s, (exists t, f s t) -> f s (g s)" but avoiding the existential quatification
-makes the above more convenient. *)
+makes the above more convenient to use. *)
 
-Lemma icf_tight (g: S -> T) f:
+Lemma sing_tot_F2MF_icf (f: S ->> T) g:
+	f \is_single_valued -> f \is_total -> (g \is_choice_for f <-> F2MF g =~= f).
+Proof.
+split => [icf s t| eq s t fst]; last by by rewrite ((eq s t).2 fst).
+split => [ eq | fst ]; last by rewrite (H s t (g s)); last by apply (icf s t fst).
+by have [t' fst']:= (H0 s); by rewrite -eq; apply (icf s t').
+Qed.
+
+Lemma icf_comp R f' (f: T ->> R) g' (g: S ->> T):
+	f' \is_choice_for f -> g' \is_choice_for g
+		-> (fun s => f' (g' s)) \is_choice_for (f o g).
+Proof.
+move => icff icfg s r [[t [gst ftr]] prop].
+split => [ | t' gst']; last exact (prop t' gst'); exists (g' s).
+have gsg's: g s (g' s) by apply/ (icfg s t).
+have [r' fg'sr']:= (prop (g' s) gsg's).
+by split; last apply/ (icff (g' s) r').
+Qed.
+
+Lemma icf_F2MF_tight (g: S -> T) f:
 	g \is_choice_for f <-> (F2MF g) \tightens f.
 Proof.
 split => [ icf s [] t fst | tight s t fst].
@@ -287,9 +352,9 @@ Lemma tight_icf (g f: S ->> T):
 	g \tightens f -> forall h, (h \is_choice_for g -> h \is_choice_for f).
 Proof.
 move => tight h icf.
-apply/ icf_tight.
+apply/ icf_F2MF_tight.
 apply/ tight_trans; last by apply tight.
-by apply/ icf_tight.
+by apply/ icf_F2MF_tight.
 Qed.
 
 Lemma exists_choice (f: S ->> T) (t: T):
@@ -301,19 +366,58 @@ move => s.
 case: (classic (s \from_dom f)) => [[] t' fst | false]; first by exists t'.
 by exists t => t' fst'; exfalso; apply false; exists t'.
 Qed.
-End MULTIVALUED_FUNCTIONS.
-Notation "f =~= g" := (forall s t, f s t <-> g s t) (at level 70).
-Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
-Notation "f \, g" := (mf_prod f g) (at level 50).
-Notation "f '\is_single_valued'" := (is_sing f) (at level 2).
-Notation "f '\restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
-Notation "t '\from_codom' f" := (codom f t) (at level 2).
-Notation "f '\is_surjective_partial_function'" := (sur_par_fun f) (at level 2).
-Notation "s '\from_dom' f" := (dom f s) (at level 2).
+
+(* For the next Lemma it would be very convenient if =~= was rewritable *)
+Lemma F2MF_sing_tot (f: S ->> T) (t: T):
+	f \is_single_valued /\ f \is_total <-> exists g, F2MF g =~= f.
+Proof.
+split => [ [sing tot] | [g eq] ].
+	have [g icf]:= exists_choice f t.
+	exists g; by apply/ sing_tot_F2MF_icf.
+split.
+	have gsing: (F2MF g) \is_single_valued by apply: F2MF_sing.
+	by move => s r r' fsr fsr';rewrite (gsing s r r'); try apply eq.
+have gtot: (F2MF g) \is_total by apply: (F2MF_tot g).
+by move => s; have [t' gst]:= (gtot s); exists t'; apply eq.
+Qed.
+
+Lemma icf_tight (g f: S ->> T): (forall s, exists t', ~ f s t')
+	-> (forall h, (h \is_choice_for g -> h \is_choice_for f)) -> (g \tightens f).
+Proof.
+move => ex prop s [t fst].
+split => [ | t' gst'].
+	have [t' nfst']:= (ex s).
+	pose g' x y := (x <> s -> g x y) /\ (x = s -> y = t').
+	have [h icf'] := (exists_choice g' t).
+	apply NNPP => nex.
+	have ngst': ~g s t' by move => gst'; apply nex; exists t'.
+	have icf: h \is_choice_for g.
+		move => s' t'' gs't''.
+		case (classic (s' = s)) => [eq | neq].
+			by exfalso; apply nex; exists t''; rewrite -eq.
+		have g's't'': g' s' t'' by split => // eq; exfalso; apply neq.
+		exact: ((icf' s' t'' g's't'').1 neq).
+	suffices eq: h s = t' by apply nfst'; rewrite -eq; apply: (prop h icf s t).
+	have g'st': g' s t' by trivial.
+	by apply (icf' s t' g'st').2.
+pose g' x y := g x y /\ (x = s -> y = t').
+have gtg: g' \tightens g.
+	move => x xfd.
+	split => [ | y g'xy]; last by apply g'xy.1.
+	case (classic (x = s)) => [ eq | neq ]; first by exists t'; rewrite eq.
+	by have [y gxy]:= xfd; exists y; by split.
+have [h icf']:= (exists_choice g' t).
+have icf: h \is_choice_for g.
+	apply icf_F2MF_tight.
+	apply/ tight_trans; last by apply/ gtg.
+	by apply icf_F2MF_tight; apply icf'.
+suffices val: h s = t' by rewrite -val; apply/ (prop h icf s t).
+have val': g s t' /\ (s = s -> t' = t') by split.
+by apply: (icf' s t' val').2.
+Qed.
+
+End TIGHT_EXTENDS_ICF.
 Notation "f '\is_tightened_by' g" := (tight f g) (at level 2).
 Notation "g '\tightens' f" := (tight f g) (at level 2).
 Notation "g '\extends' f" := (forall s t, f s t -> g s t) (at level 2).
 Notation "g '\is_choice_for' f" := (icf f g) (at level 2).
-Notation "f '\is_total'" := (is_tot f) (at level 2).
-Notation "f 'o' g" := (mf_comp f g) (at level 2).
-Notation "f '\restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).

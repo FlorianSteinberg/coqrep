@@ -26,7 +26,7 @@ Definition comp (N: Q ~> A) (f: Q ->> A) :=
 	(eval N) \tightens f.
 Notation "N '\computes' f" := (comp N f) (at level 2).
 
-Lemma comp_sing N f:
+Lemma compu_sing N f:
 	N \computes (F2MF f) -> forall q, (eval N) q (f q).
 Proof.
 move => comp q.
@@ -56,7 +56,7 @@ Lemma prim_rec_is_comp (f: Q ->> A):
 Proof.
 move => [] M Mprop.
 exists (fun n q => Some (M q)) => q ex.
-move: ((icf_tight M f).1 Mprop) => thight.
+move: ((icf_F2MF_tight M f).1 Mprop) => thight.
 specialize (thight q ex).
 split; first by exists (M q); exists 0.
 move => t' ev.
@@ -85,7 +85,7 @@ Lemma prim_rec_is_comp_tt (F: B ->> B'):
 Proof.
 move => [] M Mprop.
 exists (fun n phi q => Some (M phi q)) => phi ex.
-move: ((icf_tight M F).1 Mprop) => thight.
+move: ((icf_F2MF_tight M F).1 Mprop) => thight.
 specialize (thight phi ex).
 split; first by exists (M phi) => q'; exists 0.
 move => t' ev.
