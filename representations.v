@@ -265,9 +265,7 @@ Admitted.*)
 
 Lemma id_prim_rec (X: rep_space) :
 	@is_prim_rec X X (fun x => x).
-Proof.
-by exists id.
-Qed.
+Proof. by exists id. Qed.
 
 Lemma id_comp_fun (X: rep_space) :
 	@is_comp_fun X X id.

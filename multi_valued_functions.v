@@ -1,6 +1,6 @@
 (* This file contains basic definitions and Lemmas about multi-valued functions *)
 From mathcomp Require Import all_ssreflect.
-Require Import ClassicalChoice.
+Require Import ClassicalChoice Relations.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
