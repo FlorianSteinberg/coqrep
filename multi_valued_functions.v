@@ -1,6 +1,6 @@
 (* This file contains basic definitions and Lemmas about multi-valued functions *)
 From mathcomp Require Import all_ssreflect.
-Require Import ClassicalChoice Relations.
+Require Import ClassicalChoice.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -89,23 +89,6 @@ Definition is_sur (f: S ->> T):= forall Q (g h: T ->> Q), g o f =~= h o f -> g =
 Notation "f '\is_surjective'" := (is_sur f) (at level 2).
 Definition is_inj (f: S ->> T):= forall Q (g h: Q ->> S), f o g =~= f o h -> g =~= h.
 Notation "f '\is_injective'" := (is_inj f) (at level 2).
-
-(* Definition mf_sum S T S' T' (f : S ->> T) (g : S' ->> T') :=
-  fun c x => match c with
-    | inl a => match x with
-      | inl y => f a y
-      | inr z => False
-    end
-    | inr b => match x with
-      | inl y => False
-      | inr z => g b z
-    end
-  end.
-the sum of multivalued functions is not used anywhere so far. Probably because
-it the use of sums is rather unusual for represented spaces. While infinite co-
-products show up for some weird spaces like polynomials or analytic functions, I
-have not seen finite coproducts very often. *)
-
 (* For representations we should sieve out the single valued surjective partial functions. *)
 Definition is_sing S T (f: S ->> T) :=
   (forall s t t', f s t -> f s t' -> t = t').
@@ -191,14 +174,67 @@ Definition sur_par_fun S T (f: S ->> T) :=
   f \is_single_valued /\ f \is_cototal.
 Notation "f '\is_surjective_partial_function'" := (sur_par_fun f) (at level 2).
 
-(* the following is the construction is used to define the product of represented spaces *)
-Definition mf_prod S T S' T' (f : S ->> T) (g : S' ->> T') :=
+(* A modification of the following construction is used to define the product of represented spaces. *)
+Definition mf_prod_prod S T S' T' (f : S ->> T) (g : S' ->> T') :=
 	fun c x => f c.1 x.1 /\ g c.2 x.2.
-Notation "f \, g" := (mf_prod f g) (at level 50).
-(*This is the notation for the tupling of multifunctions *)
+Notation "f ** g" := (mf_prod_prod f g) (at level 50).
 
-Lemma prod_comp R R' (f: S ->> T) (g: S' ->> T') (f': R ->> S) (g': R' ->> S'):
-	(f \, g) o (f' \, g') =~= (f o f' \, g o g').
+Definition ppp1 (fg: (S * S') ->> (T * T')) :=
+	fun s t => exists s' p, fg (s,s') p /\ p.1 = t.
+
+Definition ppp2 (fg: (S * S') ->> (T * T')) :=
+	fun s' t' => exists s p, fg (s, s') p /\ p.2 = t'.
+
+Lemma ppp1_proj (f: S ->> T) (g: S' ->> T'):
+	(exists s', s' \from_dom g) -> ppp1 (f ** g) =~= f.
+Proof.
+move => [s' [t' gs't']].
+by split => [[k [p [[/= eq _] eq']]] | fst ]; [rewrite -eq' | exists s'; exists (t, t')].
+Qed.
+
+Lemma ppp2_proj (f: S ->> T) (g: S' ->> T'):
+	(exists s, s \from_dom f) -> ppp2 (f ** g) =~= g.
+Proof.
+move => [s [somet fst]].
+by split => [[k [p [[/= _ eq] eq']]] | fgst ]; [rewrite -eq' | exists s; exists (somet, t)].
+Qed.
+
+(*
+Definition mf_sum_prod (f: S ->> T) (g: S' ->> T') :=
+	fun c x => match c with
+		| inl s => f s x.1
+		| inr t => g t x.2
+	end.
+Notation "f +* g" := (mf_sum_prod f g) (at level 50).
+
+Definition p1_mfsp (f: (S + S') ->> (T * T')) :=
+	fun s t => exists p, f (inl s) p /\ p.1 = t.
+
+Definition p2_mfsp (f: (S + S') ->> (T * T')) :=
+	fun s t' => exists p, f (inr s) p /\ p.2 = t'.
+
+Lemma mfsp_proj1 (f: S ->> T) (g: S' ->> T') (somet': T'):
+	p1_mfsp (f +* g) =~= f.
+Proof. by split => [ [p [/= fg eq]] | fst ]; [rewrite -eq | exists (t, somet')]. Qed.
+
+Lemma mfsp_proj2 (f: S ->> T) (g: S' ->> T') (somet: T):
+	p2_mfsp (f +* g) =~= g.
+Proof. by split => [ [p [/= fg eq]] | gst ]; [rewrite -eq | exists (somet, t)]. Qed.
+
+Definition mf_sum_sum S T S' T' (f : S ->> T) (g : S' ->> T') :=
+  fun c x => match c with
+    | inl a => match x with
+      | inl y => f a y
+      | inr z => False
+    end
+    | inr b => match x with
+      | inl y => False
+      | inr z => g b z
+    end
+  end. *)
+
+Lemma mfpp_comp R R' (f: S ->> T) (g: S' ->> T') (f': R ->> S) (g': R' ->> S'):
+	(f ** g) o (f' ** g') =~= (f o f' ** g o g').
 Proof.
 split => [[] [] fgx [] [] | [] [] [] s1 []]; last first.
 	move => fxs1 fs1ffggx H [] [] s2 [] fxs2 fs2ffggx H'.
@@ -206,47 +242,47 @@ split => [[] [] fgx [] [] | [] [] [] s1 []]; last first.
 	by move: (H s'1 fs') (H' s'2 gs') => [] t' fst [] t'' ; exists (t',t'').
 move => fxfgx gxfgx [] ffgxffggx gfgxffggx H.
 split; split => [ | s' f'xs]; [by exists fgx.1 | | by exists fgx.2 | ].
-	have temp: ((s', fgx.2) \from_dom (f \, g)) by apply: ((H (s', fgx.2))).
+	have temp: ((s', fgx.2) \from_dom (f ** g)) by apply: ((H (s', fgx.2))).
 	by move: temp => [] [] x1 x2 [] /= fsx1; exists x1.
-have temp: ((fgx.1,s') \from_dom (f \, g)) by apply: ((H (fgx.1, s'))).
+have temp: ((fgx.1,s') \from_dom (f ** g)) by apply: ((H (fgx.1, s'))).
 by move: temp => [] [] x1 x2 [] /= fsx1; exists x2.
 Qed.
 
-Lemma prod_sing (f: S ->> T) (g: S' ->> T'):
-  f \is_single_valued /\ g \is_single_valued -> (f \, g) \is_single_valued.
+Lemma mfpp_sing (f: S ->> T) (g: S' ->> T'):
+  f \is_single_valued /\ g \is_single_valued -> (f ** g) \is_single_valued.
 Proof.
 move => [fsing gsing] s t t' [] fst gst [] fst' gst'.
 by apply: injective_projections; [apply (fsing s.1)| apply (gsing s.2)].
 Qed.
 
-Lemma prod_dom (f: S ->> T) (g: S' ->> T') s t:
-  (s, t) \from_dom (f \, g) <-> s \from_dom f /\ t \from_dom g.
+Lemma mfpp_dom (f: S ->> T) (g: S' ->> T') s t:
+  (s, t) \from_dom (f ** g) <-> s \from_dom f /\ t \from_dom g.
 Proof.
 split; last by move => [[s' fs's] [t' ft't]]; exists (s',t').
 by move => [] x [] /= fsx gty; split; [exists x.1| exists x.2].
 Qed.
 
-Lemma prod_tot (f: S ->> T) (g: S' ->> T'):
-	f \is_total /\ g \is_total -> (f \, g) \is_total.
+Lemma mfpp_tot (f: S ->> T) (g: S' ->> T'):
+	f \is_total /\ g \is_total -> (f ** g) \is_total.
 Proof.
-move => [ftot gtot] [t t']; apply (prod_dom f g t t').2.
+move => [ftot gtot] [t t']; apply (mfpp_dom f g t t').2.
 by split; [apply: ftot t| apply: gtot t'].
 Qed.
 
-Lemma tot_prod (f: S ->> T) (g: S' ->> T'):
-	S -> S' -> (f \, g) \is_total -> f \is_total /\ g \is_total.
+Lemma tot_mfpp (f: S ->> T) (g: S' ->> T'):
+	S -> S' -> (f ** g) \is_total -> f \is_total /\ g \is_total.
 Proof.
-split => s; first by apply: ((prod_dom f g s X0).1 (H (s, X0))).1.
-by apply: ((prod_dom f g X s).1 (H (X, s))).2.
+split => s; first by apply: ((mfpp_dom f g s X0).1 (H (s, X0))).1.
+by apply: ((mfpp_dom f g X s).1 (H (X, s))).2.
 Qed.
 
-Lemma prod_codom (f: S ->> T) (g : S' ->> T') :
-  forall s t, s \from_codom f /\ t \from_codom g -> (s,t) \from_codom (f \, g).
+Lemma mfpp_codom (f: S ->> T) (g : S' ->> T') :
+  forall s t, s \from_codom f /\ t \from_codom g -> (s,t) \from_codom (f ** g).
 Proof. by move => s t [[s' fs's] [t' ft't]]; exists (s',t'). Qed.
 End MULTIVALUED_FUNCTIONS.
 Notation "f =~= g" := (forall s t, f s t <-> g s t) (at level 70).
 Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
-Notation "f \, g" := (mf_prod f g) (at level 50).
+Notation "f ** g" := (mf_prod_prod f g) (at level 50).
 Notation "f '\is_single_valued'" := (is_sing f) (at level 2).
 Notation "f '\restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
 Notation "t '\from_codom' f" := (codom f t) (at level 2).
