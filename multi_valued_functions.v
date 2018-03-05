@@ -1,44 +1,81 @@
 (* This file contains basic definitions and Lemmas about multi-valued functions *)
 From mathcomp Require Import all_ssreflect.
-Require Import ClassicalChoice.
+Require Import ClassicalChoice CRelationClasses Morphisms.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Section MULTIVALUED_FUNCTIONS.
-Context (S T S' T': Type).
 Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 (*This is the notation I use for multivalued functions. The value f(s) of such
 a function should be understood as the set of all elements t such that f s t is true. *)
 
+(* The following should be considered to define equality as multivalued functions *)
+Definition equiv S T (f g: S ->> T) := (forall s t, f s t <-> g s t).
+
+Arguments equiv {S T}.
+
+Global Instance eqiuv_equiv S T:
+	Equivalence (@equiv S T).
+Proof.
+split => // [f g eq s t | f g h feg geh s t]; first by split => [gst | fst]; apply eq.
+by split => [fst | hst]; [apply geh; apply feg | apply feg; apply geh].
+Qed.
+Notation "f =~= g" := (equiv f g) (at level 70).
+
+Section MULTIVALUED_FUNCTIONS.
+Context (S T S' T': Type).
+
+Lemma bysym A (P: A ->> A) (Q: A -> Prop):
+(forall f g, P f g -> Q f -> Q g) -> (forall f g, P g f -> P f g)
+	-> (forall f g, P f g -> (Q f <-> Q g)).
+Proof. firstorder. Qed.
+
 Definition F2MF S T (f : S -> T) s t := f s = t.
 (* I'd like this to be a Coercion but it won't allow me to do so. *)
-
-(* The following should be considered to define equality as multivalued functions *)
-Notation "f =~= g" := (forall s t, f s t <-> g s t) (at level 70).
+Global Instance F2MF_prpr S T: Proper (eq ==> @equiv S T) (@F2MF S T).
+Proof. by move => f g eq; rewrite eq. Qed.
 
 (* The domain of a multifunctions is the set of all inputs such that the value set
 is not empty. *)
 Definition dom S T (f: S ->> T) s := (exists t, f s t).
 Notation "s '\from_dom' f" := (dom f s) (at level 2).
 
+Global Instance dom_prpr S T: Proper ((@equiv S T) ==> eq ==> iff) (@dom S T).
+Proof.
+move => f g equiv _ s ->; move: equiv.
+apply/ (@bysym (S0 ->> T0) (equiv) (fun f => s \from_dom f)); last by symmetry.
+by clear => f g equiv [t fst]; exists t; apply equiv.
+Qed.
+
 (* The difference between multivalued functions and relations is how they are composed.*)
 Definition mf_comp R S T (f : S ->> T) (g : R ->> S) :=
   fun r t => (exists s, g r s /\ f s t) /\ (forall s, g r s -> s \from_dom f).
-Notation "f 'o' g" := (mf_comp f g) (at level 2).
+Notation "f 'o' g" := (mf_comp f g) (at level 50).
 
-Lemma F2MF_comp R (f : S ->> T) (g : R -> S):
-	f o (F2MF g) =~= (fun r t => f (g r) t).
+Global Instance comp_prpr R S T: Proper ((@equiv S T) ==> (@equiv R S) ==> (@equiv R T)) (@mf_comp R S T).
 Proof.
-split => [[[r [grs fst]] prop] | fgrt ]; first by rewrite grs.
-by split => [ | r eq]; [exists (g s) | exists t; rewrite -eq].
+move => f f' eqf g g' eqg s t.
+etransitivity.
+move: eqf.
+apply: (@bysym _ (fun f f' => f =~= f') (fun f => (f o g) s t)); last by symmetry.
+clear => f f' eqf [[s' [gs't ftr]] prop].
+by split => [ | t' g'st']; [ exists s'; split => //; apply eqf | rewrite -eqf; apply prop].
+move: eqg; apply: (@bysym _ (fun f f' => f =~= f') (fun g => (f' o g) s t)); last by symmetry.
+clear => g g' eq [[s' [gs't ftr]] prop].
+by split; [exists s'; split => //; apply eq| move => t' g'st'; apply prop; apply eq].
 Qed.
 
+(* The difference between multivalued functions and relations is how they are composed.*)
+Definition rel_comp R S T (f : S ->> T) (g : R ->> S) :=
+  fun r t => (exists s, g r s /\ f s t).
+Notation "f 'o_R' g" := (rel_comp f g) (at level 50).
+
 (* This operation is associative *)
-Lemma comp_assoc (f: S' ->> T') g (h: S ->> T) r q:
-	(f o g) o h r q <-> f o (g o h) r q.
+Lemma comp_assoc (f: S' ->> T') g (h: S ->> T):
+	((f o g) o h) =~= (f o (g o h)).
 Proof.
+move => r q.
 split => [ [] [] s [] hrs [] [] t []| [] [] t [] [] [] s [] ].
 	split => [ | t' [] [] s' [] hrs'].
 		exists t;	split => //.
@@ -48,26 +85,29 @@ split => [ [] [] s [] hrs [] [] t []| [] [] t [] [] [] s [] ].
 split => [ | s' hrs'].
 	exists s; split => //.
 	split => [ | t' gst']; first by exists t.
-	suffices ghrs: g o h r t' by apply (b2 t' ghrs).
+	suffices ghrs: (g o h) r t' by apply (b2 t' ghrs).
 	by split => [ | s' hrs']; [exists s | apply b0].
 move: (b0 s' hrs') => [] t' gs't'.
-have ghrt': g o h r t'
+have ghrt': (g o h) r t'
 	by split => [ | s'' hrs'']; [exists s' | apply b0].
 move: (b2 t' ghrt') => [] q' ft'q'; exists q'.
 split => [ | t'' gs't'']; first by exists t'.
-suffices ghrt'': g o h r t'' by apply b2.
+suffices ghrt'': (g o h) r t'' by apply b2.
 by split => [ | s'' hrs'']; [exists s' | apply b0].
 Qed.
 
-(* The composition breaks the symmetry between input and output, i.e. it needs not be true
-that (f o g)^-1 = g^-1 o f^-1. This is in contrast to the following definition which pre-
-serves the symmetry, is the usual one for relations, but not appropriate for our purpose. *)
-Definition rel_comp R S T (f : S ->> T) (g : R ->> S) :=
-  fun r t => exists s, g r s /\ f s t.
-Notation "f 'o_R' g" := (rel_comp f g) (at level 2).
+Lemma F2MF_comp R (f: S ->> T) (g: R -> S):
+	(f o (F2MF g)) =~= (fun r t => f (g r) t).
+Proof.
+split => [[[r [grs fst]] prop] | fgrt ]; first by rewrite grs.
+by split => [ | r eq]; [exists (g s) | exists t; rewrite -eq].
+Qed.
 
 Definition is_tot S T (f: S ->> T) := forall s, s \from_dom f.
 Notation "f '\is_total'" := (is_tot f) (at level 2).
+
+Global Instance tot_prpr S T: Proper ((@equiv S T) ==> iff) (@is_tot S T).
+Proof. by split => tot s; have [t xst]:= tot s; exists t; apply H. Qed.
 
 Lemma F2MF_tot (f: S -> T):
 	(F2MF f) \is_total.
@@ -89,17 +129,25 @@ Definition is_sur (f: S ->> T):= forall Q (g h: T ->> Q), g o f =~= h o f -> g =
 Notation "f '\is_surjective'" := (is_sur f) (at level 2).
 Definition is_inj (f: S ->> T):= forall Q (g h: Q ->> S), f o g =~= f o h -> g =~= h.
 Notation "f '\is_injective'" := (is_inj f) (at level 2).
+
 (* For representations we should sieve out the single valued surjective partial functions. *)
 Definition is_sing S T (f: S ->> T) :=
   (forall s t t', f s t -> f s t' -> t = t').
 Notation "f '\is_single_valued'" := (is_sing f) (at level 2).
+
+Global Instance sing_prpr S T: Proper ((@equiv S T) ==> iff) (@is_sing S T).
+Proof.
+move => f f'.
+apply: (@bysym _ (fun f f' => f =~= f') (fun f => is_sing f)); last by symmetry.
+by clear => f f' eq sing s t t' f'st f'st'; apply/ sing; apply eq; [apply f'st | apply f'st'].
+Qed.
 
 Lemma F2MF_sing (f: S-> T):
 	(F2MF f) \is_single_valued.
 Proof. by move => s t t' H H0; rewrite -H0. Qed.
 
 Lemma comp_sing (f: T ->> T') (g : S ->> T) :
-	f \is_single_valued -> g \is_single_valued -> f o g \is_single_valued.
+	f \is_single_valued -> g \is_single_valued -> (f o g) \is_single_valued.
 Proof.
 move => fsing gsing r t t' [[] s [] grs fst _ [][] s' [] grs' fs't' _].
 by rewrite (fsing s t t') => //; rewrite (gsing r s s').
@@ -161,10 +209,10 @@ f \is_single_valued -> (f \is_cototal <-> f \is_surjective).
 Proof.
 split => [fcotot Q g h eq t q| ]; last exact: sur_cotot.
 split => ass; move: (fcotot t) => [] s fst.
-	suffices gfsq: (g o f s q).
+	suffices gfsq: (g o f) s q.
 		by move: ((eq s q).1 gfsq) => [] [] t' [] fst'; rewrite (H s t t').
 	by split => [ | t' fst']; [exists t | exists q; rewrite (H s t' t)].
-have hfsq: (h o f s q).
+have hfsq: (h o f) s q.
 	by split => [ | t' fst']; [ exists t| exists q; rewrite (H s t' t) ].
 by move: ((eq s q).2 hfsq) => [] [] t' [] fst'; rewrite (H s t t').
 Qed.
@@ -234,7 +282,7 @@ Definition mf_sum_sum S T S' T' (f : S ->> T) (g : S' ->> T') :=
   end. *)
 
 Lemma mfpp_comp R R' (f: S ->> T) (g: S' ->> T') (f': R ->> S) (g': R' ->> S'):
-	(f ** g) o (f' ** g') =~= (f o f' ** g o g').
+	(f ** g) o (f' ** g') =~= (f o f') ** (g o g').
 Proof.
 split => [[] [] fgx [] [] | [] [] [] s1 []]; last first.
 	move => fxs1 fs1ffggx H [] [] s2 [] fxs2 fs2ffggx H'.
@@ -280,7 +328,7 @@ Lemma mfpp_codom (f: S ->> T) (g : S' ->> T') :
   forall s t, s \from_codom f /\ t \from_codom g -> (s,t) \from_codom (f ** g).
 Proof. by move => s t [[s' fs's] [t' ft't]]; exists (s',t'). Qed.
 End MULTIVALUED_FUNCTIONS.
-Notation "f =~= g" := (forall s t, f s t <-> g s t) (at level 70).
+Notation "f =~= g" := (equiv f g) (at level 70).
 Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 Notation "f ** g" := (mf_prod_prod f g) (at level 50).
 Notation "f '\is_single_valued'" := (is_sing f) (at level 2).
@@ -298,6 +346,23 @@ Definition tight S T (f: S ->> T) (g: S ->> T) :=
 	forall s, s \from_dom f -> s \from_dom g /\ forall t, g s t -> f s t.
 Notation "f '\is_tightened_by' g" := (tight f g) (at level 2).
 Notation "g '\tightens' f" := (tight f g) (at level 2).
+
+Global Instance tight_prpr S T: Proper ((@equiv S T) ==> (@equiv S T) ==> iff) (@tight S T).
+Proof.
+move => f f' eqf g g' eqg.
+etransitivity.
+move: eqf.
+apply: (@bysym _ (fun f f' => f =~= f') (fun f => tight f g)); last by symmetry.
+clear => f f' eq gtf s [t fst].
+have sfd': s \from_dom f by exists t; apply eq.
+have [ex prop]:= (gtf s sfd').
+by split => // t' gst'; apply eq; apply prop.
+move: eqg; apply: (@bysym _ (fun f f' => f =~= f') (fun g => tight f' g)); last by symmetry.
+clear => f g eq gtf' s sfd.
+have [ex prop]:= gtf' s sfd.
+split; first by have [t fst]:= ex; exists t; apply eq.
+by move => t gst; apply prop; apply eq.
+Qed.
 
 (* A thightening is a generalization of an extension of a single-valued function
 to multivalued functions. It reduces to the usual notion of extension for single valued
@@ -403,18 +468,13 @@ case: (classic (s \from_dom f)) => [[] t' fst | false]; first by exists t'.
 by exists t => t' fst'; exfalso; apply false; exists t'.
 Qed.
 
-(* For the next Lemma it would be very convenient if =~= was rewritable *)
 Lemma F2MF_sing_tot (f: S ->> T) (t: T):
-	f \is_single_valued /\ f \is_total <-> exists g, F2MF g =~= f.
+	f \is_single_valued /\ f \is_total <-> exists g, (F2MF g) =~= f.
 Proof.
 split => [ [sing tot] | [g eq] ].
 	have [g icf]:= exists_choice f t.
 	exists g; by apply/ sing_tot_F2MF_icf.
-split.
-	have gsing: (F2MF g) \is_single_valued by apply: F2MF_sing.
-	by move => s r r' fsr fsr';rewrite (gsing s r r'); try apply eq.
-have gtot: (F2MF g) \is_total by apply: (F2MF_tot g).
-by move => s; have [t' gst]:= (gtot s); exists t'; apply eq.
+by split; rewrite -eq; [apply F2MF_sing | apply F2MF_tot].
 Qed.
 
 Lemma icf_tight (g f: S ->> T): (forall s, exists t', ~ f s t')
