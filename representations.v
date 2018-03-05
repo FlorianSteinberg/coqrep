@@ -94,6 +94,7 @@ rewrite -idx /= prop2.
 by replace (S n) with (n + 1) by by rewrite /addn/addn_rec; lia.
 Qed.
 
+Print seq_countType.
 Lemma prod_count Q Q':
   Q \is_countable -> Q' \is_countable -> (Q * Q') \is_countable.
 Proof.
@@ -127,8 +128,8 @@ Lemma rlzr_mfrlzr (X Y: rep_space) F (f: X -> Y):
 Proof.
 split => [rlzr phi [fx [[x [phinx eq]] prop]] | mfrlzr phi x phinx].
 	split => [ | y [[Fphi [FphiFphi Fphiny]] prop']].
-		exists (f x).
-		split => [ | Fphi FphiFphi]; first by exists (F phi); split => //; apply rlzr.
+		exists (f x);	split => [ | Fphi FphiFphi].
+			by exists (F phi); split => //; apply rlzr.
 		by exists (f x); rewrite -FphiFphi; exact: rlzr.
 	rewrite comp_tot; last exact: F2MF_tot; exists x.
 	split => //; rewrite -FphiFphi in Fphiny.
@@ -163,16 +164,15 @@ Proof.
 split => [F f g Frf Frg | f].
 	apply functional_extensionality => x.
 	have [phi phinx]:= ((\rep_valid X).2 x).
-	apply/ (\rep_valid Y).1.
-		by apply (Frf phi x phinx).
-	by apply (Frg phi x phinx).
+	apply/ (\rep_valid Y).1; first exact: (Frf phi x phinx).
+	exact: (Frg phi x phinx).
 set R :=(fun phi psi => phi \from_dom (\rep X) -> forall x, (\rep X) phi x -> (\rep Y) psi (f x)).
 have Rtot: R \is_total.
 	move => phi.
 	case: (classic (phi \from_dom (\rep X))) => [[x phinx] | nfd].
 		have [psi psiny]:= ((\rep_valid Y).2 (f x)).
 		by exists psi => _ x' phinx'; rewrite -((\rep_valid X).1 phi x x').
-	by exists (fun q => some_answer Y) => fd; exfalso;apply nfd.
+	by exists (fun q => some_answer Y) => fd; exfalso; apply nfd.
 have [F Fcond]:= (choice R Rtot).
 by exists F => phi x phinx; apply Fcond => //; exists x.
 Qed.
@@ -198,28 +198,19 @@ Definition is_fun_name (X Y: rep_space) psi (f: X c-> Y) :=
 Lemma is_fun_name_is_rep (X Y : rep_space):
   (@is_fun_name X Y) \is_representation.
 Proof.
-split.
-	move => psiF f g [] F [] psinF Frf [] G [] psinG Grg.
-	apply/ eq_sub.
-	apply/ (is_rlzr_is_rep X Y).1.
-		by apply Frf.
+split => [psiF f g [F [psinF Frf]] [G [psinG Grg]] | f].
+	apply/ eq_sub;apply/ (is_rlzr_is_rep X Y).1; first by apply Frf.
 	move => phi x phinx.
-	have eq: G phi = F phi.
-		have ex: exists psi, F2MF F phi psi by exists (F phi).
-		move: (psinF phi ex) => [] [] Uphi prop cond.
-		rewrite (cond Uphi prop).
-		have ex': exists psi, F2MF G phi psi by exists (G phi).
-		move: (psinG phi ex') => [] [] Uphi' prop' cond'.
-		by rewrite (cond' Uphi prop).
-	rewrite -eq.
-	by apply (Grg phi x phinx).
-move => f.
-move: (countable_questions X) => [] cnt sur.
-move: (some_answer X) (some_answer Y) => a a'.
-move: (projT2 f) => [] F [] Frf Fcont.
-move: (U_is_universal a (fun q => a') sur Fcont) => [] psiF psinF.
-exists psiF.
-by exists F; split; last by apply rlzr_mfrlzr.
+	suffices eq: G phi = F phi by rewrite -eq; apply (Grg phi x phinx).
+	have ex: exists psi, F2MF F phi psi by exists (F phi).
+	have ex': exists psi, F2MF G phi psi by exists (G phi).
+	have [[Uphi prop] cond]:= (psinF phi ex).
+	have [[Uphi' prop'] cond']:= (psinG phi ex').
+	by rewrite (cond' Uphi prop) (cond Uphi prop).
+have [cnt sur]:= (countable_questions X).
+have [F [Frf Fcont]]:= (projT2 f).
+have [psiF psinF]:= (U_is_universal (some_answer X) (fun q => (some_answer Y)) sur Fcont).
+by exists psiF; exists F; split; last by apply rlzr_mfrlzr.
 Qed.
 
 Canonical rep_space_cont_fun X Y := @make_rep_space
@@ -235,18 +226,47 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
   	(countable_questions Y))
   (sum_count (countable_questions X) (countable_answers Y))
   (@is_fun_name_is_rep X Y).
+End REPRESENTED_SPACES.
 
-Definition is_comp (X: rep_space) (x: X) :=
+Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
+Notation names X := ((questions X) -> (answers X)).
+Notation "'\rep'" := @delta (at level 2).
+Notation "phi '\is_name_of' x" := (delta phi x) (at level 2).
+Notation "'\rep_valid' X" := (@representation_is_valid X) (at level 2).
+Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
+Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
+Notation "X c-> Y" := (rep_space_cont_fun X Y) (at level 2).
+
+Section COMPUTABILITY_DEFINITIONS.
+Definition is_comp_elt (X: rep_space) (x: X) :=
 	{phi| phi \is_name_of x}.
 
-Definition is_comp_fun X Y (f: space X -> space Y) :=
+Definition is_comp (X Y: rep_space) (f: X -> Y) :=
 	{G | exists F, is_rlzr F f/\ comptt G (F2MF F)}.
 
-Definition is_prim_rec X Y (f: space X -> space Y) :=
+Definition is_prim_rec (X Y: rep_space) (f: X -> Y) :=
 	{F | is_rlzr F f}.
 
-Lemma prim_rec_comp_fun X Y (f: space X -> space Y):
-	is_prim_rec f -> is_comp_fun f.
+Definition isomorphism (X Y: rep_space) (f: X -> Y) :=
+	{g | exists P:prod (is_comp g) (is_comp f), (forall x, f (g x) = x) /\ forall y, g (f y) = y}.
+
+Definition isomorphic (X Y: rep_space):=
+	{f | exists P:(@isomorphism X Y f), true}.
+End COMPUTABILITY_DEFINITIONS.
+Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
+Notation "x '\is_computable_element'" := (is_comp_elt x) (at level 2).
+Notation "f '\is_computable'" := (is_comp f) (at level 2).
+Notation "X ~=~ Y" := (@isomorphic X Y) (at level 2).
+
+(* I don't think the following can be proven. This is because it is impossible to inspect
+proofs in coq. *)
+Axiom comp_cont:
+	forall (X Y: rep_space) (f: X -> Y), is_comp f -> has_cont_rlzr (F2MF f).
+
+Section COMPUTABILITY_LEMMAS.
+
+Lemma prim_rec_comp (X Y:rep_space) (f: X -> Y):
+	is_prim_rec f -> is_comp f.
 Proof.
 move => [F Fir]; exists (fun n phi q => some (F phi q)).
 exists F; split => // phi _.
@@ -255,21 +275,21 @@ apply functional_extensionality => q'.
 by have [_ seq]:= (ev q'); exact: Some_inj.
 Qed.
 
-(*
-Lemma comp_cont (X Y: rep_space) (f:X -> Y):
-	is_comp_fun f -> has_cont_rlzr f.
-Proof.
-rewrite /is_comp_fun.
-rewrite /is_ass.
-Admitted.*)
+Context (X Y: rep_space).
 
-Lemma id_prim_rec (X: rep_space) :
+Lemma id_prim_rec:
 	@is_prim_rec X X (fun x => x).
 Proof. by exists id. Qed.
 
-Lemma id_comp_fun (X: rep_space) :
-	@is_comp_fun X X id.
-Proof. exact: (prim_rec_comp_fun (id_prim_rec X)). Qed.
+Lemma id_comp:
+	@is_comp X X id.
+Proof. exact: (prim_rec_comp (id_prim_rec)). Qed.
+
+Lemma iso_ref:
+	X ~=~ X.
+Proof.
+by exists id; split => //;exists id; split; [split; apply id_comp | split => [ x | y ]].
+Qed.
 
 (*
 Lemma eval_comp_fun X Y:
@@ -290,16 +310,191 @@ split.
 		rewrite /rep.
 Admitted.
 *)
+End COMPUTABILITY_LEMMAS.
 
-End REPRESENTED_SPACES.
-Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
-Notation names X := ((questions X) -> (answers X)).
-Notation "'\rep'" := @delta (at level 2).
-Notation "phi '\is_name_of' x" := (delta phi x) (at level 2).
-Notation "'\rep_valid' X" := (@representation_is_valid X) (at level 2).
-Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
-Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
-Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
-Notation "X c-> Y" := {f: space X -> space Y | has_cont_rlzr f} (at level 2).
-Notation "x '\is_computable'" := (is_comp x) (at level 2).
-Notation "f '\is_computable_function'" := (is_comp_fun f) (at level 2).
+Section BASIC_REP_SPACES.
+Require Import baire_space.
+Inductive one := star.
+
+Definition id_rep S := (fun phi (s: S) => phi star = s).
+
+Lemma id_rep_is_rep:
+	forall S: Type, (@id_rep S) \is_representation.
+Proof.
+by split => [ phi s s' eq eq' | s ]; [rewrite -eq -eq' | exists (fun str => s)].
+Qed.
+
+Lemma one_count:
+	one \is_countable.
+Proof. by exists (fun n => star); move => star; exists 0%nat; elim star. Qed.
+
+Canonical rep_space_one := @make_rep_space
+	one
+	one
+	one
+	(@id_rep one)
+	star
+	one_count
+	one_count
+	(@id_rep_is_rep one).
+
+Lemma iso_one (X :rep_space):
+	(rep_space_cont_fun rep_space_one X) ~=~ X.
+Proof.
+exists (fun (xs: rep_space_cont_fun rep_space_one X) => (projT1 xs) star).
+split => //.
+pose phi (x:X) := fun _:rep_space_one => x.
+have: forall x, has_cont_rlzr (F2MF (phi x)).
+	move => x.
+	have [psi psinx]:= (\rep_valid X).2 x.
+	exists (fun _ => psi).
+	split => [ | phi' /= q _]; first by apply/ rlzr_mfrlzr.
+	exists (star::nil) => /=; rewrite /F2MF.
+	by move => Fphi FphiFphi /= psi' coin Fpsi eq; rewrite -FphiFphi -eq.
+move => crlzr.
+exists (fun x => exist (fun x=> (@has_cont_rlzr rep_space_one X (F2MF x))) (fun _ => x) (crlzr x)).
+split => /=.
+	split; first apply prim_rec_comp.
+		exists (fun phi => (fun p => inr (phi p.2))).
+		move => phi' x phi'nx /=.
+		exists (fun _ => phi') => /=.
+		split => [starn starnfd |]; last by trivial.
+		split => [ | psi' ev]; first by exists phi' => q';	exists 0.
+		rewrite /F2MF /=.
+		apply functional_extensionality => q.
+		have [n/= Un]:= (ev q).
+		apply Some_inj.
+		rewrite -Un.
+		have U0: (U 0 (fun p : seq (one * one) * questions X => inr (phi' p.2)) starn q)
+			=  (Some (phi' q)) by trivial.
+		have ineq: (0 <= n)%coq_nat by lia.
+		by rewrite (U_mon ineq U0).
+	set L := fix L n := match n with
+		| 0 => nil
+		| S n' => (star, star) :: (L n')
+	end.
+	pose G (n:nat) phi (q:questions X) := match phi (L n, q): one + (answers X) with 
+		| inr a => Some a
+		| inl q => None
+	end.
+	exists G.
+	have [F Fprop] := exists_choice (evaltt G) (fun _ => some_answer X).
+	exists F.
+	split => [ phi' x phi'nx | phi' phi'fd]; last first.
+	split.
+		exists (F phi').
+		apply/ Fprop => q.
+		exists 0.
+		rewrite /G /=.
+		rewrite /evaltt.
+Admitted.
+
+Lemma nat_count:
+	nat \is_countable.
+Proof. exists (fun n:nat => n); move => n; by exists n. Qed.
+
+Canonical rep_space_nat := @make_rep_space
+	nat
+	one
+	nat
+	(@id_rep nat)
+	1%nat
+	one_count
+	nat_count
+	(id_rep_is_rep nat).
+
+Definition rep_usig_prod (X: rep_space) phi (xn: nat -> X):=
+	forall n, (fun p => (phi (n,p))) \is_name_of (xn n).
+
+Lemma rep_usig_prod_is_rep (X: rep_space):
+	(@rep_usig_prod X) \is_representation.
+Proof.
+split => [ phi xn yn phinxn phinyn | xn ].
+	apply functional_extensionality => n.
+	by apply/ (\rep_valid X).1; [apply phinxn | apply phinyn ].
+pose R n phi:= phi \is_name_of (xn n).
+have Rtot: R \is_total.
+	by move => n; have [phi phinx]:= ((\rep_valid X).2 (xn n)); exists phi.
+by have [phi phinxn]:= choice R Rtot; exists (fun p => phi p.1 p.2).
+Qed.
+
+Canonical rep_space_usig_prod (X: rep_space) := @make_rep_space
+	(nat -> space X)
+	(nat * questions X)
+	(answers X)
+	(@rep_usig_prod X)
+	(some_answer X)
+  (prod_count nat_count (countable_questions X))
+  (countable_answers X)
+  (@rep_usig_prod_is_rep X).
+
+Lemma iso_usig X:
+	(rep_space_usig_prod X) ~=~ (rep_space_cont_fun rep_space_nat X).
+Proof.
+have crlzr: forall xn: nat -> X, has_cont_rlzr (F2MF xn).
+	move => xn.
+	pose R phi psi := psi \is_name_of (xn (phi star)).
+	have Rtot: R \is_total by move => phi; apply (\rep_valid X).2.
+	have [F icf]:= choice R Rtot.
+	exists F; split.
+		by apply rlzr_mfrlzr => phi x phinx; rewrite -phinx; apply/icf.
+	move => phi q phifd; exists ([::star]) => Fphi /= FphiFphi psi coin.
+	have eq: phi = psi.
+		by apply functional_extensionality => /= str; elim: str; apply coin.
+	by rewrite -eq => Fpsi FpsiFpsi; rewrite -FpsiFpsi -FphiFphi.
+Admitted.
+
+Lemma one_to_nat_dscrt Q A (F: (one -> nat) -> (Q -> A)):
+	(F2MF F) \is_continuous.
+Proof.
+move => phi q' phifd.
+set L := (star :: nil).
+exists L.
+move => Fphi FphiFphi /= psi coin.
+have eq: phi = psi.
+	apply functional_extensionality => str.
+	apply: ((coin_lstn phi psi L).1 coin).
+	by elim str; left.
+rewrite -eq.
+move => Fpsi FpsiFpsi.
+by rewrite -FphiFphi -FpsiFpsi.
+Qed.
+
+Inductive Sirp := top | bot.
+
+Definition rep_S phi s :=
+	(exists n:nat, phi n = Some star) <-> s = top.
+
+Lemma rep_S_is_rep:
+ rep_S \is_representation.
+Proof.
+split => [ phi s s' [imp imp'] [pmi pmi'] | s].
+	case (classic (exists n, phi n = Some star)) => ex.
+		by rewrite (imp ex) (pmi ex).
+	case E: s; first by exfalso; apply ex; apply (imp' E).
+	apply NNPP => neq.
+	have eq: s' = top by case Q: s' => //; exfalso; apply neq.
+	by apply ex; apply pmi'.
+case s; last by exists (fun _ => None); split => // [[n ev]].
+by exists (fun _ => some star); split => // _; by exists 0.
+Qed.
+
+Lemma optionone_count:
+	(option one) \is_countable.
+Proof.
+by exists (fix c n := match n with
+	| 0 => Some star
+	| S n' => None
+end) => s; case: s; [exists 0; elim: a| exists 1].
+Qed.
+
+Canonical rep_space_S := @make_rep_space
+	(Sirp)
+	(nat)
+	(option one)
+	(rep_S)
+	(None)
+  (nat_count)
+  (optionone_count)
+  (rep_S_is_rep).
+End BASIC_REP_SPACES.
