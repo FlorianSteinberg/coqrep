@@ -131,7 +131,7 @@ split => [rlzr phi [fx [[x [phinx eq]] prop]] | mfrlzr phi x phinx].
 		exists (f x);	split => [ | Fphi FphiFphi].
 			by exists (F phi); split => //; apply rlzr.
 		by exists (f x); rewrite -FphiFphi; exact: rlzr.
-	rewrite comp_tot; last exact: F2MF_tot; exists x.
+	apply comp_tot; first exact: F2MF_tot; exists x.
 	split => //; rewrite -FphiFphi in Fphiny.
 	by apply: (representation_is_valid Y).1; [apply rlzr | apply/ Fphiny ].
 have exte: ((delta (r:=Y)) o (F2MF F)) \extends ((F2MF f) o (delta (r:=X))).
@@ -149,14 +149,14 @@ Proof.
 move => sing tot.
 split => [ [g [icf rlzr]] | mfrlzr].
 	move: ((@sing_tot_F2MF_icf X Y f g sing tot).1 icf) => eq.
-	suffices: is_mf_rlzr (F2MF F) (F2MF g) by admit.
+	suffices: is_mf_rlzr (F2MF F) (F2MF g) by rewrite /is_mf_rlzr -eq.
 	exact/ rlzr_mfrlzr.
 have ass: f \is_single_valued /\ f \is_total by split.
 have [g eq]:= ((F2MF_sing_tot f (somey)).1 ass).
 exists g; split; first by apply sing_tot_F2MF_icf.
 apply/ rlzr_mfrlzr.
-admit.
-Admitted.
+by rewrite /is_mf_rlzr eq.
+Qed.
 
 Lemma is_rlzr_is_rep X Y:
   (@is_rlzr X Y) \is_representation.
@@ -252,6 +252,7 @@ Definition isomorphism (X Y: rep_space) (f: X -> Y) :=
 
 Definition isomorphic (X Y: rep_space):=
 	exists f, @isomorphism X Y f.
+Arguments isomorphic {X Y}.
 End COMPUTABILITY_DEFINITIONS.
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
 Notation "x '\is_computable_element'" := (is_comp_elt x) (at level 2).
@@ -285,6 +286,10 @@ Lemma iso_ref:
 Proof.
 by exists id; exists id; split; [split; apply id_comp | split => [ x | y ]].
 Qed.
+
+Lemma iso_sym:
+	X ~=~ Y -> Y ~=~ X.
+Proof. by move => [f [g [[P Q] [p q]]]]; exists g; exists f; exists (Q,P). Qed.
 
 (*
 Lemma eval_comp_fun X Y:
