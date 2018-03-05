@@ -248,20 +248,15 @@ Definition is_prim_rec (X Y: rep_space) (f: X -> Y) :=
 	{F | is_rlzr F f}.
 
 Definition isomorphism (X Y: rep_space) (f: X -> Y) :=
-	{g | exists P:prod (is_comp g) (is_comp f), (forall x, f (g x) = x) /\ forall y, g (f y) = y}.
+	exists g (P:prod (is_comp g) (is_comp f)), (forall x, f (g x) = x) /\ forall y, g (f y) = y.
 
 Definition isomorphic (X Y: rep_space):=
-	{f | exists P:(@isomorphism X Y f), true}.
+	exists f, @isomorphism X Y f.
 End COMPUTABILITY_DEFINITIONS.
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
 Notation "x '\is_computable_element'" := (is_comp_elt x) (at level 2).
 Notation "f '\is_computable'" := (is_comp f) (at level 2).
 Notation "X ~=~ Y" := (@isomorphic X Y) (at level 2).
-
-(* I don't think the following can be proven. This is because it is impossible to inspect
-proofs in coq. *)
-Axiom comp_cont:
-	forall (X Y: rep_space) (f: X -> Y), is_comp f -> has_cont_rlzr (F2MF f).
 
 Section COMPUTABILITY_LEMMAS.
 
@@ -288,7 +283,7 @@ Proof. exact: (prim_rec_comp (id_prim_rec)). Qed.
 Lemma iso_ref:
 	X ~=~ X.
 Proof.
-by exists id; split => //;exists id; split; [split; apply id_comp | split => [ x | y ]].
+by exists id; exists id; split; [split; apply id_comp | split => [ x | y ]].
 Qed.
 
 (*
@@ -342,7 +337,6 @@ Lemma iso_one (X :rep_space):
 	(rep_space_cont_fun rep_space_one X) ~=~ X.
 Proof.
 exists (fun (xs: rep_space_cont_fun rep_space_one X) => (projT1 xs) star).
-split => //.
 pose phi (x:X) := fun _:rep_space_one => x.
 have: forall x, has_cont_rlzr (F2MF (phi x)).
 	move => x.
