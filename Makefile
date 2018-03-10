@@ -107,6 +107,7 @@ VFILES:=multi_valued_functions.v\
   continuity.v\
   initial_segments.v\
   examples_continuity.v\
+  oracle_machines.v\
   universal_machine.v\
   machines.v\
   representations.v\

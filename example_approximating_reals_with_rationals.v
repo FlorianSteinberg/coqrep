@@ -264,10 +264,11 @@ Canonical rep_space_R := @make_rep_space
 	rationals_countable
 	rep_R_is_rep.
 
-Lemma id_is_computable : (id : R -> R) \is_computable.
+Lemma id_is_computable : (F2MF id : R ->> R) \is_computable.
 Proof.
 apply prim_rec_comp.
-by exists (fun phi => phi).
+exists (fun phi => phi).
+by apply frlzr_rlzr.
 (* alternatively: exact: id_comp. *)
 Qed.
 
@@ -277,12 +278,13 @@ apply: Rle_trans.
 by apply: Rabs_triang.
 Qed.
 
-Lemma Rplus_is_computable : is_comp (fun x => Rplus (x.1) (x.2)).
+Lemma Rplus_is_computable : is_comp (fun x y => Rplus (x.1) (x.2) = y).
 Proof.
 apply prim_rec_comp.
 set Rplus_realizer := (fun phi eps =>
   (Qplus (phi (inl (Qdiv eps (1+1)))).1 (phi (inr (Qdiv eps (1+1)))).2)).
 exists Rplus_realizer.
+apply frlzr_rlzr.
 move => phi x phinx eps eg0.
 rewrite /Rplus_realizer.
 rewrite plus_Q2R.
@@ -302,7 +304,7 @@ by apply: Rplus_le_compat; apply phinx.
 by rewrite !Q2Rt /=; lra.
 Qed.
 
-Lemma Rmult_is_computable : (fun x => Rmult (x.1) (x.2)) \is_computable.
+Lemma Rmult_is_computable : (fun x y => Rmult (x.1) (x.2) = y) \is_computable.
 Proof.
 apply prim_rec_comp.
 set rab := (fun (phi : Q -> Q) => 1# Z.to_pos (up(Rabs(Q2R(phi(1%Q)))))).
@@ -312,6 +314,7 @@ set Rmult_realizer := (fun phi eps =>
   *
   (phi (inr (eps /four/(rab (fun q => (phi(inr q) ).2))))).2))%Q.
 exists Rmult_realizer.
+apply frlzr_rlzr.
 move => phi x phinx eps eg0.
 rewrite /Rmult_realizer.
 rewrite mul_Q2R.
@@ -340,9 +343,9 @@ have Rtot: R \is_total.
 	have [phi phinxn]:= ((\rep_valid rep_space_R).2 (xn (n star))).
 	by exists phi.
 have [F Fprop]:= (choice R Rtot).
-exists F.
+exists (F2MF F).
 split; last exact: one_to_nat_dscrt.
-apply rlzr_mfrlzr.
+apply/ frlzr_rlzr.
 move => phi x phinx.
 rewrite -phinx.
 exact: (Fprop phi).
@@ -370,47 +373,3 @@ apply: Rplus_le_compat.
 rewrite Rabs_Ropp.
 by apply (prop' (M + N)%coq_nat); lia.
 Qed.
-
-Definition lim (xn: rep_space_cont_fun rep_space_nat rep_space_R) x :=
-	lim_rel (projT1 xn) x.
-
-Lemma lim_not_cont:
-	~ has_cont_rlzr lim.
-Proof.
-(* move => [/= F [/= rlzr cont]].
-pose xn (n: nat) := 0.
-have xnc: has_cont_rlzr (F2MF xn) by apply seq_dscrt.
-have yn := (exist (fun x=> (@has_cont_rlzr rep_space_nat rep_space_R (F2MF x))) xn xnc).
-set psi := (fun (phiq: ((seq (one * nat))* Q)) => inr 0%Q:(one + Q)).
-set G:= (fun (phi: one -> nat) (eps: Q) => 0%Q).
-have psinx: psi \is_name_of yn.
-exists G.
-split => [ | phi n phinn].
-	split => [ | phi ev]; first	by exists (fun q => 0%Q) => eps; exists 0%nat.
-	apply functional_extensionality => eps.
-	move: (ev eps) => [n]; have U0: U 0 psi s eps = some (0%Q) by trivial.
-	have Un: U n psi s eps = some (0%Q) by apply/ U_mon; [ | apply: U0 ]; lia.
-	by rewrite Un; apply Some_inj.
-replace (projT1 yn) with xn by admit.
-have psifd: psi \from_dom (F2MF F) by apply/ F2MF_tot.
-have [/= L Lprop]:= (cont psi 1%Q psifd).
-set melt := fix melt (K: seq ((seq (one * nat) * Q))) := match K with
-	| Coq.Lists.List.nil => 0%nat
-	| Coq.Lists.List.cons pq K' => Nat.max (List.hd (star, 0%nat) pq.1).2 (melt K')
-end.
-set m := melt L.
-pose x'n n := if (n <= m)%nat then 0 else 2.
-have x'nc: has_cont_rlzr (F2MF x'n) by apply seq_dscrt.
-have y'n := (exist (fun x=> (@has_cont_rlzr rep_space_N rep_space_R (F2MF x))) x'n x'nc).
-set psi' := (fun (phiq: ((seq (one * nat))* Q)) => match phiq.1 with
-	| Coq.Lists.List.nil => inl star
-	| Coq.Lists.List.cons p K' => if (p.2 <= m)%nat then inr 0%Q else inr (1 +1)%Q:(one + Q)
-end).
-set G':= (fun (phi: one -> nat) (eps: Q) =>
-	if (phi star <= m)%nat then 0%Q else (1 +1)%Q).
-have psinx: psi' \is_name_of yn.
-exists G'.
-split => [ | phi' n' phi'nn'].
-	split => [ | phi' ev'].
-		exists (fun q => if (s star <= m)%nat then 0%Q else (1 +1)%Q) => eps.*)
-Admitted.

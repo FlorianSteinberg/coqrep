@@ -6,7 +6,7 @@ handwritten type of strings I use more generaly a space of the form Q -> A for s
 Q and A as substitute for B. The assumptions needed about Q and A are that they are
 countable and that A is inhabited. *)
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions baire_space continuity initial_segments machines.
+Require Import multi_valued_functions baire_space continuity initial_segments oracle_machines.
 Require Import ClassicalChoice Psatz FunctionalExtensionality.
 
 Set Implicit Arguments.
@@ -16,7 +16,7 @@ Unset Printing Implicit Defensive.
 Section UNIVERSAL_MACHINE.
 
 (* Q: Questions, A: Answers *)
-Context (Q A Q' A' : Type).
+Context (Q Q': Type) (A A' : Type).
 (* B: Baire space *)
 Notation B := (Q -> A).
 Notation B' := (Q' -> A').
@@ -38,8 +38,8 @@ end.
 
 (* This is the definition of the universal machine: *)
 Definition U
-	(n: nat)
 	(psi: list (Q * A) * Q' -> Q + A')
+	(n: nat)
 	(phi: Q -> A)
 	(q' : Q') :=
 match U_rec n psi phi q' with
@@ -47,12 +47,11 @@ match U_rec n psi phi q' with
 	| inr L => None
 end.
 
-Lemma U_mon n psi phi q' a:
-	forall m, n <= m -> U n psi phi q' = some a -> U m psi phi q' = some a.
+Lemma U_mon psi:
+	(U psi) \is_monotone_oracle_machine.
 Proof.
-elim => [ineq| m ih ineq eq].
-	suffices eq: n = 0 by rewrite eq.
-	by lia.
+move => /= n m phi q' a'; rewrite /pickle /=.
+elim: m => [| m ih] ineq eq; first by replace 0 with n by lia.
 case: ((PeanoNat.Nat.le_succ_r n m).1 ineq) => ass.
 	have eq' := (ih ass eq).
 	case E: (U_rec m psi phi q') => [b|k]; last by rewrite /U E in eq'.
@@ -316,7 +315,7 @@ by rewrite /U_rec le eq'/U_step/psiF length_flst_in_seg E.
 Qed.
 
 Lemma U_is_universal (somea: A) (somephi : B') (sur: cnt \is_surjective) (Fcont : F \is_continuous) :
-  exists psiF, (fun n phi q' => U n psiF phi q') \type_two_computes F.
+  exists psiF, (U psiF) \computes F.
 Proof.
 have [Ff Fprop] := (exists_choice F somephi).
 have [sec isminsec] := minimal_section sur.
@@ -345,7 +344,7 @@ have U_step_prop q': U_step psi_F phi q' (flst phi (init_seg (mf phi q'))) = inl
 	suffices: (mf (listf (flst phi (init_seg (mf phi q')))) q' <= mf phi q')%N by rewrite E.
 	by apply /leP; apply/ (@minmod_ineq F cnt sec isminsec mf listf phi listfprop).
 
-have U_stops q': U (mf phi q') psi_F phi q' = some (Ff phi q').
+have U_stops q': U psi_F (mf phi q') phi q' = some (Ff phi q').
 	rewrite /U.
 	case: (@psiFprop sec mf listf Ff phi q' isminsec _ listfprop phifd (mf phi q'))=> [ | [] m []ineq eq | eq].
 			by split.
@@ -358,7 +357,7 @@ have U_stops q': U (mf phi q') psi_F phi q' = some (Ff phi q').
 	by rewrite sm /= eq -sm U_step_prop.
 
 move: phifd => [] Fphi FphiFphi.
-have eq' q': U (mf phi q') psi_F phi q' = Some (Fphi q').
+have eq' q': U psi_F (mf phi q') phi q' = Some (Fphi q').
 	rewrite U_stops.
 	congr Some.
 	by apply: mprop (FphiFphi); [ exists Fphi | apply: Fprop; apply FphiFphi | apply/ (coin_ref phi)].
