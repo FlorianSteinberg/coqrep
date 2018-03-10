@@ -1,7 +1,6 @@
-From Coq.micromega Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
 Require Import multi_valued_functions baire_space continuity.
-Require Import ClassicalChoice.
+Require Import ClassicalChoice Psatz.
 Open Scope coq_nat_scope.
 
 Set Implicit Arguments.
@@ -11,8 +10,8 @@ Unset Printing Implicit Defensive.
 Notation "L '\is_sublist_of' K" := (forall q, List.In q L -> List.In q K) (at level 2).
 
 Section MINIMIZATION.
-(* The code from this section was provided by Vincent *)
-Context (p: nat -> bool) (bound: nat) (bound_ok: p bound).
+(* Most code from this section was provided by Vincent *)
+Context (p: nat -> bool).
 
 Fixpoint searchU m k : nat :=
   match k with
@@ -35,8 +34,7 @@ rewrite /subn /subn_rec; lia.
 Qed.
 
 Lemma searchU_minimal m k :
-  (forall n, n < m - k -> ~ p n) ->
-  forall n, n < searchU m k -> ~ p n.
+  (forall n, p n -> m - k <= n) -> forall n, p n -> searchU m k <= n.
 Proof.
 elim: k.
 - move => h n /=; rewrite -(subn0 m); exact: h.
@@ -44,31 +42,48 @@ move => k ih h n /=; case: ifP.
 - move => _; exact: h.
 move => hk; apply: ih => i hi.
 case: (i =P m - k.+1).
-- by move ->; rewrite hk.
-move => hik; apply: h; move: hi hik.
+move => eq.
+rewrite -eq in hk.
+by rewrite hk in hi.
+move: (h i hi).
 rewrite /subn /subn_rec; lia.
 Qed.
+
+Lemma searchU_min n m:
+	p m -> searchU n n <= m.
+Proof.
+apply searchU_minimal.
+move => k pk.
+rewrite /subn/subn_rec; lia.
+Qed.
+
+Lemma searchU_good n m:
+	p n -> n <= m -> searchU n n = searchU m m.
+Proof.
+Admitted.
+
 End MINIMIZATION.
+
+Lemma worder_nat (p : nat -> bool):
+	(exists n, p n) -> exists n, p n /\ forall m, p m -> n <= m.
+Proof.
+move => [m pm].
+exists (searchU p m m).
+split; first exact: searchU_correct.
+exact: searchU_min.
+Qed.
 
 Lemma well_order_nat (P : nat -> Prop):
 	(exists n, P n) -> exists n, P n /\ forall m, P m -> n <= m.
 Proof.
 set R:= fun n b => P n <-> is_true b.
-have cond: forall n, exists b, R n b.
-	move => n.
-	by case: (classic (P n)) => pn; [exists true|exists false]; split.
-move: cond (choice R cond) => _ [p] prop.
-rewrite /R in prop;move: R => _.
-set n := searchU p.
-move => [m] Pm.
-exists (n m m); split.
-	apply: (prop (n m m)).2 (@searchU_correct p m m ((prop m).1 Pm)).
-	have neg: forall k, k< n m m -> ~ p k.
-    apply: (@searchU_minimal p m m).
-    by move => k; rewrite subnn; lia.
-	move => k Pk.
-  case: (leqP (n m m) k) => // /leP stuff //.
-  by elim: (neg k) => //; apply ((prop k).1 Pk).
+have Rtot: R \is_total.
+	by move => n; case: (classic (P n)) => pn; [exists true|exists false]; split.
+have [p prop]:= choice R Rtot.
+move => [m Pm].
+have ex: exists n, p n by exists m; apply prop.
+have [n [pn min]]:= (worder_nat ex).
+by exists n; split => [ | k Pk ]; [ | apply min]; apply prop.
 Qed.
 
 Section SECTIONS.
@@ -112,8 +127,7 @@ Proof. by elim: n => // n ih; rewrite -{2}ih. Qed.
 Lemma inseg_mon n m:
 	  n <= m -> (in_seg n) \is_sublist_of (in_seg m).
 Proof.
-elim: m => [l0|m ih ass].
-  by rewrite (_ : n = 0) //; lia.
+elim: m => [l0|m ih ass]; first by rewrite (_ : n = 0) //; lia.
 have [/ih H1 H2|<- //] := (PeanoNat.Nat.le_succ_r n m).1 ass.
 by right; apply: H1.
 Qed.
@@ -131,21 +145,18 @@ Lemma inseg_coin A (phi psi : Q -> A) m:
   	<->
   	phi \and psi \coincide_on (in_seg m).
 Proof.
-split.
-  move: m; elim => // n ihn ass.
-  split; first by apply (ass n).
-  apply ihn => n0 ineq.
-  by apply (ass n0);lia.
-move: m.
-elim; first by move => coin n false; exfalso; lia.
-move => n ihn.
+split; elim: m => [ |n ihn] //; [ | by move => coin n false; exfalso; lia | ].
+ 	by move => ass; split; [apply (ass n) | apply ihn => n0 ineq; apply (ass n0);lia].
 replace (in_seg n.+1) with (cons (cnt n) (in_seg n)) by trivial.
 move => coin n0 ltn.
-case: (classic (n0 = n)) => eq.
-	by rewrite eq; apply coin.1.
-apply ihn.
-  by apply coin.2.
-by lia.
+have le: n0 <= n by lia.
+case: (PeanoNat.Nat.zero_or_succ n) => [eq | [m eq]].
+	rewrite eq in coin; have <-: 0 = n0 by lia.
+	by apply coin.1.
+rewrite eq in le.
+case: ((PeanoNat.Nat.le_succ_r n0 m).1 le) => eq'.
+	by apply ihn; [apply coin.2 | lia].
+by rewrite eq'; rewrite eq in coin; apply coin.1.
 Qed.
 
 Context (sec: Q -> nat).
@@ -154,7 +165,7 @@ Lemma inseg a:
 	is_min_sec cnt sec -> forall n, List.In a (in_seg n) -> sec a < n.
 Proof.
 move => issec n listin.
-move: (inseg_ex listin) => [] m [] ineq eq.
+move: (inseg_ex listin) => [m [ineq eq]].
 suffices: sec a <= m by lia.
 by apply/ issec.2.
 Qed.
@@ -167,14 +178,12 @@ end.
 Lemma melt_app:
 	forall L K, max_elt (L ++ K) = max (max_elt L) (max_elt K).
 Proof.
-elim => //.
-move => a L ih K.
+elim => // a L ih K.
 replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
 rewrite -List.app_comm_cons.
 replace (max_elt (a :: (L ++ K)%list))
 	with (max ((sec a).+1) (max_elt (L ++ K))) by trivial.
-rewrite (ih K).
-apply: PeanoNat.Nat.max_assoc.
+by rewrite (ih K); apply: PeanoNat.Nat.max_assoc.
 Qed.
 
 Lemma list_melt A:
@@ -183,18 +192,15 @@ Lemma list_melt A:
     -> (phi \and psi \coincide_on K).
 Proof.
 move => issec.
-elim => //.
-move => a L IH phi psi ci'.
-specialize (IH phi psi).
+elim => // a L IH phi psi ci'.
 have [_ d2]:= (inseg_coin phi psi (max_elt (cons a L))).
 move: d2 (d2 ci') => _ ci.
 have ineq: (sec a < max_elt (a :: L)).
-	replace (max_elt (a :: L)) with (max (sec a).+1 (max_elt L)) by trivial; lia.
+	by replace (max_elt (a :: L)) with (max (sec a).+1 (max_elt L)) by trivial; lia.
 split; first by replace a with (cnt (sec a)) by apply (issec a); apply: (ci (sec a)).
-apply (IH).
 have [d1 _]:= (inseg_coin phi psi (max_elt L)).
-apply d1 => n ine.
-apply ci.
+apply (IH phi psi).
+apply d1 => n ine; apply ci.
 apply: (PeanoNat.Nat.lt_le_trans n (max_elt L) (max_elt (a :: L))) => //.
 by replace (max_elt (a :: L)) with (max (sec a).+1 (max_elt L)) by trivial; lia.
 Qed.
@@ -202,9 +208,7 @@ Qed.
 Lemma inseg_sec a:
 	cnt \is_surjective -> sec \is_minimal_section_of cnt -> List.In a (in_seg (sec a).+1).
 Proof.
-move => sur [] issec min.
-case: (sur a).
-elim => [eq | n ih eq]; by left.
+move => sur [] issec min; case: (sur a); elim => [eq | n ih eq]; by left.
 Qed.
 
 Lemma melt_inseg:
@@ -224,9 +228,7 @@ Proof.
 elim => // a K ih a' listin.
 replace (max_elt (a::K)) with (max (sec a).+1 (max_elt K)) by trivial.
 suffices: sec a' <= (sec a) \/ sec a' < max_elt K by lia.
-case: listin => ass.
-	by left; rewrite ass; lia.
-by right; apply ih.
+by case: listin => ass; [left; rewrite ass; lia | right; apply ih].
 Qed.
 
 Lemma melt_mon L K:
