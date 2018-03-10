@@ -33,6 +33,7 @@ Proof. firstorder. Qed.
 
 Definition F2MF S T (f : S -> T) s t := f s = t.
 (* I'd like this to be a Coercion but it won't allow me to do so. *)
+Arguments F2MF {S T} f s t /.
 Global Instance F2MF_prpr S T: Proper (eq ==> @equiv S T) (@F2MF S T).
 Proof. by move => f g eq; rewrite eq. Qed.
 
@@ -48,9 +49,16 @@ apply/ (@bysym (S0 ->> T0) (equiv) (fun f => s \from_dom f)); last by symmetry.
 by clear => f g equiv [t fst]; exists t; apply equiv.
 Qed.
 
-(* The difference between multivalued functions and relations is how they are composed.*)
+(* The difference between multivalued functions and relations is how they are composed:
+The relational composition is given as follows.*)
+Definition rel_comp R S T (f : S ->> T) (g : R ->> S) :=
+  fun r t => (exists s, g r s /\ f s t).
+Notation "f 'o_R' g" := (rel_comp f g) (at level 50).
+
+(* The multi function composition adds an assumption that removes the symmetry of in- and output.
+The additional condition can be read g r is a subset of dom f. *)
 Definition mf_comp R S T (f : S ->> T) (g : R ->> S) :=
-  fun r t => (exists s, g r s /\ f s t) /\ (forall s, g r s -> s \from_dom f).
+  fun r t => (f o_R g) r t /\ (forall s, g r s -> s \from_dom f).
 Notation "f 'o' g" := (mf_comp f g) (at level 50).
 
 Global Instance comp_prpr R S T: Proper ((@equiv S T) ==> (@equiv R S) ==> (@equiv R T)) (@mf_comp R S T).
@@ -65,11 +73,6 @@ move: eqg; apply: (@bysym _ (fun f f' => f =~= f') (fun g => (f' o g) s t)); las
 clear => g g' eq [[s' [gs't ftr]] prop].
 by split; [exists s'; split => //; apply eq| move => t' g'st'; apply prop; apply eq].
 Qed.
-
-(* The difference between multivalued functions and relations is how they are composed.*)
-Definition rel_comp R S T (f : S ->> T) (g : R ->> S) :=
-  fun r t => (exists s, g r s /\ f s t).
-Notation "f 'o_R' g" := (rel_comp f g) (at level 50).
 
 (* This operation is associative *)
 Lemma comp_assoc (f: S' ->> T') g (h: S ->> T):
@@ -94,6 +97,18 @@ move: (b2 t' ghrt') => [] q' ft'q'; exists q'.
 split => [ | t'' gs't'']; first by exists t'.
 suffices ghrt'': (g o h) r t'' by apply b2.
 by split => [ | s'' hrs'']; [exists s' | apply b0].
+Qed.
+
+Lemma id_comp (f: S ->> T):
+	(F2MF id) o f =~= f.
+Proof.
+split => [[[t' [fst <-]] _] | fst] //; by split => [ | t' fst']; [exists t | exists t'].
+Qed.
+
+Lemma comp_id (f: S ->> T):
+	f o (F2MF id) =~= f.
+Proof.
+split => [[[t' [<- fst]] _] | fst] //; by split => [| t' <- ]; [exists s|exists t].
 Qed.
 
 Lemma F2MF_comp R (f: S ->> T) (g: R -> S):
@@ -414,6 +429,22 @@ specialize (prop t' gst').
 have [r' f't'r']:= prop.
 by exists r'; apply fef.
 Qed.
+
+Lemma tight_comp R (f: T ->> R) g (g': S ->> T):
+	g \tightens g' -> (f o g) \tightens (f o g').
+Proof.
+move => gtg' s [r [[t [g'st ftr]] prop]].
+have sfd: s \from_dom g' by exists t.
+have [t' gst']:= (gtg' s sfd).1.
+have g'st': g' s t' by apply (gtg' s sfd).2.
+move: (prop t' g'st') => [r' fgsr'].
+split; first exists r'.
+	split => [ | t'' gst'']; first by exists t'.
+	by apply prop; apply (gtg' s sfd).2.
+move => r'' [[t'' [gst'' ft''r'']] prop'].
+split => //; by exists t''; split => //; apply (gtg' s sfd).2.
+Qed.
+
 
 Definition icf S T (f: S ->> T) g := forall s t, f s t -> f s (g s).
 Notation "g '\is_choice_for' f" := (icf f g) (at level 2).
