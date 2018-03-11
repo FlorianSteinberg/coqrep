@@ -16,7 +16,6 @@ Notation "B o~> B'" := (C -> B -> Q' -> option A') (at level 2).
 
 Definition oeval (M: B o~> B') phi Mphi :=
 	forall q', exists c, M c phi q' = some (Mphi q').
-
 Notation eval M := (oeval M).
 
 Notation "M '\computes' F" := ((oeval M) \tightens F) (at level 2).
@@ -29,18 +28,25 @@ Definition is_prim_rec_op (F: B ->> B') :=
 	{M | M \is_choice_for F}.
 Notation "F '\is_primitive_recursive_operator'" := (is_prim_rec_op F) (at level 2).
 
+Lemma prec_F2MF_op (F: B -> B') (somec: C):
+	(fun n phi q => Some(F phi q)) \computes (F2MF F).
+Proof.
+move => phi _.
+split => [ | Fphi ev].
+	by exists (F phi) => q'; exists somec.
+apply functional_extensionality => q'.
+have [c val]:= ev q'.
+by apply Some_inj.
+Qed.
+
 Lemma prec_cmpt_op (F: B ->> B') (somec: C):
 	F \is_primitive_recursive_operator -> F \is_computable_operator.
 Proof.
 move => [M Mprop].
-exists (fun n phi q => Some (M phi q)) => phi ex.
-split => [ | Fphi ev]; first by exists (M phi) => q'; exists somec.
-move: ((icf_F2MF_tight M F).1 Mprop) => thight.
-specialize (thight phi ex).
-apply/ (thight.2 Fphi).
-apply functional_extensionality => q'.
-move: (ev q') => [] n prop.
-by apply Some_inj.
+exists (fun n phi q => Some (M phi q)).
+apply/ tight_trans.
+	apply prec_F2MF_op => //.
+by apply icf_F2MF_tight.
 Qed.
 
 Definition is_mon_omac (M: B o~> B):=

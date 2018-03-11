@@ -3,6 +3,7 @@ the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
 Require Import continuity universal_machine multi_valued_functions machines oracle_machines.
 Require Import FunctionalExtensionality ClassicalFacts ClassicalChoice Psatz ProofIrrelevance.
+Require Import Morphisms.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -31,7 +32,10 @@ Notation names X := ((questions X) -> (answers X)).
 Notation "'\rep'" := @delta (at level 2).
 Notation "phi '\is_name_of' x" := (delta phi x) (at level 2).
 Notation "'\rep_valid' X" := (@representation_is_valid X) (at level 2).
+Notation "'\rep_sur' X" := ((\rep_valid X).2) (at level 2).
+Notation "'\rep_sing' X" := ((\rep_valid X).1) (at level 2).
 
+(* This is the product of represented spaces. *)
 Definition prod_rep X Y :=
 	(fun (phipsi : (questions X + questions Y -> answers X * answers Y)) x =>
       delta (fun q => (phipsi (inl q)).1) x.1 /\ delta (fun q => (phipsi (inr q)).2) x.2).
@@ -50,8 +54,6 @@ by exists (fun q => match q with
 	| inr q' => (some_answer X, psi q')
 end).
 Qed.
-
-(* This is the product of represented spaces. *)
 
 Lemma sum_count Q Q':
   Q \is_countable -> Q' \is_countable -> (Q + Q') \is_countable.
@@ -93,7 +95,6 @@ rewrite -idx /= prop2.
 by replace (S n) with (n + 1) by by rewrite /addn/addn_rec; lia.
 Qed.
 
-Print seq_countType.
 Lemma prod_count Q Q':
   Q \is_countable -> Q' \is_countable -> (Q * Q') \is_countable.
 Proof.
@@ -118,6 +119,9 @@ Definition is_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: X ->> Y) :=
 	(\rep Y) o F \tightens (f o (\rep X)).
 Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
+Global Instance rlzr_prpr (X Y: rep_space):
+	Proper (@equiv (names X) (names Y) ==> @equiv (space X) (space Y) ==> iff) (@is_rlzr X Y).
+Proof. by move => F G FeG f g feg; rewrite /is_rlzr FeG feg. Qed.
 
 Definition is_fun_rlzr (X Y: rep_space) (F: (names X) -> (names Y)) (f: X -> Y) :=
 	forall phi x, (\rep X) phi x -> ((\rep Y) (F phi) (f x)).
@@ -130,14 +134,14 @@ split => [rlzr phi [fx [[x [phinx eq]] prop]] | mfrlzr phi x phinx].
 		exists (f x);	split => [ | Fphi FphiFphi].
 			by exists (F phi); split => //; apply rlzr.
 		by exists (f x); rewrite -FphiFphi; exact: rlzr.
-	apply comp_tot; first exact: F2MF_tot; exists x.
+	apply tot_comp; first exact: F2MF_tot; exists x.
 	split => //; rewrite -FphiFphi in Fphiny.
 	by apply: (representation_is_valid Y).1; [apply rlzr | apply/ Fphiny ].
 have exte: ((delta (r:=Y)) o (F2MF F)) \extends ((F2MF f) o (delta (r:=X))).
 	apply/ exte_tight => //; apply: comp_sing; try exact: F2MF_sing.
 		exact: (representation_is_valid X).1.
 	exact: (representation_is_valid Y).1.
-have Fphinfx: ((F2MF f) o (delta (r:=X))) phi (f x) by apply comp_tot; [exact: F2MF_tot | exists x].
+have Fphinfx: ((F2MF f) o (delta (r:=X))) phi (f x) by apply tot_comp; [exact: F2MF_tot | exists x].
 have [Fphi [eq Fphifx]]:= (exte phi (f x) Fphinfx).1.
 by rewrite eq.
 Qed.
@@ -162,7 +166,7 @@ Lemma icf_rlzr (X Y: rep_space) F (f: X ->> Y):
 Proof.
 move => rlzr G icf.
 apply/ tight_trans; last by apply rlzr.
-apply/ tight_comp.
+apply/ tight_comp_r.
 exact/ icf_F2MF_tight.
 Qed.
 
@@ -172,8 +176,22 @@ Proof.
 move => GtF Frf.
 rewrite /is_rlzr.
 apply/ tight_trans.
-apply/ tight_comp; first by apply GtF.
+apply/ tight_comp_r; first by apply GtF.
 apply Frf.
+Qed.
+
+Lemma rlzr_comp (X Y Z: rep_space) G F (f: X ->> Y) (g: Y ->> Z):
+	G \is_realizer_of g -> F \is_realizer_of f -> (G o F) \is_realizer_of (g o f).
+Proof.
+move => Grg Frf.
+rewrite /is_rlzr.
+rewrite -comp_assoc.
+apply/ tight_trans.
+	by apply /tight_comp_l; apply Grg.
+apply/ tight_trans.
+	rewrite comp_assoc.
+	by apply /tight_comp_r; apply Frf.
+by rewrite comp_assoc.
 Qed.
 
 Lemma is_frlzr_is_rep X Y:
@@ -206,7 +224,16 @@ Definition has_cont_rlzr (X Y : rep_space) (f : X ->> Y) :=
 	exists F, is_rlzr F f
 	/\
 	@is_cont (questions X) (answers X) (questions Y) (answers Y) F.
-Notation "f '\is_continuous'":= (has_cont_rlzr f) (at level 2).
+Notation "f '\has_continuous_realizer'":= (has_cont_rlzr f) (at level 2).
+
+Lemma comp_hcr (X Y Z: rep_space) (f: X ->> Y) (g: Y ->> Z):
+	f \has_continuous_realizer -> g \has_continuous_realizer -> (g o f) \has_continuous_realizer.
+Proof.
+move => [F [Frf Fcont]] [G [Grg Gcont]].
+exists (G o F).
+split; first by apply rlzr_comp.
+by apply/ cont_comp.
+Qed.
 
 Definition is_ass (X Y: rep_space) psi (f: X ->> Y) :=
 	(oeval (U psi)) \is_realizer_of f.
@@ -261,7 +288,7 @@ have [psiF psinF]:= (U_is_universal (some_answer X) (fun q => (some_answer Y)) s
 exists psiF.
 rewrite /is_fun_name.
 apply/ tight_trans; last by apply Frf.
-by apply tight_comp.
+by apply tight_comp_r.
 Qed.
 
 Canonical rep_space_cont_fun X Y := @make_rep_space
@@ -284,6 +311,8 @@ Notation names X := ((questions X) -> (answers X)).
 Notation "'\rep'" := @delta (at level 2).
 Notation "phi '\is_name_of' x" := (delta phi x) (at level 2).
 Notation "'\rep_valid' X" := (@representation_is_valid X) (at level 2).
+Notation "'\rep_sur' X" := ((\rep_valid X).2) (at level 2).
+Notation "'\rep_sing' X" := ((\rep_valid X).1) (at level 2).
 Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
 Notation "f '\has_continuous_realizer'" := (has_cont_rlzr f) (at level 2).
@@ -294,7 +323,13 @@ Definition is_comp_elt (X: rep_space) (x: X) :=
 	{phi| phi \is_name_of x}.
 
 Definition is_comp (X Y: rep_space) (f: X ->> Y) :=
-	{G | (eval G) \is_realizer_of f}.
+	{M | (eval M) \is_realizer_of f}.
+
+Definition is_mon_comp (X Y: rep_space) (f: X ->> Y) :=
+	{M | M \is_monotone_oracle_machine /\ (eval M) \is_realizer_of f}.
+
+Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
+	{M | is_fun_rlzr M f}.
 
 Definition is_prim_rec (X Y: rep_space) (f: X ->> Y) :=
 	{F | is_rlzr (F2MF F) f}.
@@ -318,200 +353,6 @@ End COMPUTABILITY_DEFINITIONS.
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
 Notation "x '\is_computable_element'" := (is_comp_elt x) (at level 2).
 Notation "f '\is_computable'" := (is_comp f) (at level 2).
+Notation "f '\is_monotone_computable'" := (is_mon_comp f) (at level 2).
+Notation "f '\is_computable_function'" := (is_comp_fun f) (at level 2).
 Notation "X ~=~ Y" := (@isomorphic X Y) (at level 2).
-
-Section COMPUTABILITY_LEMMAS.
-
-Lemma prim_rec_comp (X Y:rep_space) (f: X ->> Y):
-	is_prim_rec f -> is_comp f.
-Proof.
-move => [N Nir].
-pose M (n:nat) (phi:names X) (q: questions Y) := Some (N phi q).
-exists M.
-suffices eq: (eval M) =~= F2MF N by rewrite /is_rlzr eq.
-move => phi Mphi.
-split => [ev | eq]; last by exists 0; rewrite -eq.
-apply functional_extensionality => q'.
-have [n val]:= (ev q').
-by apply Some_inj; rewrite -val.
-Qed.
-
-Context (X Y: rep_space).
-
-Lemma id_prim_rec:
-	@is_prim_rec X X (F2MF id).
-Proof.
-by exists id; apply frlzr_rlzr.
-Qed.
-
-Lemma id_cmpt:
-	@is_comp X X (F2MF id).
-Proof. exact: (prim_rec_comp (id_prim_rec)). Qed.
-
-Lemma id_hcr:
-	@has_cont_rlzr X X (F2MF id).
-Proof.
-exists (F2MF id).
-split; first by apply frlzr_rlzr.
-move => phi q' _.
-exists [ ::q'].
-move => Fphi /= eq psi coin Fpsi val.
-rewrite -val -eq.
-apply coin.1.
-Qed.
-
-Definition id_fun :=
-	(exist_fun (conj (conj (@F2MF_sing (space X) (space X) id) (F2MF_tot id)) id_hcr)).
-
-Lemma id_comp_elt:
-	id_fun \is_computable_element.
-Proof.
-pose id_name p := match p.1: seq (questions X* answers X) with
-		| nil => inl (p.2:questions X)
-		| (q,a):: L => inr (a: answers X)
-	end.
-exists (id_name).
-rewrite /delta /= /is_fun_name/=.
-rewrite /is_rlzr id_comp.
-rewrite -{1}(comp_id (\rep X)).
-apply tight_comp.
-apply/ (mon_cmpt_op); first exact: U_mon.
-by move => phi q; exists 1.
-Qed.
-
-Lemma iso_ref:
-	X ~=~ X.
-Proof.
-exists id_fun; exists id_fun.
-exists (id_comp_elt); exists (id_comp_elt).
-by split; rewrite comp_id.
-Qed.
-
-Lemma iso_sym:
-	X ~=~ Y -> Y ~=~ X.
-Proof.
-move => [f [g [fcomp [gcomp [bij1 bij2]]]]].
-exists g; exists f.
-by exists gcomp; exists fcomp.
-Qed.
-End COMPUTABILITY_LEMMAS.
-
-Section BASIC_REP_SPACES.
-Require Import baire_space.
-Inductive one := star.
-
-Definition id_rep S := (fun phi (s: S) => phi star = s).
-
-Lemma id_rep_is_rep:
-	forall S: Type, (@id_rep S) \is_representation.
-Proof.
-by split => [ phi s s' eq eq' | s ]; [rewrite -eq -eq' | exists (fun str => s)].
-Qed.
-
-Lemma one_count:
-	one \is_countable.
-Proof. by exists (fun n => star); move => star; exists 0%nat; elim star. Qed.
-
-Canonical rep_space_one := @make_rep_space
-	one
-	one
-	one
-	(@id_rep one)
-	star
-	one_count
-	one_count
-	(@id_rep_is_rep one).
-
-Lemma nat_count:
-	nat \is_countable.
-Proof. exists (fun n:nat => n); move => n; by exists n. Qed.
-
-Canonical rep_space_nat := @make_rep_space
-	nat
-	one
-	nat
-	(@id_rep nat)
-	1%nat
-	one_count
-	nat_count
-	(id_rep_is_rep nat).
-
-Definition rep_usig_prod (X: rep_space) phi (xn: nat -> X):=
-	forall n, (fun p => (phi (n,p))) \is_name_of (xn n).
-
-Lemma rep_usig_prod_is_rep (X: rep_space):
-	(@rep_usig_prod X) \is_representation.
-Proof.
-split => [ phi xn yn phinxn phinyn | xn ].
-	apply functional_extensionality => n.
-	by apply/ (\rep_valid X).1; [apply phinxn | apply phinyn ].
-pose R n phi:= phi \is_name_of (xn n).
-have Rtot: R \is_total.
-	by move => n; have [phi phinx]:= ((\rep_valid X).2 (xn n)); exists phi.
-by have [phi phinxn]:= choice R Rtot; exists (fun p => phi p.1 p.2).
-Qed.
-
-Canonical rep_space_usig_prod (X: rep_space) := @make_rep_space
-	(nat -> space X)
-	(nat * questions X)
-	(answers X)
-	(@rep_usig_prod X)
-	(some_answer X)
-  (prod_count nat_count (countable_questions X))
-  (countable_answers X)
-  (@rep_usig_prod_is_rep X).
-
-Lemma one_to_nat_dscrt Q A (F: (one -> nat) -> (Q -> A)):
-	(F2MF F) \is_continuous.
-Proof.
-move => phi q' phifd.
-set L := (star :: nil).
-exists L.
-move => Fphi FphiFphi /= psi coin.
-have eq: phi = psi.
-	apply functional_extensionality => str.
-	apply: ((coin_lstn phi psi L).1 coin).
-	by elim str; left.
-rewrite -eq.
-move => Fpsi FpsiFpsi.
-by rewrite -FphiFphi -FpsiFpsi.
-Qed.
-
-Inductive Sirp := top | bot.
-
-Definition rep_S phi s :=
-	(exists n:nat, phi n = Some star) <-> s = top.
-
-Lemma rep_S_is_rep:
- rep_S \is_representation.
-Proof.
-split => [ phi s s' [imp imp'] [pmi pmi'] | s].
-	case (classic (exists n, phi n = Some star)) => ex.
-		by rewrite (imp ex) (pmi ex).
-	case E: s; first by exfalso; apply ex; apply (imp' E).
-	apply NNPP => neq.
-	have eq: s' = top by case Q: s' => //; exfalso; apply neq.
-	by apply ex; apply pmi'.
-case s; last by exists (fun _ => None); split => // [[n ev]].
-by exists (fun _ => some star); split => // _; by exists 0.
-Qed.
-
-Lemma optionone_count:
-	(option one) \is_countable.
-Proof.
-by exists (fix c n := match n with
-	| 0 => Some star
-	| S n' => None
-end) => s; case: s; [exists 0; elim: a| exists 1].
-Qed.
-
-Canonical rep_space_S := @make_rep_space
-	(Sirp)
-	(nat)
-	(option one)
-	(rep_S)
-	(None)
-  (nat_count)
-  (optionone_count)
-  (rep_S_is_rep).
-End BASIC_REP_SPACES.

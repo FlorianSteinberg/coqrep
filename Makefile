@@ -111,6 +111,8 @@ VFILES:=multi_valued_functions.v\
   universal_machine.v\
   machines.v\
   representations.v\
+  representation_facts.v\
+  basic_represented_spaces.v\
   example_approximating_reals_with_rationals.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)

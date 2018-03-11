@@ -124,13 +124,25 @@ Notation "f '\is_total'" := (is_tot f) (at level 2).
 Global Instance tot_prpr S T: Proper ((@equiv S T) ==> iff) (@is_tot S T).
 Proof. by split => tot s; have [t xst]:= tot s; exists t; apply H. Qed.
 
+Lemma comp_tot R (f: S ->> T) (g: T ->> R):
+	f \is_total -> g \is_total -> (g o f) \is_total.
+Proof.
+move => ftot gtot s.
+have [t fst]:= ftot s.
+have [r gtr]:= gtot t.
+exists r.
+split; first by exists t.
+move => t' fst'.
+by apply gtot.
+Qed.
+
 Lemma F2MF_tot (f: S -> T):
 	(F2MF f) \is_total.
 Proof. move => s; by exists (f s). Qed.
 
 (* For total multi valued functions, the relational composition is identical to the multi-
 function composition.  *)
-Lemma comp_tot R  (f : S ->> T) (g : R ->> S):
+Lemma tot_comp R  (f : S ->> T) (g : R ->> S):
 	f \is_total -> f o g =~= f o_R g.
 Proof.
 split => [[[r [grs fst]] prop] | [s' [gs0s eq]] ]; first by exists r.
@@ -430,7 +442,7 @@ have [r' f't'r']:= prop.
 by exists r'; apply fef.
 Qed.
 
-Lemma tight_comp R (f: T ->> R) g (g': S ->> T):
+Lemma tight_comp_r R (f: T ->> R) g (g': S ->> T):
 	g \tightens g' -> (f o g) \tightens (f o g').
 Proof.
 move => gtg' s [r [[t [g'st ftr]] prop]].
@@ -445,6 +457,20 @@ move => r'' [[t'' [gst'' ft''r'']] prop'].
 split => //; by exists t''; split => //; apply (gtg' s sfd).2.
 Qed.
 
+Lemma tight_comp_l R (f f': T ->> R) (g: S ->> T):
+	f \tightens f' -> (f o g) \tightens (f' o g).
+Proof.
+move => ftf' s [r [[t [gst f'tr]] prop]].
+have tfd: t \from_dom f' by exists r.
+have [r' ftr']:= (ftf' t tfd).1.
+have f'tr': f' t r' by apply (ftf' t tfd).2.
+split; first exists r'.
+	split => [ | t'' gst'']; first by exists t.
+	by apply ftf'; apply prop.
+move => r'' [[t'' [gst'' ft''r'']] prop'].
+split => //; exists t''; split => //.
+by apply ftf'; first by apply prop.
+Qed.
 
 Definition icf S T (f: S ->> T) g := forall s t, f s t -> f s (g s).
 Notation "g '\is_choice_for' f" := (icf f g) (at level 2).
@@ -544,6 +570,10 @@ by apply: (icf' s t' val').2.
 Qed.
 
 End TIGHT_EXTENDS_ICF.
+
+Global Instance icf_prpr S T: Proper (@equiv S T ==> eq ==> iff) (@icf S T).
+Proof. by move => f g feg f' g' f'eg'; rewrite !icf_F2MF_tight feg f'eg'. Qed.
+
 Notation "f '\is_tightened_by' g" := (tight f g) (at level 2).
 Notation "g '\tightens' f" := (tight f g) (at level 2).
 Notation "g '\extends' f" := (forall s t, f s t -> g s t) (at level 2).
