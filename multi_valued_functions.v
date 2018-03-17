@@ -274,28 +274,6 @@ move => [s [somet fst]].
 by split => [[k [p [[/= _ eq] eq']]] | fgst ]; [rewrite -eq' | exists s; exists (somet, t)].
 Qed.
 
-(*
-Definition mf_sum_prod (f: S ->> T) (g: S' ->> T') :=
-	fun c x => match c with
-		| inl s => f s x.1
-		| inr t => g t x.2
-	end.
-Notation "f +* g" := (mf_sum_prod f g) (at level 50).
-
-Definition p1_mfsp (f: (S + S') ->> (T * T')) :=
-	fun s t => exists p, f (inl s) p /\ p.1 = t.
-
-Definition p2_mfsp (f: (S + S') ->> (T * T')) :=
-	fun s t' => exists p, f (inr s) p /\ p.2 = t'.
-
-Lemma mfsp_proj1 (f: S ->> T) (g: S' ->> T') (somet': T'):
-	p1_mfsp (f +* g) =~= f.
-Proof. by split => [ [p [/= fg eq]] | fst ]; [rewrite -eq | exists (t, somet')]. Qed.
-
-Lemma mfsp_proj2 (f: S ->> T) (g: S' ->> T') (somet: T):
-	p2_mfsp (f +* g) =~= g.
-Proof. by split => [ [p [/= fg eq]] | gst ]; [rewrite -eq | exists (somet, t)]. Qed.
-
 Definition mf_sum_sum S T S' T' (f : S ->> T) (g : S' ->> T') :=
   fun c x => match c with
     | inl a => match x with
@@ -306,7 +284,7 @@ Definition mf_sum_sum S T S' T' (f : S ->> T) (g : S' ->> T') :=
       | inl y => False
       | inr z => g b z
     end
-  end. *)
+  end.
 
 Lemma mfpp_comp R R' (f: S ->> T) (g: S' ->> T') (f': R ->> S) (g': R' ->> S'):
 	(f ** g) o (f' ** g') =~= (f o f') ** (g o g').
@@ -470,6 +448,19 @@ split; first exists r'.
 move => r'' [[t'' [gst'' ft''r'']] prop'].
 split => //; exists t''; split => //.
 by apply ftf'; first by apply prop.
+Qed.
+
+Lemma mfpp_tight S' T' (f: S ->> T) (g: S' ->> T') (f': S ->> T) (g': S' ->> T'):
+	f \tightens f' -> g \tightens g' -> (f ** g) \tightens (f' ** g').
+Proof.
+move => tigh tigh' [s s'] [[t t'] [/=f'st fs't']].
+have sfd: s \from_dom f' by exists t.
+have [[r fsr] prop] := tigh s sfd.
+have s'fd: s' \from_dom g' by exists t'.
+have [[r' gsr'] prop'] := tigh' s' s'fd.
+split; first by exists (r, r').
+move => [q q'] [/= fsq gs'q'].
+by split; [apply prop | apply prop'].
 Qed.
 
 Definition icf S T (f: S ->> T) g := forall s t, f s t -> f s (g s).

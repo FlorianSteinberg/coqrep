@@ -131,56 +131,103 @@ Lemma cmpt_sing_mon_op (F: B ->> B'):
 	F \is_computable_operator -> F \is_single_valued -> F \is_monotone_computable.
 Proof.
 move => [M comp] sing.
-pose R phi q c:= exists a, M c phi q = some a.
-pose p phi q n:= match (pickle_inv C n) with
+pose p (c: C) phi q n:= if (n < (pickle c))%N then
+match (pickle_inv C n) with
 	| None => false
 	| Some c' => match M c' phi q with
 		| None => false
 		| Some a => true
 	end
-end.
-pose r (c: C) phi q:= searchU (p phi q) (pickle c) (pickle c).
+end else true.
+have pprop: forall c phi q' n, p c phi q' n -> n < pickle c -> exists (c': C), pickle c' = n.
+	move => c phi q' n pcn.
+	case E: (pickle_inv C n) => [c' | ] ineq.
+		by exists c'; rewrite -(pickle_invK C n) E.
+	rewrite /p E in pcn.
+	have ineq': (n < pickle c)%N by apply /leP; lia.
+	by rewrite ineq' in pcn.
+pose r (c: C) phi q':= search (p c phi q') (pickle c).
+have rprop: forall c phi q', exists (c': C), pickle c' = r c phi q'.
+	move => c phi q'.
+	case E: (r c phi q' == pickle c).
+		have ->: (r c phi q' = pickle c) by apply /eqP; rewrite E.
+		by exists c.
+	suffices ineq: r c phi q' < pickle c.
+		apply/ (pprop c phi q' (r c phi q')) => //.
+		apply search_correct.
+		rewrite /p pickleK_inv.
+		case: ifP => // fals.
+		have: pickle c < pickle c by apply /leP.
+		lia.
+	suffices: r c phi q' <= pickle c.
+		have: r c phi q' <> pickle c by apply/eqP; rewrite E.
+		lia.
+	exact: search_le.
 pose N c phi q:= match (pickle_inv C (r c phi q)) with
 	| None => None
 	| Some c' =>  M c' phi q
 end.
 exists N.
-split => [n m phi q' a' ineq evl | phi phifd]; last first.
-	split => [| Fphi evl].
-		have [[Mphi MphiMphi] prop]:= comp phi phifd.
-		exists Mphi => q'.
-		have [c val]:= MphiMphi q'.
-		have pqrc: p phi q' (r c phi q') by apply searchU_correct; rewrite /p pickleK_inv val.
-		have [c' uprcq]: exists c':C, pickle_inv C (r c phi q') = Some c'.
-			by case E: (pickle_inv C (r c phi q')) => [c' | ]; [exists c'| rewrite /p E in pqrc].
-		have [a' mcqsa]: exists a', M c' phi q' = Some a'.
-			by case E: (M c' phi q') => [a' | ]; [exists a'| rewrite /p uprcq E in pqrc].
-		exists c; rewrite /N uprcq.
-		suffices: a' = (Mphi q') by move => <-.
-		by apply/ sing_cmpt_elt; [apply comp | apply sing | apply prop | apply mcqsa ].
-	apply (comp phi phifd).2 => q'.
-	have [c val]:= (evl q').
-	have [c' uprcq]: exists c':C, pickle_inv C (r c phi q') = Some c'.
-		by case E: (pickle_inv C (r c phi q')) => [c' | ]; [exists c' | rewrite /N E in val].
-	by exists c';rewrite /N uprcq in val.
-have [c rnc]: exists c:C, (r n phi q') = pickle c.
-	case E: (pickle_inv C (r n phi q')) => [c' | ]; last by rewrite /N E in evl.
-	by exists c'; move: (pickle_invK C (r n phi q')); rewrite E.
-rewrite /N rnc pickleK_inv in evl.
-have pc: p phi q' (pickle c) by rewrite /p pickleK_inv evl.
-have eq: pickle c = r c phi q'.
-	suffices: pickle c <= r c phi q'.
-		move: (searchU_le (p phi q') (pickle c) (pickle c)).
-		rewrite /r;	lia.
-	rewrite -rnc.
-	apply searchU_min.
-	by apply searchU_correct.
-rewrite /N.
-suffices: r m phi q' = pickle c by move => ->; rewrite pickleK_inv.
-have ineq': pickle c <= pickle m.
-	rewrite -rnc; suffices: r n phi q' <= pickle n by lia.
-	exact: searchU_le.
-by rewrite eq /r (searchU_good _ (ineq')).
+have mon: N \is_monotone_oracle_machine.
+	move => n m phi q' a' ineq evl.
+	case E: (pickle n < pickle m)%N.
+		have[c rneqc]:= rprop n phi q'.
+		have[c' rmeqc']:= rprop m phi q'.
+		rewrite /N -rneqc pickleK_inv in evl.
+		have rmlrn: r m phi q' <= r n phi q'.
+			apply search_min.
+			by rewrite /p -rneqc pickleK_inv evl; case: ifP.
+		suffices rnlrm: r n phi q' <= r m phi q'.
+			have eq: r m phi q' = r n phi q' by lia.
+			by rewrite /N eq -rneqc pickleK_inv.
+		apply search_min.
+		rewrite /p -rmeqc' pickleK_inv.
+		case: ifP => // ha.
+		have pm: (p m phi q' (r m phi q')).
+			rewrite search_correct => //.
+			rewrite /p; case: ifP => // ineq'.
+			have: pickle m < pickle m by apply /leP.
+			by lia.
+		rewrite /p in pm.
+		have nq: (r m phi q' < pickle m)%N = true.
+			apply /leP.
+			suffices: pickle c' < pickle n by rewrite rmeqc'; lia.
+			by apply /leP.
+		rewrite nq in pm.
+		by rewrite -rmeqc' pickleK_inv in pm.
+	suffices ineq': pickle m <= pickle n.
+		have eq: n = m.
+			apply Some_inj.
+			rewrite -!pickleK_inv.
+			suffices <-: pickle n = pickle m by trivial.
+			by lia.
+		by rewrite -eq.
+	by apply PeanoNat.Nat.Private_Tac.not_gt_le; apply /leP; rewrite E.
+split => //.
+rewrite -cmpt_mon_sing_op => //.
+move => phi Fphi FphiFphi.
+move => q'.
+have phifd: phi \from_dom F by exists Fphi.
+have [[Mphi MphiMphi] prop]:= comp phi phifd.
+have [c val]:= MphiMphi q'.
+have pqrc: p c phi q' (r c phi q').
+	apply search_correct; rewrite /p.
+	by case: ifP => // _; rewrite pickleK_inv val.
+have [c' uprcq]:= rprop c phi q'.
+rewrite /p -uprcq in pqrc.
+case E: (pickle c' < pickle c)%N pqrc.
+	rewrite pickleK_inv.
+	case E': (M c' phi q') => // _.
+	exists c; rewrite /N -uprcq pickleK_inv.
+	by rewrite -(sing_cmpt_elt comp sing FphiFphi E').
+move => _.
+have eq: c' = c.
+	suffices eq: pickle c' = pickle c by apply Some_inj; rewrite -!pickleK_inv -eq.
+	have ineq: pickle c' <= pickle c by rewrite uprcq; apply search_le.
+	suffices: ~pickle c' < pickle c by lia.
+	by apply/ leP; rewrite E.
+exists c; rewrite /N -uprcq pickleK_inv eq (sing phi Fphi Mphi) => //.
+by apply prop.
 Qed.
 
 Lemma mon_sing_cmpt_op (F: B ->> B'):

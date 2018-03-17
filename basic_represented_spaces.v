@@ -1,7 +1,8 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions continuity representations representation_facts baire_space universal_machine.
+Require Import multi_valued_functions continuity machines oracle_machines.
+Require Import representations representation_facts baire_space universal_machine.
 Require Import FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.
@@ -55,10 +56,10 @@ Lemma rep_usig_prod_is_rep (X: rep_space):
 Proof.
 split => [ phi xn yn phinxn phinyn | xn ].
 	apply functional_extensionality => n.
-	by apply/ (\rep_valid X).1; [apply phinxn | apply phinyn ].
+	by apply/ (rep_sing X); [apply phinxn | apply phinyn ].
 pose R n phi:= phi \is_name_of (xn n).
 have Rtot: R \is_total.
-	by move => n; have [phi phinx]:= ((\rep_valid X).2 (xn n)); exists phi.
+	by move => n; have [phi phinx]:= (rep_sur X (xn n)); exists phi.
 by have [phi phinxn]:= choice R Rtot; exists (fun p => phi p.1 p.2).
 Qed.
 
@@ -72,60 +73,59 @@ Canonical rep_space_usig_prod (X: rep_space) := @make_rep_space
   (countable_answers X)
   (@rep_usig_prod_is_rep X).
 
-Lemma one_to_nat_dscrt Q A (F: (one -> nat) -> (Q -> A)):
-	(F2MF F) \is_continuous.
-Proof.
-move => phi q' phifd.
-set L := (star :: nil).
-exists L.
-move => Fphi FphiFphi /= psi coin.
-have eq: phi = psi.
-	apply functional_extensionality => str.
-	apply: ((coin_lstn phi psi L).1 coin).
-	by elim str; left.
-rewrite -eq.
-move => Fpsi FpsiFpsi.
-by rewrite -FphiFphi -FpsiFpsi.
-Qed.
-
+(* This Definition is slightly off, but it works for what I want to do.*)
 Definition is_dscrt X :=
-	forall Y (f: (space X) ->> (space Y)), f \has_continuous_realizer.
+	forall Y (f: (space X) -> (space Y)), (F2MF f) \has_continuous_realizer.
 Notation "X '\is_discrete'" := (is_dscrt X) (at level 2).
+
+Lemma dscrt_rel X:
+	X \is_discrete -> (forall Y (f: (space X) ->> (space Y)), f \has_continuous_realizer).
+Proof.
+move => dscrt Y f_R.
+case: (classic (exists y:Y, true)) => [[y _] | ]; last first.
+	move => next;	exists (F2MF (fun _ => (fun _:questions Y => some_answer Y))).
+	split; first by move => phi [y _]; exfalso; apply next; exists y.
+	by move => phi val phifd; exists nil => Fphi /= <- psi _ Fpsi <-.
+have [f icf]:= exists_choice f_R y.
+have [F [Frf Fcont]]:= (dscrt Y f).
+exists F; split => //.
+apply/ tight_trans; first by apply Frf.
+by apply tight_comp_l; apply icf_F2MF_tight.
+Qed.
 
 Lemma one_dscrt: rep_space_one \is_discrete.
 Proof.
 move => X f.
-pose G phi Fphi:= exists x, phi \is_name_of star -> f star x /\ Fphi \is_name_of x.
-have [F Fprop]:= exists_choice G (fun _ => some_answer X).
-exists (F2MF F).
+have [phi phinfs]:= rep_sur X (f star).
+exists (F2MF (fun _ => phi)).
 split.
-	move => phi [x [[str [phinstr fstrx]] _]].
-	move: phinstr fstrx; elim str => phinstr fstrx.
-	have [psi psinx]:= \rep_sur X x.
-	have Gphipsi: G phi psi by exists x.
-	have [x' prop]:= Fprop phi psi Gphipsi.
-	have [fstrx' Fphinx'] := prop phinstr.
-	split.
-		exists x'.
-		split; first by exists (F phi).
-		by move => phi' <-; exists x'.
-	move => x'' [[psi' [eq psi'nx'']] prop'].
-	split.
-		exists star.
-		split => //.
-		rewrite (\rep_sing X (F phi) x'' x') => //.
-		by rewrite eq.
-	move => s _.
-	by exists x; elim s.
-exists nil => Fphi /= <- psi _ Fpsi <-.
-suffices: phi = psi by move => <-.
-apply functional_extensionality => str.
-by elim (phi str); elim (psi str).
+	apply frlzr_rlzr.
+	move => psi str psinstr.
+	by elim str.
+by exists nil => Fphi /= <- psi _ Fpsi <-.
 Qed.
 
 Lemma nat_dscrt: rep_space_nat \is_discrete.
 Proof.
-Admitted.
+move => X f.
+pose R phi psi:= forall n, phi \is_name_of n -> psi \is_name_of (f n).
+have [F icf]:= exists_choice R (fun _ => some_answer X).
+exists (F2MF F).
+split.
+	apply frlzr_rlzr.
+	move => phi n phinn.
+	have [ psi psinfn] := rep_sur X (f n).
+	have Rphipsi: R phi psi.
+		move => n' phinn'.
+		by have <-: n = n' by rewrite -(rep_sing rep_space_nat phi n n').
+		by apply/ (icf phi (psi) Rphipsi).
+move => n q _.
+exists (cons star nil).
+move => Fphi /= <- psi coin Fpsi <-.
+suffices <-: n = psi by trivial.
+apply functional_extensionality => str.
+by elim str; rewrite coin.1.
+Qed.
 
 Inductive Sirp := top | bot.
 
@@ -165,24 +165,45 @@ Canonical rep_space_S := @make_rep_space
   (option_one_count)
   (rep_S_is_rep).
 End BASIC_REP_SPACES.
-(*
+
 Lemma iso_one (X :rep_space) (somex: X):
-	wisomorphic (rep_space_cont_fun rep_space_one X) X.
+	(rep_space_one c-> X) ~=~ X.
 Proof.
-pose f' (xf: rep_space_cont_fun rep_space_one X) := (projT1 xf) star.
-have [f fprop] := exists_choice f' somex.
-exists (F2MF f).
+pose f (xf: rep_space_one c-> X) := (projT1 xf) star.
+pose L := fix L n := match n with
+	| 0 => nil
+	| S n => cons (star, star) (L n)
+end.
+pose F n (phi: names (rep_space_one c-> X)) q := match (phi ((L n), q)) with
+	| inl q => None
+	| inr a => Some a
+end.
+have: (eval F) \is_realizer_of f.
+move => phi [x [[xf [phinxf fxfx]]] prop].
+have [xF icf] := exists_choice (projT1 xf) somex.
+split.
+	exists x.
+	split.
+		pose psi (str: one) := star.
+		have []:= (phinxf psi).
+		(exists (xF star)).
+		split; first by exists star; split => //; apply/ icf; apply fxfx.
+		move => s psins; exists x; elim s; apply fxfx.
+	move => [x' [[phi' [evl phi'nx']]prop']] stuff.
+	exists (phi').
+	split.
+		move => q.
+		have [c val]:= evl q.
+		exists c.
+(*
+		apply/ icf'.
+			
 pose pT1g (x: X) := F2MF (fun _: rep_space_one => x).
-have crlzr: forall x:X, has_cont_rlzr (pT1g x).
-	move => x.
-	have [phi phinx]:= (\rep_valid X).2 x.
-	exists (F2MF (fun _ => phi)).
-	split; first by rewrite -frlzr_rlzr.
-	exists (star::nil) => /=; rewrite /F2MF.
-	by move => Fphi FphiFphi /= psi' coin Fpsi eq; rewrite -FphiFphi -eq.
+have crlzr: forall x:X, has_cont_rlzr (pT1g x) by move => x; apply one_dscrt.
 have sing: forall (x: X), (pT1g x) \is_single_valued by move => x; apply F2MF_sing.
 have tot: forall (x: X), (pT1g x) \is_total by move => x; apply F2MF_tot.
 pose g (x:X) := exist_fun (conj (conj (sing x) (tot x)) (crlzr x)).
+exists f'.
 exists (F2MF g).
 split.
 	admit.
@@ -235,7 +256,7 @@ split.
 	apply functional_extensionality => str/=.
 	elim str.
 	apply functional_extensionality => x'/=.
-	rewrite /= in b.
+	rewrite /= in b.*)
 Admitted.
 
 Lemma wiso_usig X:
@@ -244,14 +265,13 @@ Proof.
 have crlzr: forall xn: nat -> X, has_cont_rlzr (F2MF xn).
 	move => xn.
 	pose R phi psi := psi \is_name_of (xn (phi star)).
-	have Rtot: R \is_total by move => phi; apply (\rep_valid X).2.
+	have Rtot: R \is_total by move => phi; apply (rep_sur X).
 	have [F icf]:= choice R Rtot.
+	(*
 	exists F; split.
 		by apply rlzr_mfrlzr => phi x phinx; rewrite -phinx; apply/icf.
 	move => phi q phifd; exists ([::star]) => Fphi /= FphiFphi psi coin.
 	have eq: phi = psi.
 		by apply functional_extensionality => /= str; elim: str; apply coin.
-	by rewrite -eq => Fpsi FpsiFpsi; rewrite -FpsiFpsi -FphiFphi.
+	by rewrite -eq => Fpsi FpsiFpsi; rewrite -FpsiFpsi -FphiFphi.*)
 Admitted.
-
-*)

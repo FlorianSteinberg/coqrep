@@ -13,27 +13,27 @@ Section MINIMIZATION.
 (* Most code from this section was provided by Vincent *)
 Context (p: nat -> bool).
 
-Fixpoint searchU m k : nat :=
+Let Fixpoint searchU m k : nat :=
   match k with
   | 0 => m
   | k'.+1 => let n := m - k in if p n then n else searchU m k'
   end.
 
-Lemma searchU_correct m k :
+Let searchU_correct m k :
   p m -> p (searchU m k).
 Proof.
 move => hm.
 by elim: k => // n ih /=; case: ifP.
 Qed.
 
-Lemma searchU_le m k :
+Let searchU_le m k :
   le (searchU m k) m.
 Proof.
 elim: k => // n ih /=; case: ifP => // _.
 rewrite /subn /subn_rec; lia.
 Qed.
 
-Lemma searchU_minimal m k :
+Let searchU_minimal m k :
   (forall n, p n -> m - k <= n) -> forall n, p n -> searchU m k <= n.
 Proof.
 elim: k.
@@ -49,28 +49,36 @@ move: (h i hi).
 rewrite /subn /subn_rec; lia.
 Qed.
 
-Lemma searchU_min n m:
-	p m -> searchU n n <= m.
+Definition search n := searchU n n.
+
+Lemma search_correct n:
+	p n -> p (search n).
+Proof.
+exact: searchU_correct.
+Qed.
+
+Lemma search_le n:
+	search n <= n.
+Proof.
+exact: searchU_le.
+Qed.
+
+Lemma search_min n m:
+	p m -> search n <= m.
 Proof.
 apply searchU_minimal.
 move => k pk.
 rewrite /subn/subn_rec; lia.
 Qed.
-
-Lemma searchU_good n m:
-	p n -> n <= m -> searchU n n = searchU m m.
-Proof.
-Admitted.
-
 End MINIMIZATION.
 
 Lemma worder_nat (p : nat -> bool):
 	(exists n, p n) -> exists n, p n /\ forall m, p m -> n <= m.
 Proof.
 move => [m pm].
-exists (searchU p m m).
-split; first exact: searchU_correct.
-exact: searchU_min.
+exists (search p m ).
+split; first exact: search_correct.
+exact: search_min.
 Qed.
 
 Lemma well_order_nat (P : nat -> Prop):

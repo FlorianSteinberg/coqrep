@@ -21,22 +21,73 @@ by exists (fun q => match q with
 end).
 Qed.
 
+Lemma diag_cmpt (X: rep_space):
+	(fun x => (x, x): rep_space_prod X X) \is_prec_function.
+Proof.
+by exists (fun phi q => match q with
+	| inl q => (phi q, some_answer X)
+	| inr q => (some_answer X, phi q)
+end).
+Defined.
+
+Lemma prec_fun_cmpt_elt (X Y: rep_space) (f: X -> Y) (x: X):
+	x \is_computable_element -> f \is_prec_function -> (f x) \is_computable_element.
+Proof.
+move => [phi phinx] [M Mrf].
+by exists (M phi); apply Mrf.
+Defined.
+
+Lemma cnst_fun_prec (X Y: rep_space) (y: Y):
+	y \is_computable_element -> (fun x:X => y) \is_prec_function.
+Proof. by move => [psi psiny]; exists (fun _ => psi). Qed.
+
+Lemma prod_prec_fun (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y'):
+	f \is_prec_function -> g \is_prec_function -> (fun p => (f p.1, g p.2)) \is_prec_function.
+Proof.
+move => [M Mrf] [N Nrg].
+exists (fun np q => match q with
+	| inl q => (M (fun q' => (np (inl q')).1) q, some_answer Y')
+	| inr q => (some_answer Y, N (fun q' => (np (inr q')).2) q)
+end).
+by move => phipsi [x x'] [phinx psinx']; split; [apply Mrf | apply Nrg].
+Defined.
+
 Lemma cmpt_elt_mon_cmpt (X Y: rep_space) (f: X c-> Y):
 	f \is_computable_element -> (projT1 f) \is_monotone_computable.
 Proof. move => [psiF comp]; exists (U psiF); split => //; exact: U_mon. Qed.
 
-Lemma cmpt_fun_mon_cmpt (X Y: rep_space) (f: X -> Y):
-	f \is_computable_function -> (F2MF f) \is_monotone_computable.
+Lemma prec_cmpt_fun_cmpt (X Y: rep_space) (f: X -> Y):
+	f \is_prec_function -> f \is_computable_function.
 Proof.
-move => [M comp]; exists (fun n phi q => Some (M phi q)); split => //; rewrite /is_rlzr.
-by apply/ tight_trans; [apply tight_comp_r; apply/ (prec_F2MF_op 0) | apply frlzr_rlzr].
+move => [M comp].
+exists (fun n phi q' => Some (M phi q')).
+rewrite /is_rlzr.
+apply/ tight_trans; last by apply /frlzr_rlzr; apply comp.
+by apply tight_comp_r; apply/ (prec_F2MF_op 0).
 Qed.
 
 Lemma mon_cmpt_cmpt (X Y: rep_space) (f: X ->> Y):
 	f \is_monotone_computable -> f \is_computable.
 Proof. by move => [M [mon comp]]; exists M. Qed.
 
-Lemma prim_rec_comp (X Y:rep_space) (f: X ->> Y):
+Lemma prec_fun_comp (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
+	f \is_prec_function -> g \is_prec_function
+	-> forall h, (forall x, h x = g (f x)) -> h \is_prec_function.
+Proof.
+move => [M comp] [N comp'] h eq.
+exists (fun phi => N (M phi)).
+by move => phi x phinx; rewrite eq; apply comp'; apply comp.
+Defined.
+
+Lemma prec_fun_cmpt (X Y: rep_space) (f: X -> Y):
+	f \is_prec_function -> f \is_computable_function.
+Proof.
+move => [N Nir]; exists (fun n phi q' => Some (N phi q')).
+apply/ tight_trans; last by apply frlzr_rlzr; apply Nir.
+apply tight_comp_r; apply: prec_F2MF_op 0.
+Qed.
+
+Lemma prec_cmpt (X Y:rep_space) (f: X ->> Y):
 	is_prim_rec f -> is_comp f.
 Proof.
 move => [N Nir]; exists (fun n phi q' => Some (N phi q')).
@@ -47,16 +98,61 @@ Definition is_sprd (X: rep_space) := forall (x: X) (M: nat -> questions X -> opt
 	(exists phi, (meval M) \tightens (F2MF phi) /\ phi \is_name_of x) -> x \is_computable_element.
 Notation "X '\is_spreaded'" := (is_sprd X) (at level 2).
 
+Lemma prod_sprd (X Y: rep_space):
+	X \is_spreaded -> Y \is_spreaded -> (rep_space_prod X Y) \is_spreaded.
+Proof.
+move => sprdx sprdy [x y] MN prop.
+pose M n q := match MN n (inl q) with
+	| some a => Some a.1
+	| None => None
+end.
+pose N n q := match MN n (inr q) with
+	| Some a => Some a.2
+	| None => None
+end.
+have ex: exists phi, (meval M) \tightens (F2MF phi) /\ phi \is_name_of x.
+	have [phipsi [comp [/=phinx psiny]]]:= prop.
+	exists (lprj phipsi).
+	split; last by apply phinx.
+	move => q _.
+	have qfd': (inl q) \from_dom (F2MF phipsi) by exists (phipsi (inl q)).
+	split.
+		have [a [n MNqa]]:= (comp (inl q) qfd').1.
+		by exists a.1; exists n; rewrite /M MNqa.
+	move => a [n Mqa]; rewrite /F2MF/lprj.
+	rewrite /M in Mqa.
+	have [a' [MNqa' eq]]: exists a', MN n (inl q) = some a' /\ a'.1 = a.
+		by case: (MN n (inl q)) Mqa => // a' eq; exists a'; split => //; apply Some_inj.
+	have val: (meval MN (inl q) a') by exists n.
+	have:= ((comp (inl q) qfd').2 a' val).
+	by rewrite /F2MF -eq => ->.
+have:= sprdx x M ex.
+have ex': exists psi, (meval N) \tightens (F2MF psi) /\ psi \is_name_of y.
+	have [phipsi [comp [/=phinx psiny]]]:= prop.
+	exists (rprj phipsi).
+	split; last by apply psiny.
+	move => q _.
+	have qfd': (inr q) \from_dom (F2MF phipsi) by exists (phipsi (inr q)).
+	split.
+		have [a [n MNqa]]:= (comp (inr q) qfd').1.
+		by exists a.2; exists n; rewrite /N MNqa.
+	move => a [n Mqa]; rewrite /F2MF/rprj.
+	rewrite /N in Mqa.
+	have [a' [MNqa' eq]]: exists a', MN n (inr q) = some a' /\ a'.2 = a.
+		by case: (MN n (inr q)) Mqa => // a' eq; exists a'; split => //; apply Some_inj.
+	have val: (meval MN (inr q) a') by exists n.
+	have:= ((comp (inr q) qfd').2 a' val).
+	by rewrite /F2MF -eq => ->.
+have:= sprdy y N ex'.
+move => [psi psiny] [phi phinx].
+by exists (name_pair phi psi).
+Qed.
+
+(*
 Lemma fun_sprd (X Y: rep_space) (someq: questions X): (X c-> Y) \is_spreaded.
 Proof.
-move => f N prop.
-pose M Lq := match N (length Lq.1) Lq with
-	| Some t => t
-	| None => inl someq
-end.
-exists M.
-rewrite /delta/=/is_fun_name/=.
 Admitted.
+*)
 
 Lemma cmpt_fun_cmpt_elt (X Y: rep_space) (f: X ->> Y) (x: X) (y: Y):
 	Y \is_spreaded -> f \is_monotone_computable -> f \is_single_valued
@@ -69,7 +165,7 @@ have phifd: phi \from_dom (eval M).
 	exists y; split; first by exists x.
 	move => x' phinx'; exists y.
 	suffices: x = x' by move => <-.
-	by apply/ (\rep_valid X).1; first by apply phinx.
+	by apply/ (rep_sing X); first by apply phinx.
 have Mop: (eval M) \is_computable_operator by exists M.
 have Msing: (eval M) \is_single_valued by apply/ mon_sing_op.
 have [N Nprop]:= (cmpt_op_cmpt phifd Mop Msing).
@@ -103,14 +199,14 @@ have phiny: (f o (delta (r:=X))) phi y.
 	move => x' phinx'.
 	exists y.
 	suffices: x' = x by move => ->.
-	by apply/ (\rep_valid X).1; first by apply phinx'.
+	by apply/ (rep_sing X); first by apply phinx'.
 have phifd': phi \from_dom (f o (delta (r:=X))) by exists y.
 have [[fx [[Mpsi [MphiMpsi Mpsinfx]]] prop'] prop]:= comp phi phifd'.
 have [fx' Mphinfx']:= prop' Mphi MphiMphi.
 rewrite -(Msing phi Mphi Mpsi) in Mpsinfx => //.
 have fdsing: (f o (\rep X)) \is_single_valued.
 	apply/ comp_sing => //.
-	by apply (\rep_valid X).
+	by apply (rep_sing X).
 suffices: fx = y by move => <-.
 apply/ fdsing; last by apply phiny.
 apply/prop.
@@ -120,13 +216,17 @@ exists fx.
 by rewrite (Msing phi Mphi' Mphi).
 Qed.
 
-Lemma id_prim_rec X:
+Lemma id_prec X:
 	@is_prim_rec X X (F2MF id).
-Proof. by exists id; apply frlzr_rlzr. Qed.
+Proof. by exists id; apply frlzr_rlzr. Defined.
+
+Lemma id_prec_fun X:
+	(@id (space X)) \is_prec_function.
+Proof. by exists id. Defined.
 
 Lemma id_cmpt X:
 	@is_comp X X (F2MF id).
-Proof. exact: (prim_rec_comp (id_prim_rec X)). Qed.
+Proof. exact: (prec_cmpt (id_prec X)). Qed.
 
 Lemma id_hcr X:
 	@has_cont_rlzr X X (F2MF id).
@@ -178,19 +278,14 @@ Lemma fcmp_tot X Y Z:
 	(@composition X Y Z) \is_total.
 Proof. exact: F2MF_tot. Qed.
 
+(*
 Lemma fcmp_mon_cmpt X Y Z:
 	(@composition X Y Z) \is_monotone_computable.
 Proof.
-exists ( fun n psifg Lxqz => Some(inr (some_answer Z))).
-split.
-	admit.
-move => psifg [gof [[[f g] [psifgnfg]]fggof] prop].
-pose psif Lxqy := (psifg (inl Lxqy)).1.
-pose psig Lyqz := (psifg (inr Lyqz)).2.
-split.
-	exists (fun_comp f g).
-	split.
+pose p1 psifg Lxqy:= (psifg (inl Lxqy)).1.
+pose p2 psifg Lyqz:= (psifg (inr Lyqz)).2.
 Admitted.
+*)
 
 Lemma iso_ref X:
 	X ~=~ X.
@@ -208,6 +303,7 @@ exists g; exists f.
 by exists gcomp; exists fcomp.
 Qed.
 
+(*
 Lemma iso_trans X Y Z (someqx: questions X) (someqz: questions Z):
 	X ~=~ Y -> Y ~=~ Z -> X ~=~ Z.
 Proof.
@@ -237,6 +333,7 @@ split.
 rewrite -comp_assoc (comp_assoc (sval g) (sval g') (sval f')).
 by rewrite bij2' comp_id bij2.
 Qed.
+*)
 
 Definition evaluation X Y (fx: (X c-> Y) * X):= (projT1 fx.1) fx.2.
 
@@ -256,6 +353,7 @@ have [y fxy]:= ((projT2 f).1.2 x).
 by exists y.
 Qed.
 
+(*
 Lemma eval_hcr X Y:
 	(@evaluation X Y) \has_continuous_realizer.
 Proof.
@@ -268,9 +366,10 @@ split.
 		exists y.
 		split.
 			rewrite /rel_comp.
-			have [phi phiny]:= \rep_sur Y y.
+			have [phi phiny]:= rep_sur Y y.
 			exists phi.
 			split => //.
 Admitted.
+*)
 
 End COMPUTABILITY_LEMMAS.

@@ -29,30 +29,45 @@ Structure rep_space := make_rep_space {
   representation_is_valid : delta \is_representation
 }.
 Notation names X := ((questions X) -> (answers X)).
-Notation "'\rep'" := @delta (at level 2).
+Notation rep := @delta.
 Notation "phi '\is_name_of' x" := (delta phi x) (at level 2).
-Notation "'\rep_valid' X" := (@representation_is_valid X) (at level 2).
-Notation "'\rep_sur' X" := ((\rep_valid X).2) (at level 2).
-Notation "'\rep_sing' X" := ((\rep_valid X).1) (at level 2).
+Notation rep_valid X := (@representation_is_valid X).
+Notation rep_sur X := (rep_valid X).2.
+Notation rep_sing X := (rep_valid X).1.
 
 (* This is the product of represented spaces. *)
+
+Definition lprj X Y (phipsi: questions X + questions Y -> answers X * answers Y) q := (phipsi (inl q)).1.
+Definition rprj X Y (phipsi: questions X + questions Y -> answers X * answers Y) q := (phipsi (inr q)).2.
+
+Definition name_pair (X Y: rep_space) (phi: names X) (psi: names Y) :=
+	fun c => match c with
+		| inl s => (phi s, some_answer Y)
+		| inr t => (some_answer X, psi t)
+	end.
+
+Lemma lprj_pair (X Y: rep_space) (phi: names X) (psi: names Y):
+	lprj (name_pair phi psi) =  phi.
+Proof. by trivial. Qed.
+
+Lemma rprj_pair (X Y: rep_space) (phi: names X) (psi: names Y):
+	rprj (name_pair phi psi) =  psi.
+Proof. by trivial. Qed.
+
 Definition prod_rep X Y :=
-	(fun (phipsi : (questions X + questions Y -> answers X * answers Y)) x =>
-      delta (fun q => (phipsi (inl q)).1) x.1 /\ delta (fun q => (phipsi (inr q)).2) x.2).
+	(fun (phipsi : (questions X + questions Y -> answers X * answers Y)) xy =>
+      (rep X ** rep Y) (lprj phipsi, rprj phipsi) xy).
 
 Lemma prod_rep_is_rep (X Y: rep_space):
 	(@prod_rep X Y) \is_representation.
 Proof.
 split => [phipsi x x' [] phinx1 psinx2 [] phinx'1 psinx'2 | x].
 	apply: injective_projections.
-		by apply/ (\rep_valid X).1; first apply phinx1.
-	by apply/ (\rep_valid Y).1; first apply psinx2.
-have [phi phinx1]:= ((\rep_valid X).2 x.1).
-have [psi psinx2]:= ((\rep_valid Y).2 x.2).
-by exists (fun q => match q with
-	| inl q' => (phi q', some_answer Y)
-	| inr q' => (some_answer X, psi q')
-end).
+		by apply/ (rep_sing X); first apply phinx1.
+	by apply/ (rep_sing Y); first apply psinx2.
+have [phi phinx1]:= (rep_sur X x.1).
+have [psi psinx2]:= (rep_sur Y x.2).
+by exists (name_pair phi psi).
 Qed.
 
 Lemma sum_count Q Q':
@@ -116,7 +131,7 @@ Proof.
 Admitted.
 
 Definition is_rlzr (X Y: rep_space) (F: (names X) ->> (names Y)) (f: X ->> Y) :=
-	(\rep Y) o F \tightens (f o (\rep X)).
+	(rep Y) o F \tightens (f o (rep X)).
 Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
 Global Instance rlzr_prpr (X Y: rep_space):
@@ -124,7 +139,7 @@ Global Instance rlzr_prpr (X Y: rep_space):
 Proof. by move => F G FeG f g feg; rewrite /is_rlzr FeG feg. Qed.
 
 Definition is_fun_rlzr (X Y: rep_space) (F: (names X) -> (names Y)) (f: X -> Y) :=
-	forall phi x, (\rep X) phi x -> ((\rep Y) (F phi) (f x)).
+	forall phi x, (rep X) phi x -> ((rep Y) (F phi) (f x)).
 
 Lemma frlzr_rlzr (X Y: rep_space) F (f: X -> Y):
 	is_fun_rlzr F f <-> is_rlzr (F2MF F) (F2MF f).
@@ -194,20 +209,73 @@ apply/ tight_trans.
 by rewrite comp_assoc.
 Qed.
 
+Lemma rlzr_dom (X Y: rep_space) (f: X ->> Y) F:
+	F \is_realizer_of f -> forall phi x, phi \is_name_of x -> x \from_dom f -> exists Fphi, F phi Fphi.
+Proof.
+move => rlzr phi x phinx [y fxy].
+have phifd: phi \from_dom (f o (delta (r:=X))).
+	exists y.
+	split; first by exists x.
+	move => x' phinx'.
+	by rewrite (rep_sing X phi x' x); first by exists y.
+have [y' [[Fphi [FphiFphi Fphiny']]] _]:= (rlzr phi phifd).1.
+by exists Fphi.
+Qed.
+
+Definition prod_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):=
+	(fun (phipsi: names (rep_space_prod X X')) FphiGpsi =>
+	(F ** G) (lprj phipsi, rprj phipsi)	(lprj FphiGpsi, rprj FphiGpsi)).
+
+Lemma rlzr_prod (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y') F G:
+	F \is_realizer_of f -> G \is_realizer_of g -> (prod_rlzr F G) \is_realizer_of (f ** g).
+Proof.
+move => Frf Grg phipsi [[y y']] [[[x x' [[/=phinx psinx'] [/= fxy gx'y']]]prop]].
+have lprjfd: ((lprj phipsi) \from_dom (f o (delta (r:=X)))).
+	exists y; split => [ | z phinz]; first by exists x.
+	by rewrite (rep_sing X (lprj phipsi) z x); first exists y.
+have [[z [[Fphi [FphiFphi Fphinz]]] propl]condl]:= Frf (lprj phipsi) lprjfd.
+have rprjfd: ((rprj phipsi) \from_dom (g o (delta (r:=X')))).
+	exists y'; split => [ | z' phinz']; first by exists x'.
+	by rewrite (rep_sing X' (rprj phipsi) z' x'); first exists y'.
+have [[z' [[Gpsi [GpsiGpsi Gpsinz']]] propr]condr]:= Grg (rprj phipsi) rprjfd.
+split.
+	exists (z, z').
+	split; first by exists (name_pair Fphi Gpsi).
+	move => FphiGpsi [/= FphiFphi' GpsiGpsi'].
+	have [l nl]:= (propl (lprj FphiGpsi) FphiFphi').
+	have [k nk]:= (propr (rprj FphiGpsi) GpsiGpsi').
+	by exists (l,k); split.
+move => [l k] [[FphiGpsi [[/=FphiFphi' GphiGphi'][/= Fphinl Gpsink]]] proplk].
+have phipsil: ((delta (r:=Y)) o F (lprj phipsi) l).
+	by split => //; exists (lprj FphiGpsi).
+have [[x'' [phinx'' fx''l]] prpl]:= (condl l phipsil).
+have phipsir: ((delta (r:=Y')) o G (rprj phipsi) k).
+	by split => //; exists (rprj FphiGpsi).
+have [[y'' [phiny'' gy''l]] prpr]:= (condr k phipsir).
+split.
+	exists (x, x'); split => //; split => /=.
+		by rewrite (rep_sing X (lprj phipsi) x x'').
+	by rewrite (rep_sing X' (rprj phipsi) x' y'').
+move => [a b] [/=phina psinb].
+have [this stuff]:= prpl a phina.
+have [this' stuff']:= prpr b psinb.
+by exists (this, this').
+Qed.
+
 Lemma is_frlzr_is_rep X Y:
   (@is_fun_rlzr X Y) \is_representation.
 Proof.
 split => [F f g Frf Frg | f].
 	apply functional_extensionality => x.
-	have [phi phinx]:= ((\rep_valid X).2 x).
-	apply/ (\rep_valid Y).1; first exact: (Frf phi x phinx).
+	have [phi phinx]:= (rep_sur X x).
+	apply/ (rep_sing Y); first exact: (Frf phi x phinx).
 	exact: (Frg phi x phinx).
-set R :=(fun phi psi => phi \from_dom (\rep X) -> forall x, (\rep X) phi x -> (\rep Y) psi (f x)).
+set R :=(fun phi psi => phi \from_dom (rep X) -> forall x, (rep X) phi x -> (rep Y) psi (f x)).
 have Rtot: R \is_total.
 	move => phi.
-	case: (classic (phi \from_dom (\rep X))) => [[x phinx] | nfd].
-		have [psi psiny]:= ((\rep_valid Y).2 (f x)).
-		by exists psi => _ x' phinx'; rewrite -((\rep_valid X).1 phi x x').
+	case: (classic (phi \from_dom (rep X))) => [[x phinx] | nfd].
+		have [psi psiny]:= (rep_sur Y (f x)).
+		by exists psi => _ x' phinx'; rewrite -(rep_sing X phi x x').
 	by exists (fun q => some_answer Y) => fd; exfalso; apply nfd.
 have [F Fcond]:= (choice R Rtot).
 by exists F => phi x phinx; apply Fcond => //; exists x.
@@ -310,9 +378,9 @@ Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
 Notation names X := ((questions X) -> (answers X)).
 Notation "'\rep'" := @delta (at level 2).
 Notation "phi '\is_name_of' x" := (delta phi x) (at level 2).
-Notation "'\rep_valid' X" := (@representation_is_valid X) (at level 2).
-Notation "'\rep_sur' X" := ((\rep_valid X).2) (at level 2).
-Notation "'\rep_sing' X" := ((\rep_valid X).1) (at level 2).
+Notation rep_valid X := (@representation_is_valid X).
+Notation rep_sur X := (rep_valid X).2.
+Notation rep_sing X := (rep_valid X).1.
 Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
 Notation "f '\has_continuous_realizer'" := (has_cont_rlzr f) (at level 2).
@@ -328,11 +396,14 @@ Definition is_comp (X Y: rep_space) (f: X ->> Y) :=
 Definition is_mon_comp (X Y: rep_space) (f: X ->> Y) :=
 	{M | M \is_monotone_oracle_machine /\ (eval M) \is_realizer_of f}.
 
-Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
-	{M | is_fun_rlzr M f}.
-
 Definition is_prim_rec (X Y: rep_space) (f: X ->> Y) :=
 	{F | is_rlzr (F2MF F) f}.
+
+Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
+	{M | (eval M) \is_realizer_of (F2MF f)}.
+
+Definition is_prim_rec_fun (X Y: rep_space) (f: X -> Y) :=
+	{M | is_fun_rlzr M f}.
 
 Definition isomorphism (X Y: rep_space) (f: X c-> Y) :=
 	exists (g: Y c-> X) (P: is_comp_elt f) (Q: is_comp_elt g),
@@ -354,5 +425,6 @@ Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
 Notation "x '\is_computable_element'" := (is_comp_elt x) (at level 2).
 Notation "f '\is_computable'" := (is_comp f) (at level 2).
 Notation "f '\is_monotone_computable'" := (is_mon_comp f) (at level 2).
+Notation "f '\is_prec_function'" := (is_prim_rec_fun f) (at level 2).
 Notation "f '\is_computable_function'" := (is_comp_fun f) (at level 2).
 Notation "X ~=~ Y" := (@isomorphic X Y) (at level 2).
