@@ -96,10 +96,10 @@ Qed.
 
 Definition is_sprd (X: rep_space) := forall (x: X) (M: nat -> questions X -> option (answers X)),
 	(exists phi, (meval M) \tightens (F2MF phi) /\ phi \is_name_of x) -> x \is_computable_element.
-Notation "X '\is_spreaded'" := (is_sprd X) (at level 2).
+Notation "X '\is_spread'" := (is_sprd X) (at level 2).
 
 Lemma prod_sprd (X Y: rep_space):
-	X \is_spreaded -> Y \is_spreaded -> (rep_space_prod X Y) \is_spreaded.
+	X \is_spread -> Y \is_spread -> (rep_space_prod X Y) \is_spread.
 Proof.
 move => sprdx sprdy [x y] MN prop.
 pose M n q := match MN n (inl q) with
@@ -155,7 +155,7 @@ Admitted.
 *)
 
 Lemma cmpt_fun_cmpt_elt (X Y: rep_space) (f: X ->> Y) (x: X) (y: Y):
-	Y \is_spreaded -> f \is_monotone_computable -> f \is_single_valued
+	Y \is_spread -> f \is_monotone_computable -> f \is_single_valued
 	-> x \is_computable_element -> f x y -> y \is_computable_element.
 Proof.
 move => sprd [M [mon comp]] sing [phi phinx] fxy.

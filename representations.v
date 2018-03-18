@@ -210,7 +210,7 @@ by rewrite comp_assoc.
 Qed.
 
 Lemma rlzr_dom (X Y: rep_space) (f: X ->> Y) F:
-	F \is_realizer_of f -> forall phi x, phi \is_name_of x -> x \from_dom f -> exists Fphi, F phi Fphi.
+	F \is_realizer_of f -> forall phi x, phi \is_name_of x -> x \from_dom f -> phi \from_dom F.
 Proof.
 move => rlzr phi x phinx [y fxy].
 have phifd: phi \from_dom (f o (delta (r:=X))).
@@ -220,6 +220,20 @@ have phifd: phi \from_dom (f o (delta (r:=X))).
 	by rewrite (rep_sing X phi x' x); first by exists y.
 have [y' [[Fphi [FphiFphi Fphiny']]] _]:= (rlzr phi phifd).1.
 by exists Fphi.
+Qed.
+
+Lemma rlzr_val_sing (X Y: rep_space) (f: X ->> Y) F: f \is_single_valued -> F \is_realizer_of f ->
+	forall phi x Fphi y, phi \is_name_of x -> f x y -> F phi Fphi -> Fphi \is_name_of y.
+Proof.
+move => sing Frf phi x Fphi y phinx fxy FphiFphi.
+have phifd: phi \from_dom (f o (delta (r:=X))).
+	by exists y; split => [ | x' phinx']; [exists x | rewrite (rep_sing X phi x' x); first exists y].
+have [[y' [[Fphi' [FphiFphi' Fphi'ny']] prop]] cond]:= (Frf phi phifd).
+have [z Fphinz]:= (prop Fphi FphiFphi).
+have phinz: (delta (r:=Y)) o F phi z by split => [ | n H]; [exists Fphi | apply prop].
+have [[x' [phinx' fx'z]]prp] := cond z phinz.
+rewrite (sing x y z) => //.
+by rewrite (rep_sing X phi x x').
 Qed.
 
 Definition prod_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):=
