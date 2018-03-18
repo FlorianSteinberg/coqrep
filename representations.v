@@ -410,13 +410,13 @@ Definition is_comp (X Y: rep_space) (f: X ->> Y) :=
 Definition is_mon_comp (X Y: rep_space) (f: X ->> Y) :=
 	{M | M \is_monotone_oracle_machine /\ (eval M) \is_realizer_of f}.
 
-Definition is_prim_rec (X Y: rep_space) (f: X ->> Y) :=
+Definition is_prec (X Y: rep_space) (f: X ->> Y) :=
 	{F | is_rlzr (F2MF F) f}.
 
 Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
 	{M | (eval M) \is_realizer_of (F2MF f)}.
 
-Definition is_prim_rec_fun (X Y: rep_space) (f: X -> Y) :=
+Definition is_prec_fun (X Y: rep_space) (f: X -> Y) :=
 	{M | is_fun_rlzr M f}.
 
 Definition isomorphism (X Y: rep_space) (f: X c-> Y) :=
@@ -438,7 +438,8 @@ End COMPUTABILITY_DEFINITIONS.
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
 Notation "x '\is_computable_element'" := (is_comp_elt x) (at level 2).
 Notation "f '\is_computable'" := (is_comp f) (at level 2).
+Notation "f '\is_prec'" := (is_prec f) (at level 2).
 Notation "f '\is_monotone_computable'" := (is_mon_comp f) (at level 2).
-Notation "f '\is_prec_function'" := (is_prim_rec_fun f) (at level 2).
+Notation "f '\is_prec_function'" := (is_prec_fun f) (at level 2).
 Notation "f '\is_computable_function'" := (is_comp_fun f) (at level 2).
 Notation "X ~=~ Y" := (@isomorphic X Y) (at level 2).

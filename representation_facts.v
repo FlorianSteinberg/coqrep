@@ -88,7 +88,7 @@ apply tight_comp_r; apply: prec_F2MF_op 0.
 Qed.
 
 Lemma prec_cmpt (X Y:rep_space) (f: X ->> Y):
-	is_prim_rec f -> is_comp f.
+	f \is_prec -> f \is_computable.
 Proof.
 move => [N Nir]; exists (fun n phi q' => Some (N phi q')).
 by apply/ tight_trans; first by apply/ tight_comp_r;	apply (prec_F2MF_op 0).
@@ -217,7 +217,7 @@ by rewrite (Msing phi Mphi' Mphi).
 Qed.
 
 Lemma id_prec X:
-	@is_prim_rec X X (F2MF id).
+	@is_prec X X (F2MF id).
 Proof. by exists id; apply frlzr_rlzr. Defined.
 
 Lemma id_prec_fun X:

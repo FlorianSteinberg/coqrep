@@ -405,9 +405,8 @@ Admitted.
 Definition eff_conv xn := exists x, forall n, Rabs (xn n - x) <= 1/2^n.
 Definition lim_eff := lim \restricted_to eff_conv.
 
-Lemma lim_cmpt:
-	lim_eff \is_computable.
+Lemma lim_eff_prec:
+	lim_eff \is_prec.
 Proof.
-apply prec_cmpt.
-rewrite /is_prim_rec/=.
+rewrite /is_prec/=.
 Admitted.
