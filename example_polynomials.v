@@ -1,10 +1,8 @@
 From mathcomp Require Import all_ssreflect.
-From mathcomp Require Import ssralg.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat div seq choice fintype.
-From mathcomp Require Import finfun bigop prime binomial.
-Require Import Qreals QArith Psatz.
+Require Import Qreals QArith Psatz Reals Field.
 Require Import multi_valued_functions representation_facts.
 Require Import example_approximating_reals_with_rationals representations.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -13,79 +11,69 @@ Section POLYNOMIALS.
 
 Definition polynomial := list Q.
 
-Fixpoint Qeval (p: polynomial) q :Q := match p with
-	| nil => 0%Q
-	| cons a L => q * (Qeval L q) + a
-end.
+Fixpoint Qeval (p: polynomial) q :Q := 
+  if p is a :: L then q * (Qeval L q) + a else 0%Q. 
 
-Fixpoint add p q := match p with
-	|nil => q
-	|cons a p => match q with
-		| nil => cons a p
-		| cons b q => cons (a + b) (add p q)
-	end
-end.
+Fixpoint add p q :=
+  if p is a :: p then
+    if q is b :: q then a + b :: (add p q) else a :: p
+  else q.
 
-Definition multx p := cons 0 p.
+Definition multx p := 0 :: p.
 
-Fixpoint multa a p := match p with
-	| nil => nil
-	| cons b q => cons (b*a) (multa a q)
-end.
+Fixpoint multa a p :=  [seq b * a | b <- p].
 
-Fixpoint mult p q := match p with
-	| nil => nil
-	| cons a p' => add (multa a q) (multx (mult p' q))
-end.
+Fixpoint mult p q := 
+  if p is a :: p' then add (multa a q) (multx (mult p' q)) else [::].
 
-Fixpoint T n := match n with
-	| 0%nat => cons 1 nil
-	| S n' => match n' with
-		| 0%nat =>  cons 0%Q (cons 1 nil)
-		| S n'' => add (multa (2#1) (multx (T n'))) (map Qopp (T n''))
-	end
-end.
+Fixpoint T n := 
+  if n is n'.+1 then
+   if n' is n''.+1 then add (multa (2#1) (multx (T n'))) [seq -i | i <- T n'']
+   else [::0; 1]
+  else [::1].
 
 Definition cheb_poly := list Q.
 
-Fixpoint CP2P_rev cp := match cp with
-	| nil => nil
-	| cons a L => add (multa a (T (length L))) (CP2P_rev L)
-end.
+Fixpoint CP2P_rev cp := 
+  if cp is a :: L then add (multa a (T (length L))) (CP2P_rev L) else [::].
+
 Definition CP2P cp := CP2P_rev (rev cp).
 
-Fixpoint monom n := match n with
-	| 0%nat => cons 1 nil
-	| S n => cons 0 (monom n)
-end.
+Definition monom n := ncons n 0 [::1].
 
-Lemma CP2P_monom:
-	forall n, CP2P (monom n) = T n.
+Lemma CP2P_monom n : CP2P (monom n) = T n.
 Proof.
 Admitted.
 
 Compute CP2P (monom 5).
 Compute T 5.
 
-Fixpoint b (p: cheb_poly) (x: Q) := match p with
-	| nil => cons 0 (cons 0 nil)
-	|	cons a p' => cons (a + ((2#1) * x * (BinList.nth 0 1 (b p' x)) - (BinList.nth 0 2 (b p' x)))) (b p' x)
-end.
+Fixpoint b (p: cheb_poly) (x: Q) :=
+ if p is a :: p' then
+   let t := b p' x in
+   let a1 := a + (2#1) * x * (BinList.nth 0 1 t) - (BinList.nth 0 2 t) in
+   a1 :: t else [:: 0; 0].
 
 Definition EvaluateClenshaw p x :=
 	BinList.nth 0 1 (b p x) - x * BinList.nth 0 2 (b p x).
 
 Compute Qeval (T 5) (2#3).
 Compute EvaluateClenshaw (monom 5) (2#3).
-Compute Qeval (T 5) (2#3) - EvaluateClenshaw (monom 5) (2#3).
+Compute Qred (Qeval (T 5) (2#3) - EvaluateClenshaw (monom 5) (2#3)).
 (* lol. I probably shouldn't have used Q. *)
 
-Fixpoint Reval (p: polynomial) x :R := match p with
-	| nil => 0
-	| cons a L => Rmult x (Reval L x) + Q2R a
-end.
+Fixpoint Reval (p: polynomial) x : R := 
+  if p is a :: L then x * Reval L x + Q2R a else 0.
+
 (* This does not evaluate *)
 Compute Reval (T 5) (Q2R (2#3)).
+Goal forall x, x = Reval (T 5) (Q2R (2#3)) -> x = x.
+move=> x H.
+compute in H.
+field_simplify in H.
+by [].
+Qed.
+
 (* But you can use my library to prove computability and then evaluate: *)
 Lemma Reval_prec (p: polynomial):
 	(Reval p) \is_prec_function.
