@@ -51,11 +51,11 @@ Compute T 5.
 Fixpoint b (p: cheb_poly) (x: Q) :=
  if p is a :: p' then
    let t := b p' x in
-   let a1 := a + (2#1) * x * (BinList.nth 0 1 t) - (BinList.nth 0 2 t) in
-   a1 :: t else [:: 0; 0].
+   let a1 := a + (2#1) * x * t.1 - t.2 in
+   (a1, t.1) else (0, 0).
 
 Definition EvaluateClenshaw p x :=
-	BinList.nth 0 1 (b p x) - x * BinList.nth 0 2 (b p x).
+	(b p x).1 - x * (b p x).2.
 
 Compute Qeval (T 5) (2#3).
 Compute EvaluateClenshaw (monom 5) (2#3).
