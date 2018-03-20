@@ -9,7 +9,6 @@ Require Import multi_valued_functions baire_space continuity.
 Require Import machines oracle_machines universal_machine.
 Require Import representations representation_facts.
 Require Import Qreals Reals Psatz FunctionalExtensionality ClassicalChoice.
-Require Import Interval.Interval_interval.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -40,7 +39,7 @@ have zPos : 0 < IZR z by lra.
 pose p := Z.to_pos z.
 have pE : (' p)%Z = z by rewrite Z2Pos.id //; apply: lt_0_IZR.
 exists (1 # p).
-rewrite /Q2R /= INR_IZR_INZ positive_nat_Z pE [1 * / _]Rmult_1_l.
+rewrite /Q2R /= pE [1 * / _]Rmult_1_l.
 split; first by apply: Rinv_0_lt_compat.
 rewrite -(Rinv_involutive r); try lra.
 apply: Rinv_lt_contravar; try nra.
@@ -73,7 +72,7 @@ replace (Q2R q * / 2) with (Q2R (q * / (1 + 1))); last first.
 		by field.
 	rewrite Q2R_plus.
 	replace (Q2R 1) with 1 => //.
-	by rewrite /Q2R/IZR /=;	field.
+	rewrite /Q2R/IZR/IPR/=; field.
 apply: Rplus_le_compat.
 	apply: pinox.
 	rewrite Q2R_div; last by lra.
@@ -289,7 +288,7 @@ apply/ Rle_trans; first rewrite /q; first apply psiny; last first.
 	rewrite !Q2R_div; [ | by lra | ] => //.
 	rewrite {4}/Q2R/= {1}/Rdiv.
 	replace (1 * / 2) with (/2 * 1) by lra.
-	rewrite -{3 4}(Rinv_r (Q2R (rab psi))); try lra.
+	rewrite -(Rinv_r (Q2R (rab psi))); try lra.
 	rewrite -Rmult_assoc -Rmult_plus_distr_r.
 	apply: Rmult_le_compat_r; first by apply Rlt_le; apply Rinv_0_lt_compat; lra.
 	suffices: Q2R (trunc eps) / Q2R (1 + 1) <= Q2R (rab psi)/2 by lra.
