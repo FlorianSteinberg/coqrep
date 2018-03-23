@@ -68,20 +68,15 @@ apply: Rle_trans.
 rewrite -(eps2 (Q2R q)).
 replace (Q2R q * / 2) with (Q2R (q * / (1 + 1))); last first.
 	rewrite Q2R_mult Q2R_inv; last by lra.
-	replace (Q2R (1 + 1)) with 2.
-		by field.
-	rewrite Q2R_plus.
-	replace (Q2R 1) with 1 => //.
-	rewrite /Q2R/IZR/IPR/=; field.
+	by replace (Q2R (1 + 1)) with 2 by by rewrite Q2R_plus /Q2R/IZR/IPR/=; field.
 apply: Rplus_le_compat.
 	apply: pinox.
 	rewrite Q2R_div; last by lra.
 	rewrite {2}/Q2R/=; lra.
-replace (Rabs (r - x')) with (Rabs (x' - r)).
-	apply: H.
-	rewrite Q2R_div; last by lra.
-	rewrite {2}/Q2R/=; lra.
-by split_Rabs; lra.
+replace (Rabs (r - x')) with (Rabs (x' - r)) by by split_Rabs; lra.
+apply: H.
+rewrite Q2R_div; last by lra.
+rewrite {2}/Q2R/=; lra.
 Qed.
 
 (* Auxillary lemmas for the proof that the Cauchy representation is surjective. *)
@@ -140,7 +135,7 @@ Canonical rep_space_R := @make_rep_space
 
 Lemma id_is_computable : (id : R -> R) \is_computable_function.
 Proof.
-apply/ prec_cmpt_fun_cmpt.
+apply/ prec_fun_cmpt.
 by exists (fun phi => phi).
 Qed.
 
@@ -303,23 +298,27 @@ Proof. by apply prec_fun_cmpt; apply Rmult_prec. Qed.
 
 Require Import basic_represented_spaces.
 
+(* The following is different from what is used in the standard library in that epsilon is rational
+instead of real. It should be straight forward to proof the limits to be equivalent by using the 
+density of the rationals *)
 Definition lim xn x :=
-	forall eps, eps > 0 -> exists N:nat, forall n:nat, (N <= n)%coq_nat -> Rabs (x - xn n) <= eps.
+	forall eps, Q2R eps > 0 -> exists N:nat, forall n:nat, (N <= n)%coq_nat -> Rabs (x - xn n) <= Q2R eps.
 
 Lemma lim_sing:
 	lim \is_single_valued.
 Proof.
 move => xn x x' limxnx limxnx'.
 apply/ cond_eq_rat => eps ineq.
-have ineq': Q2R eps/(1 + 1) > 0 by lra.
-move: (limxnx (Q2R eps/2) ineq') => [N prop].
-move: (limxnx' (Q2R eps/2) ineq') => [M prop'].
+have ineq': Q2R (eps * (1#2)) > 0 by rewrite Q2R_mult {2}/Q2R/=; lra.
+move: (limxnx (Qmult eps (1#2)) ineq') => [N prop].
+move: (limxnx' (Qmult eps (1#2)) ineq') => [M prop'].
 rewrite -(Rplus_0_r x).
 rewrite -(Rplus_opp_r (xn (M + N)%coq_nat)).
 replace (x + (xn (M + N)%coq_nat + - xn (M + N)%coq_nat) - x')
 	with ((x - xn (M + N)%coq_nat) - (x' - xn (M + N)%coq_nat)) by field.
 apply triang.
 replace (Q2R eps) with (Q2R eps/2 + Q2R eps/ 2) by field.
+have ->: Q2R eps / 2 = Q2R (Qmult eps (1#2)) by rewrite Q2R_mult {3}/Q2R/=; lra.
 apply: Rplus_le_compat.
 	by apply (prop (M + N)%coq_nat); lia.
 rewrite Rabs_Ropp.
@@ -401,11 +400,124 @@ rewrite {2 4}/Q2R/=.
 split_Rabs; lra.
 Admitted.
 
+Definition Int_partQ eps := ((Qnum eps)/(Z.pos (Qden eps)))%Z.
+Lemma Ip_IpQ:
+	forall eps, Int_partQ eps = Int_part (Q2R eps).
+Proof.
+Admitted.
+
+Definition upQ eps:= (Int_partQ eps + 1)%Z.
+Lemma up_upQ:
+	forall eps, up (Q2R eps) = upQ eps.
+Proof.
+move => eps.
+rewrite /upQ Ip_IpQ /Int_part.
+ring.
+Qed.
+
 Definition eff_conv xn := exists x, forall n, Rabs (xn n - x) <= 1/2^n.
 Definition lim_eff := lim \restricted_to eff_conv.
+
+Fixpoint Pos_size p := match p with
+	| xH => 1%nat
+	| xI p' => S (Pos_size p')
+	| xO p' => S (Pos_size p')
+end.
+
+Definition Z_size z:= match z with
+	| Z0 => 0%nat
+	| Z.pos p => Pos_size p
+	| Z.neg p => Pos_size p
+end.
+
+Lemma Z_size_le z:
+	(z < two_power_nat (Z_size z))%Z.
+Proof.
+elim: z => // p.
+rewrite /Z_size.
+elim: p => // p ih/=.
+rewrite !Pos2Z.inj_xI two_power_nat_S.
+have ineq: (Z.pos p + 1 <= two_power_nat (Pos_size p))%Z by lia.
+apply/ Z.lt_le_trans; last by apply Zmult_le_compat_l; last lia; apply ineq.
+by lia.
+Qed.
+
+Lemma lim_eff_sing:
+	lim_eff \is_single_valued.
+Proof.
+by move => xn x x' [_ limxnx] [_ limxnx']; apply: lim_sing; first apply limxnx.
+Qed.
 
 Lemma lim_eff_prec:
 	lim_eff \is_prec.
 Proof.
-rewrite /is_prec/=.
+exists (fun phin eps => phin (S (Z_size (upQ (/eps)))%nat, (Qmult eps (1#2)))).
+rewrite /is_rlzr F2MF_comp.
+move => phin [x [[xn [phinxn [[y eff] limxnx]]] prop]].
+have limxny: lim xn y.
+	move => eps epsg0.
+	set N:= (Z_size (upQ (/eps))); exists N.
+	move => n ineq.
+	rewrite Rabs_minus_sym.
+	apply/ Rle_trans; first apply (eff n).
+	have ineq': 1/2^N <= Q2R eps.
+		rewrite /Q2R/Rdiv /Qdiv.
+		apply Rmult_le_compat; first by lra.
+					admit.
+				admit.
+			apply Rinv_le_contravar.
+			admit.
+		admit.
+	apply/Rle_trans; last apply ineq'.
+	rewrite /Rdiv !Rmult_1_l.
+	apply Rinv_le_contravar.
+		admit.
+	by apply Rle_pow; first by lra.
+rewrite (lim_sing limxny limxnx) in eff.
+move: y limxny => _ _.
+have: (fun eps : Q => phin ((Z_size (upQ (/ eps))).+1, (eps * (1 # 2))%Q)) \is_name_of x.
+	move => eps epsg0.
+	set N := (Z_size (upQ (/ eps))).+1.
+	replace (x - Q2R (phin (N, (eps * (1 # 2))%Q))) with
+		((x - xn N) + (xn N - Q2R (phin (N, (eps * (1 # 2))%Q)))) by ring.
+	apply triang.
+	rewrite -(eps2 (Q2R eps)).
+	apply Rplus_le_compat.
+	have g0: Q2R eps /2 > 0 by lra.
+	apply/Rle_trans.
+		rewrite Rabs_minus_sym.
+		apply: (eff N).
+		admit.
+	apply/Rle_trans; first apply phinxn; rewrite Q2R_mult {2}/Q2R/=; lra.
+split; first by exists x.
+move => y cond.
+rewrite (rep_sing rep_space_R (fun eps : Q => phin ((Z_size (upQ (/ eps))).+1, (eps * (1 # 2))%Q)) y x) => //.
+split; first by exists xn; split => //; split => //; exists x.
+move => yn phinyn.
+rewrite (rep_sing _ phin yn xn) => //.
+by exists x; split => //; exists x.
 Admitted.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
