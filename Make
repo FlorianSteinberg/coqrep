@@ -10,3 +10,4 @@ representations.v
 representation_facts.v
 basic_represented_spaces.v
 example_approximating_reals_with_rationals.v
+example_polynomials.v
