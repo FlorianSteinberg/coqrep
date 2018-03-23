@@ -310,8 +310,7 @@ right => m ineq.
 case: ((PeanoNat.Nat.le_succ_r m n).1 ineq) => le; first by rewrite -eq.
 have eq': U_rec n (psiF mf listf Ff) phi q' = inr (flst phi (init_seg n.+1)).
 	by apply eq.
-rewrite /U_rec in eq'.
-by rewrite /U_rec le eq'/U_step/psiF length_flst_in_seg E.
+by rewrite /U_rec in eq'; rewrite /U_rec le eq'/U_step/psiF length_flst_in_seg E.
 Qed.
 
 Lemma U_is_universal (somea: A) (somephi : B') (sur: cnt \is_surjective) (Fcont : F \is_continuous) :
