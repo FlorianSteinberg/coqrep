@@ -56,21 +56,20 @@ Lemma cmpt_elt_mon_cmpt (X Y: rep_space) (f: X c-> Y):
 	f \is_computable_element -> (projT1 f) \is_monotone_computable.
 Proof. move => [psiF comp]; exists (U psiF); split => //; exact: U_mon. Qed.
 
-Lemma prec_cmpt_fun_cmpt (X Y: rep_space) (f: X -> Y):
-	f \is_prec_function -> f \is_computable_function.
-Proof.
-move => [M comp].
-exists (fun n phi q' => Some (M phi q')).
-rewrite /is_rlzr.
-apply/ tight_trans; last by apply /frlzr_rlzr; apply comp.
-by apply tight_comp_r; apply/ (prec_F2MF_op 0).
-Qed.
-
 Lemma mon_cmpt_cmpt (X Y: rep_space) (f: X ->> Y):
 	f \is_monotone_computable -> f \is_computable.
 Proof. by move => [M [mon comp]]; exists M. Qed.
 
 Lemma prec_fun_comp (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
+	f \is_prec_function -> g \is_prec_function
+	-> forall h, (forall x, h x = g (f x)) -> h \is_prec_function.
+Proof.
+move => [M comp] [N comp'] h eq.
+exists (fun phi => N (M phi)).
+by move => phi x phinx; rewrite eq; apply comp'; apply comp.
+Defined.
+
+Lemma cmpt_fun_comp (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
 	f \is_prec_function -> g \is_prec_function
 	-> forall h, (forall x, h x = g (f x)) -> h \is_prec_function.
 Proof.
@@ -148,11 +147,21 @@ move => [psi psiny] [phi phinx].
 by exists (name_pair phi psi).
 Qed.
 
-(*
-Lemma fun_sprd (X Y: rep_space) (someq: questions X): (X c-> Y) \is_spreaded.
+(*Lemma fun_sprd (X Y: rep_space) (someq: questions X): (X c-> Y) \is_spread.
 Proof.
-Admitted.
-*)
+move => f psif prop.
+pose psif' n q := fix psif' q := match q.1 with
+	| nil => psif n q
+	| cons p K => match psif n (K, q.2) with
+		| Some a => cons p K
+		| None => K
+	end
+end.
+exists (fun p => match psif' (length p.1) p with
+	| Some a => a
+	| None => inl someq
+end).
+Admitted.*)
 
 Lemma cmpt_fun_cmpt_elt (X Y: rep_space) (f: X ->> Y) (x: X) (y: Y):
 	Y \is_spread -> f \is_monotone_computable -> f \is_single_valued
@@ -235,8 +244,7 @@ exists (F2MF id).
 split; first by apply frlzr_rlzr.
 move => phi q' _.
 exists [ ::q'].
-move => Fphi /= eq psi coin Fpsi val.
-rewrite -val -eq.
+move => Fphi /= <- psi coin Fpsi <-.
 apply coin.1.
 Qed.
 
