@@ -73,7 +73,8 @@ Canonical rep_space_usig_prod (X: rep_space) := @make_rep_space
   (countable_answers X)
   (@rep_usig_prod_is_rep X).
 
-(* This Definition is slightly off, but it works for what I want to do.*)
+(* This Definition is equivalent to the notion Arno introduces in "https://arxiv.org/pdf/1204.3763.pdf".
+One of the drawbacks fo the version here is that it does not have a computable version.*)
 Definition is_dscrt X :=
 	forall Y (f: (space X) -> (space Y)), (F2MF f) \has_continuous_realizer.
 Notation "X '\is_discrete'" := (is_dscrt X) (at level 2).
@@ -98,11 +99,9 @@ Proof.
 move => X f.
 have [phi phinfs]:= rep_sur X (f star).
 exists (F2MF (fun _ => phi)).
-split.
-	apply frlzr_rlzr.
-	move => psi str psinstr.
-	by elim str.
-by exists nil => Fphi /= <- psi _ Fpsi <-.
+split; last by exists nil => Fphi <- psi _ Fpsi <-.
+apply frlzr_rlzr => psi str psinstr.
+by elim str.
 Qed.
 
 Lemma nat_dscrt: rep_space_nat \is_discrete.
@@ -112,13 +111,11 @@ pose R phi psi:= forall n, phi \is_name_of n -> psi \is_name_of (f n).
 have [F icf]:= exists_choice R (fun _ => some_answer X).
 exists (F2MF F).
 split.
-	apply frlzr_rlzr.
-	move => phi n phinn.
+	apply frlzr_rlzr => phi n phinn.
 	have [ psi psinfn] := rep_sur X (f n).
-	have Rphipsi: R phi psi.
-		move => n' phinn'.
-		by have <-: n = n' by rewrite -(rep_sing rep_space_nat phi n n').
-		by apply/ (icf phi (psi) Rphipsi).
+	suffices Rphipsi: R phi psi by apply/ (icf phi psi Rphipsi).
+	move => n' phinn'.
+	by have <-: n = n' by rewrite -(rep_sing rep_space_nat phi n n').
 move => n q _.
 exists (cons star nil).
 move => Fphi /= <- psi coin Fpsi <-.
@@ -136,8 +133,7 @@ Lemma rep_S_is_rep:
  rep_S \is_representation.
 Proof.
 split => [ phi s s' [imp imp'] [pmi pmi'] | s].
-	case (classic (exists n, phi n = Some star)) => ex.
-		by rewrite (imp ex) (pmi ex).
+	case (classic (exists n, phi n = Some star)) => ex; first by rewrite (imp ex) (pmi ex).
 	case E: s; first by exfalso; apply ex; apply (imp' E).
 	apply NNPP => neq.
 	have eq: s' = top by case Q: s' => //; exfalso; apply neq.
