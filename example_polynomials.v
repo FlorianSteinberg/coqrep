@@ -26,6 +26,21 @@ Fixpoint multa a p :=  [seq b * a | b <- p].
 Fixpoint mult p q := 
   if p is a :: p' then add (multa a q) (multx (mult p' q)) else [::].
 
+Lemma Qeval0 q : Qeval [::0] q == 0.
+Proof. rewrite /Qeval; ring. Qed.
+
+Lemma Qevalc c q: Qeval [::c] q == c.
+Proof. rewrite /Qeval; ring. Qed.
+
+Lemma QevalX q : Qeval (multx [::1]) q == q.
+Proof. rewrite /Qeval/=; ring. Qed.
+
+Lemma Qeval_cons p c q : Qeval (add [::c] (multx p)) q == q * (Qeval p q) + c.
+Proof. rewrite /=; ring. Qed.
+
+Lemma Qeval_coef_0 p a : Qeval (Datatypes.cons a p) 0%Q == a.
+Proof. rewrite /Qeval/=; ring. Qed.
+
 Fixpoint T n := 
   if n is n'.+1 then
    if n' is n''.+1 then add (multa (2#1) (multx (T n'))) [seq -i | i <- T n'']
@@ -60,19 +75,13 @@ Definition EvaluateClenshaw p x :=
 Compute Qeval (T 5) (2#3).
 Compute EvaluateClenshaw (monom 5) (2#3).
 Compute Qred (Qeval (T 5) (2#3) - EvaluateClenshaw (monom 5) (2#3)).
-(* lol. I probably shouldn't have used Q. *)
+(* I probably shouldn't have used Q. *)
 
 Fixpoint Reval (p: polynomial) x : R := 
   if p is a :: L then x * Reval L x + Q2R a else 0.
 
 (* This does not evaluate *)
 Compute Reval (T 5) (Q2R (2#3)).
-Goal forall x, x = Reval (T 5) (Q2R (2#3)) -> x = x.
-move=> x H.
-compute in H.
-field_simplify in H.
-by [].
-Qed.
 
 (* But you can use my library to prove computability and then evaluate: *)
 Lemma Reval_prec (p: polynomial):
@@ -104,14 +113,16 @@ by apply /prec_fun_comp; [apply xmexcomp | apply xprcomp | ].
 Defined.
 
 Compute projT1 (Reval_prec (T 5)) (projT1 (Q_cmpt_elts (2#3))) (1#100).
-(* This is exact due to the names used for rationals:*)
+(* This is exact due to the names used for rationals: *)
 Compute Qeval (T 5) (2#3) - projT1 (Reval_prec (T 5)) (projT1 (Q_cmpt_elts (2#3))) (1#100).
 (* However, the interpretation of the return value should be that it is an approximation
-to precision 1#100. It should also be possible to get proofs that this is true by using the
-other projections...But that didn't work for me. The above can be used to evaluate in an
-arbitrary real number one has a name available for. Unfortunatelly I have not made any names
-for real numbers available yet but for the rationals... Another downside is that it is awfully
-slow for more complicated polynomials since it builds evaluation trees... of course one may
-provide an algorithm directly and prove its correctnes. That would be a lot faster, but also
-cumbersome since one has to do error estimation by hand... *)
+to precision 1#100. Of course in this case there are easier ways to do this. For instance: *)
+Goal forall x, x = Reval (T 5) (Q2R (2#3)) -> x = x.
+move=> x H.
+compute in H.
+field_simplify in H.
+by [].
+Qed.
+(* But the advantage of the above is that it still works if the input reals are non rationals.
+Unfortunately I have do not have any algorithms to compute non-rational numbers so far. *)
 End POLYNOMIALS.
