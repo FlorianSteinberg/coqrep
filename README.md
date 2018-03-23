@@ -1,12 +1,15 @@
 # coqrep
 
 This is a repository containing what I have done so far to formalize results from computable analysis in coq.
-Unfortunately I can not recommend using it yet. If you came here for doing computation on the real numbers in coq, I'd point you to the CoRN library. If you are looking for software for verified real arithmetic based on the ideas of computable analysis I recommend you check out iRRAM. There is also RZ, which you might be intressted in.
-If you still want to check it out, I am thankful for any comments and any kind of support.
-The notations of this library heavily use natural language in attempt to make it possible to read lemmas and statements out loud. To avoid blocking too many keywords, left recursive notations that use natural language start in a "\".
+Unfortunately I can not recommend using it yet. If you came here for doing computation on the real numbers in coq, I'd point you to the CoRN library instead. If you are looking for software for verified real arithmetic based on the ideas of computable analysis I'd recommend you check out iRRAM. There is also RZ, which you might be intressted in.
+If you still want to take a look at the content of this repository, I am thankful for any comments and any kind of support.
+The notations of this library heavily use natural language in attempt to make it possible to read lemmas and statements out loud. To avoid blocking too many keywords, left recursive notations that use natural language start in a backslash.
 
 The core Ideas this library pursues are the following:
 - Each proof leads to a program that is actually executable inside of coq. This leads to some complications as Coq functions always have to be total and partial functions are necessary to appropriatelly handle divergent behaviour of certain algorithms. This in the usual way by modeling computation via an additional natural number argument and replacing the return value type by an option type.
 - I am willing to use classical reasoning to simplify proofs, eliminate assumptions and provide canonical constructions that can not be provided constructively (I assume this to be true for the function space construction that is currently used). That is, of course, only where it does not break with the previous point. Fortunately computable analysis provides a nice separation into a mathematical and an algorithmic layer that was very helpful in deciding where classical reasoning should be allowed.
 - Programs extracted from abstract proofs are very slow. For a given problem it is usually possible to do a lot better by providing a concrete algorithm and proving it correct. The goal is to make this possible in the framework, if one is willing to invest time.
 - On the other hand, it should be possible to proof qualitative inefficiency. On a computability level, I'll go for discontinuity. As far as I can tell, proofs of incomputability in a discrete sense are incompatible with executability inside of Coq. I hope to be able to provide a similar thing on a complexity level, but it will take me a lot of time to get to that part...
+
+I currently use Coq 8.7.0 to compile and I do not provide any compatability with other versions.
+I started this project in the course of my one year postdoc at INRIA in Sophia-Antipolis to become familiar with Coq. There are a lot of parts that I have written myself and where it probably would have been better to rely on existing stuff. I am looking into replacing such parts. If you spot something that should be replaced feel free to tell me.
