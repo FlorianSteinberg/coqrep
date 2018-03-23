@@ -304,6 +304,29 @@ density of the rationals *)
 Definition lim xn x :=
 	forall eps, Q2R eps > 0 -> exists N:nat, forall n:nat, (N <= n)%coq_nat -> Rabs (x - xn n) <= Q2R eps.
 
+Lemma pow_n_prec:
+	forall n, (fun x => pow x n) \is_prec_function.
+Proof.
+elim.
+	rewrite /pow/=.
+	exists (fun phi eps => 1%Q).
+	move => phi x phinx eps epsg0; split_Rabs; lra.
+move => n ih /=.
+apply/ prec_fun_comp; [apply diag_cmpt | | ].
+	apply/ prec_fun_comp; [ apply prod_prec_fun; [ apply (id_prec_fun) | apply ih] | apply Rmult_prec | ].
+	by move => x.
+by trivial.
+Qed.
+
+Lemma pow_prec:
+	(fun p => pow p.1 p.2) \is_prec_function.
+Proof.
+exists (fun phi eps => (projT1 (pow_n_prec ((rprj phi) (star:questions rep_space_nat)))) (lprj phi) eps).
+move => phi x [lphinx rphinn].
+have prop:= (projT2 (pow_n_prec (rprj phi star)) (lprj phi) x.1 lphinx).
+by have ->: x.2 = rprj phi star by rewrite /delta/= in rphinn; rewrite rphinn.
+Qed.
+
 Lemma lim_sing:
 	lim \is_single_valued.
 Proof.
