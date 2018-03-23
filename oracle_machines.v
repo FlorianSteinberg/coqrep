@@ -235,6 +235,7 @@ Lemma mon_sing_cmpt_op (F: B ->> B'):
 Proof.
 by move => sing [N comp]; apply/ cmpt_sing_mon_op; first exists N.
 Qed.
+
 End ORACLE_MACHINES.
 Notation eval M := (@oeval _ _ _ _ nat_countType M).
 Notation "M '\computes' F" := ((oeval M) \tightens F) (at level 2).
@@ -242,35 +243,5 @@ Notation "F '\is_computable_operator'" := (is_cmpt_op F) (at level 2).
 Notation "F '\is_primitive_recursive_operator'" := (is_prim_rec_op F) (at level 2).
 Notation "M '\is_monotone_oracle_machine'" := (is_mon_omac M) (at level 2).
 Notation "M '\monotone_computes' F" := (mon_cmpt M F) (at level 2).
-Notation "F '\is_monotone_computable'" := (is_mon_cmpt F) (at level 2).
+Notation "F '\is_monotone_computable'" := (@is_mon_cmpt _ _ _ _ nat_countType F) (at level 2).
 Notation "f '\is_computable_operator'" := (is_cmpt_op nat_countType f) (at level 2).
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
