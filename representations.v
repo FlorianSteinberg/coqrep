@@ -439,6 +439,31 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
   	(countable_questions Y))
   (sum_count (countable_questions X) (countable_answers Y))
   (@is_fun_name_is_rep X Y).
+
+Definition range_restriction S T (f: S ->> T) (P: T -> Prop):= 
+	(fun s (t: {x | P x}) => f s (projT1 t)).
+
+Lemma rep_sub_space (X: rep_space) (P: X -> Prop):
+	(@range_restriction (names X) (space X) (rep X) P) \is_representation.
+Proof.
+split.
+	move => phi [x Px] [y Py] rrdphix rrdphiy.
+	by apply eq_sub; apply (rep_sing X phi x y).
+move => [s Ps].
+have [phi phins]:= rep_sur X s.
+by exists phi; rewrite /range_restriction /=.
+Qed.
+
+Canonical rep_space_sub_space (X: rep_space) (P: X -> Prop) := @make_rep_space
+	({x | P x})
+	(questions X)
+	(answers X)
+	(@range_restriction (names X) (space X) (rep X) P)
+	(some_answer X)
+  (countable_questions X)
+  (countable_answers X)
+  (@rep_sub_space X P).
+
 End REPRESENTED_SPACES.
 
 Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
