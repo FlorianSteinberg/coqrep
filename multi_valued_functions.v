@@ -343,7 +343,7 @@ Notation "f '\is_surjective_partial_function'" := (sur_par_fun f) (at level 2).
 Notation "s '\from_dom' f" := (dom f s) (at level 2).
 Notation "f '\is_total'" := (is_tot f) (at level 2).
 Notation "f 'o' g" := (mf_comp f g) (at level 2).
-Notation "f '\restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
+Notation "f '\range_restricted_to' P" := (fun s t => f s t /\ P t) (at level 2).
 
 Section TIGHT_EXTENDS_ICF.
 Context (S T: Type).
