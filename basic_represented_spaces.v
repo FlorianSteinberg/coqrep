@@ -161,7 +161,7 @@ Canonical rep_space_S := @make_rep_space
   (option_one_count)
   (rep_S_is_rep).
 End BASIC_REP_SPACES.
-
+(*
 Lemma iso_one (X :rep_space) (somex: X):
 	(rep_space_one c-> X) ~=~ X.
 Proof.
@@ -191,9 +191,7 @@ split.
 		move => q.
 		have [c val]:= evl q.
 		exists c.
-(*
 		apply/ icf'.
-			
 pose pT1g (x: X) := F2MF (fun _: rep_space_one => x).
 have crlzr: forall x:X, has_cont_rlzr (pT1g x) by move => x; apply one_dscrt.
 have sing: forall (x: X), (pT1g x) \is_single_valued by move => x; apply F2MF_sing.
@@ -252,13 +250,13 @@ split.
 	apply functional_extensionality => str/=.
 	elim str.
 	apply functional_extensionality => x'/=.
-	rewrite /= in b.*)
+	rewrite /= in b.
 Admitted.
 
 Lemma wiso_usig X:
 	wisomorphic (rep_space_usig_prod X) (rep_space_cont_fun rep_space_nat X).
 Proof.
-have crlzr: forall xn: nat -> X, has_cont_rlzr (F2MF xn).
+have crlzr: forall xn: nat -> X, hcr (F2MF xn).
 	move => xn.
 	pose R phi psi := psi \is_name_of (xn (phi star)).
 	have Rtot: R \is_total by move => phi; apply (rep_sur X).
@@ -270,4 +268,4 @@ have crlzr: forall xn: nat -> X, has_cont_rlzr (F2MF xn).
 	have eq: phi = psi.
 		by apply functional_extensionality => /= str; elim: str; apply coin.
 	by rewrite -eq => Fpsi FpsiFpsi; rewrite -FpsiFpsi -FphiFphi.*)
-Admitted.
+Admitted. *)

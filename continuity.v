@@ -218,5 +218,11 @@ have gprop: forall K, phi \and psi \coincide_on (gather K) -> Fphi \and Fpsi \co
 	by apply/ ismod; [ exists Fphi | | apply coin1 | ].
 by apply/ Lprop => //; [rewrite ((cont_to_sing Fcont) phi Fphi Fphi') | apply (gprop L) | ].
 Qed.
+
+Lemma comp_cont Q'' A'' (F: B ->> B') (G: B' ->> (Q'' -> A'')):
+	F \is_continuous -> G \is_continuous -> G o F \is_continuous.
+Proof.
+exact: cont_comp.
+Qed.
 End CONTINUITY_LEMMAS.
 Notation "mf '\is_modulus_of' F" := (is_mod F mf) (at level 2).

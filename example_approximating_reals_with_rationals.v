@@ -312,11 +312,13 @@ elim.
 	exists (fun phi eps => 1%Q).
 	move => phi x phinx eps epsg0; split_Rabs; lra.
 move => n ih /=.
-apply/ prec_fun_comp; [apply diag_cmpt | | ].
+apply/ prec_fun_comp; [apply diag_prec_fun | | ].
 	apply/ prec_fun_comp; [ apply prod_prec_fun; [ apply (id_prec_fun) | apply ih] | apply Rmult_prec | ].
 	by move => x.
 by trivial.
-Qed.
+Defined.
+
+Compute (projT1 (pow_n_prec 5)) (projT1 (Q_cmpt_elts (1#2))) 1%Q.
 
 Lemma pow_prec:
 	(fun p => pow p.1 p.2) \is_prec_function.
@@ -424,21 +426,35 @@ split_Rabs; lra.
 Admitted.
 
 Definition Int_partQ eps := ((Qnum eps)/(Z.pos (Qden eps)))%Z.
-Lemma Ip_IpQ:
-	forall eps, Int_partQ eps = Int_part (Q2R eps).
+Lemma base_Int_partQ eps:
+	IZR (Int_partQ eps) <= Q2R eps /\ IZR (Int_partQ eps) - Q2R eps > -1.
 Proof.
+have ineq: (Z.pos (Qden eps) > 0)%Z.
+	suffices: (0 < Z.pos (Qden eps))%Z by lia.
+	apply lt_IZR; replace (IZR (Z.pos (Qden eps))) with (IPR (Qden eps)) by trivial.
+	by rewrite -INR_IPR; apply: pos_INR_nat_of_P.
+rewrite /Int_partQ /Q2R.
+split.
+	rewrite -(Rmult_1_r (Qnum eps / Z.pos (Qden eps))%Z).
+	rewrite -(Rinv_r (Z.pos (Qden eps))); last exact: IZR_nz.
+	rewrite -Rmult_assoc.
+	apply/ Rmult_le_compat_r => //.
+		apply Rlt_le; apply Rinv_0_lt_compat.
+		apply IZR_lt; lia.
+	rewrite Rmult_comm -mult_IZR.
+	by apply IZR_le; apply Z_mult_div_ge; lia.
+suffices: IZR (Qnum eps / Z.pos (Qden eps)) > IZR (Qnum eps) * / IZR (Z.pos (Qden eps)) - 1 by lra.
 Admitted.
 
 Definition upQ eps:= (Int_partQ eps + 1)%Z.
-Lemma up_upQ:
-	forall eps, up (Q2R eps) = upQ eps.
+Lemma archimedQ r:
+	IZR (upQ r) > Q2R r /\ IZR (upQ r) - Q2R r <= 1.
 Proof.
-move => eps.
-rewrite /upQ Ip_IpQ /Int_part.
-ring.
+rewrite /upQ; split; have [h1 h2]:= base_Int_partQ r; rewrite plus_IZR; lra.
 Qed.
 
 Definition eff_conv xn := exists x, forall n, Rabs (xn n - x) <= 1/2^n.
+Definition eff_zero xn := forall n, Rabs (xn n) <= 1/2^n.
 Definition lim_eff := lim \restricted_to eff_conv.
 
 Fixpoint Pos_size p := match p with
@@ -521,9 +537,14 @@ rewrite (rep_sing _ phin yn xn) => //.
 by exists x; split => //; exists x.
 Admitted.
 
+Definition I := (@rep_space_sub_space rep_space_R (fun x => -1 <= x <= 1)).
+Lemma analytic (an: nat -> R):
+	(fun (x: I) (y: R) => infinite_sum (fun n => an n * pow (projT1 x) n) y) \is_prec.
+Proof.
+Admitted.
 
-
-
+Search _ sum.
+Search _ infinite_sum.
 
 
 

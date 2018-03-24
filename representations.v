@@ -40,6 +40,20 @@ Notation rep_sing X := (rep_valid X).1.
 Definition lprj X Y (phipsi: questions X + questions Y -> answers X * answers Y) q := (phipsi (inl q)).1.
 Definition rprj X Y (phipsi: questions X + questions Y -> answers X * answers Y) q := (phipsi (inr q)).2.
 
+Lemma lprj_cont X Y:
+	(F2MF (@lprj X Y)) \is_continuous.
+Proof.
+move => phi q; exists ([::inl q]).
+by move => Fphi/= <- psi [eq _] Fpsi <-; rewrite /lprj eq.
+Qed.
+
+Lemma rprj_cont X Y:
+	(F2MF (@rprj X Y)) \is_continuous.
+Proof.
+move => phi q; exists ([::inr q]).
+by move => Fphi/= <- psi [eq _] Fpsi <-; rewrite /rprj eq.
+Qed.
+
 Definition name_pair (X Y: rep_space) (phi: names X) (psi: names Y) :=
 	fun c => match c with
 		| inl s => (phi s, some_answer Y)
@@ -193,6 +207,7 @@ Proof. by move => F G FeG f g feg; rewrite /is_rlzr FeG feg. Qed.
 
 Definition is_fun_rlzr (X Y: rep_space) (F: (names X) -> (names Y)) (f: X -> Y) :=
 	forall phi x, (rep X) phi x -> ((rep Y) (F phi) (f x)).
+Notation "F '\is_function_realizer_of' f":= (is_fun_rlzr F f) (at level 2).
 
 Lemma frlzr_rlzr (X Y: rep_space) F (f: X -> Y):
 	is_fun_rlzr F f <-> is_rlzr (F2MF F) (F2MF f).
@@ -289,12 +304,25 @@ rewrite (sing x y z) => //.
 by rewrite (rep_sing X phi x x').
 Qed.
 
-Definition prod_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):=
+Definition mfpp_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):=
 	(fun (phipsi: names (rep_space_prod X X')) FphiGpsi =>
-	(F ** G) (lprj phipsi, rprj phipsi)	(lprj FphiGpsi, rprj FphiGpsi)).
+		FphiGpsi = name_pair (lprj FphiGpsi) (rprj FphiGpsi)
+		/\
+		(F ** G) (lprj phipsi, rprj phipsi)	(lprj FphiGpsi, rprj FphiGpsi)).
 
-Lemma rlzr_prod (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y') F G:
-	F \is_realizer_of f -> G \is_realizer_of g -> (prod_rlzr F G) \is_realizer_of (f ** g).
+Definition mfpp_frlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):=
+	(fun (phipsi: names (rep_space_prod X X')) => name_pair (F (lprj phipsi)) (G (rprj phipsi))).
+
+Lemma mfpp_frlzr_rlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):
+	F2MF (mfpp_frlzr F G) =~= mfpp_rlzr (F2MF F) (F2MF G).
+Proof.
+move => phi FGphi; rewrite {1}/F2MF.
+split => [eq | [np [/=vall valr]]]; last by rewrite np /mfpp_frlzr vall valr.
+by rewrite -eq /mfpp_rlzr/=/mfpp_frlzr lprj_pair rprj_pair.
+Qed.
+
+Lemma prod_rlzr (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y') F G:
+	F \is_realizer_of f -> G \is_realizer_of g -> (mfpp_rlzr F G) \is_realizer_of (f ** g).
 Proof.
 move => Frf Grg phipsi [[y y']] [[[x x' [[/=phinx psinx'] [/= fxy gx'y']]]prop]].
 have lprjfd: ((lprj phipsi) \from_dom (f o (delta (r:=X)))).
@@ -308,11 +336,11 @@ have [[z' [[Gpsi [GpsiGpsi Gpsinz']]] propr]condr]:= Grg (rprj phipsi) rprjfd.
 split.
 	exists (z, z').
 	split; first by exists (name_pair Fphi Gpsi).
-	move => FphiGpsi [/= FphiFphi' GpsiGpsi'].
+	move => FphiGpsi [/= np [/=FphiFphi' GpsiGpsi']].
 	have [l nl]:= (propl (lprj FphiGpsi) FphiFphi').
 	have [k nk]:= (propr (rprj FphiGpsi) GpsiGpsi').
 	by exists (l,k); split.
-move => [l k] [[FphiGpsi [[/=FphiFphi' GphiGphi'][/= Fphinl Gpsink]]] proplk].
+move => [l k] [[FphiGpsi [[ np [/=FphiFphi' GphiGphi']][/= Fphinl Gpsink]]] proplk].
 have phipsil: ((delta (r:=Y)) o F (lprj phipsi) l).
 	by split => //; exists (lprj FphiGpsi).
 have [[x'' [phinx'' fx''l]] prpl]:= (condl l phipsil).
@@ -327,6 +355,38 @@ move => [a b] [/=phina psinb].
 have [this stuff]:= prpl a phina.
 have [this' stuff']:= prpr b psinb.
 by exists (this, this').
+Qed.
+
+Lemma mfpp_cont (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):
+	F \is_continuous -> G \is_continuous -> (mfpp_rlzr F G) \is_continuous.
+Proof.
+have mapl: forall K (q:questions X), List.In q K -> List.In ((@inl _ (questions X')) q) (map inl K).
+	elim => // q K ih q' /=listin; by case: listin => ass; [left; rewrite -ass | right; apply ih].
+have mapr: forall K (q:questions X'), List.In q K -> List.In ((@inr (questions X) _) q) (map inr K).
+	elim => // q K ih q' /=listin; by case: listin => ass; [left; rewrite -ass | right; apply ih].
+move => Fcont Gcont phi q [FGphi [ np [/=FlphilFGphi GrphirFGphi]]].
+case: q => q.
+	have lphifd: (lprj phi) \from_dom F by exists (lprj FGphi).
+	have [L Lprop] := (Fcont (lprj phi) q lphifd).
+	exists (map inl L).
+	move => FGphi' [np' [/=vall valr]] psi coin Fpsi [ np'' [/=val'l val'r]].
+	rewrite np' np''; apply injective_projections => //=.
+	rewrite (cont_to_sing Fcont vall FlphilFGphi).
+	apply/ Lprop; [ | | apply val'l ] => //=.
+	rewrite /lprj.
+	rewrite baire_space.coin_lstn => q' listin/=.
+	rewrite ((@baire_space.coin_lstn _ _ _ _ (map inl L)).1 coin (inl q')) => //.
+	by apply (mapl L q').
+have rphifd: (rprj phi) \from_dom G by exists (rprj FGphi).
+have [L Lprop] := (Gcont (rprj phi) q rphifd).
+exists (map inr L).
+move => FGphi' [np' [/=vall valr]] psi coin Fpsi [ np'' [/=val'l val'r]].
+rewrite np' np''; apply injective_projections => //=.
+rewrite (cont_to_sing Gcont valr GrphirFGphi).
+apply/ Lprop; [ | | apply val'r ] => //=.
+rewrite /rprj baire_space.coin_lstn => q' listin/=.
+rewrite ((@baire_space.coin_lstn _ _ _ _ (map inr L)).1 coin (inr q')) => //.
+by apply (mapr L q').
 Qed.
 
 Lemma is_frlzr_is_rep X Y:
@@ -355,11 +415,11 @@ case: _ / eqab in Pb *; congr (exist _ _ _).
 exact: Classical_Prop.proof_irrelevance.
 Qed.
 
-Definition has_cont_rlzr (X Y : rep_space) (f : X ->> Y) :=
+Definition hcr (X Y : rep_space) (f : X ->> Y) :=
 	exists F, is_rlzr F f
 	/\
 	@is_cont (questions X) (answers X) (questions Y) (answers Y) F.
-Notation "f '\has_continuous_realizer'":= (has_cont_rlzr f) (at level 2).
+Notation "f '\has_continuous_realizer'":= (hcr f) (at level 2).
 
 Lemma comp_hcr (X Y Z: rep_space) (f: X ->> Y) (g: Y ->> Z):
 	f \has_continuous_realizer -> g \has_continuous_realizer -> (g o f) \has_continuous_realizer.
@@ -370,13 +430,27 @@ split; first by apply rlzr_comp.
 by apply/ cont_comp.
 Qed.
 
+Lemma mfpp_hcr (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
+	f \has_continuous_realizer -> g \has_continuous_realizer -> (f ** g) \has_continuous_realizer.
+Proof.
+move => [F [Frf Fcont]] [G [Grg Gcont]].
+exists (mfpp_rlzr F G).
+split; [exact: prod_rlzr | exact: mfpp_cont].
+Qed.
+
 Definition is_ass (X Y: rep_space) psi (f: X ->> Y) :=
 	(oeval (U psi)) \is_realizer_of f.
 
 Notation "X c-> Y" :=
-	{f: X ->> Y | (f \is_single_valued /\ f \is_total) /\ has_cont_rlzr f} (at level 2).
-Definition exist_fun (X Y: rep_space):=
-exist (fun f => (f \is_single_valued /\ f \is_total) /\ @has_cont_rlzr X Y f).
+	{f: X ->> Y | (f \is_single_valued /\ f \is_total) /\ f \has_continuous_realizer} (at level 2).
+
+Definition exist_c (X Y: rep_space) F sing tot Fhcr :=
+exist (fun f => (f \is_single_valued /\ f \is_total) /\ @hcr X Y f)
+	F (conj (conj sing tot) Fhcr).
+
+Definition exist_fun (X Y: rep_space) (g: X -> Y) ghcr:=
+exist (fun f => (f \is_single_valued /\ f \is_total) /\ @hcr X Y f)
+	(F2MF g) (conj (conj (@F2MF_sing X Y g) (F2MF_tot g)) ghcr).
 
 Definition is_fun_name (X Y: rep_space) psi (f: X c-> Y) :=
 	(eval (U psi)) \is_realizer_of (projT1 f).
@@ -475,7 +549,7 @@ Notation rep_sur X := (rep_valid X).2.
 Notation rep_sing X := (rep_valid X).1.
 Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
-Notation "f '\has_continuous_realizer'" := (has_cont_rlzr f) (at level 2).
+Notation "f '\has_continuous_realizer'" := (hcr f) (at level 2).
 Notation "X c-> Y" := (rep_space_cont_fun X Y) (at level 2).
 
 Section COMPUTABILITY_DEFINITIONS.

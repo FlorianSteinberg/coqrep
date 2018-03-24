@@ -97,14 +97,14 @@ have rcomp: (fun x:R => Q2R r) \is_prec_function.
 	apply/ Rbasic_fun.Rabs_le; lra.
 have xprcomp: (fun x:R => Rplus x (Q2R r)) \is_prec_function.
 	apply/ prec_fun_comp; [ | apply Rplus_prec | ].
-		apply/ prec_fun_comp; [apply diag_cmpt | apply prod_prec_fun | ].
+		apply/ prec_fun_comp; [apply diag_prec_fun | apply prod_prec_fun | ].
 				by apply id_prec_fun.
 			by apply rcomp.
 		by trivial.
 	by trivial.
 have xmexcomp: (fun x:R => Rmult x (Reval q x)) \is_prec_function.
 	apply /prec_fun_comp; [ | apply Rmult_prec | ].
-		apply /prec_fun_comp; [apply diag_cmpt | apply prod_prec_fun | ].
+		apply /prec_fun_comp; [apply diag_prec_fun | apply prod_prec_fun | ].
 				by apply id_prec_fun.
 			by apply comp.
 		by trivial.
