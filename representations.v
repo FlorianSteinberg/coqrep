@@ -37,8 +37,8 @@ Notation rep_sing X := (rep_valid X).1.
 
 (* This is the product of represented spaces. *)
 
-Definition lprj X Y (phipsi: questions X + questions Y -> answers X * answers Y) q := (phipsi (inl q)).1.
-Definition rprj X Y (phipsi: questions X + questions Y -> answers X * answers Y) q := (phipsi (inr q)).2.
+Definition lprj X Y (phipsi: questions X + questions Y -> (answers X) * (answers Y)) q := (phipsi (inl q)).1.
+Definition rprj X Y (phipsi: questions X + questions Y -> (answers X) * (answers Y)) q := (phipsi (inr q)).2.
 
 Lemma lprj_cont X Y:
 	(F2MF (@lprj X Y)) \is_continuous.
@@ -54,7 +54,7 @@ move => phi q; exists ([::inr q]).
 by move => Fphi/= <- psi [eq _] Fpsi <-; rewrite /rprj eq.
 Qed.
 
-Definition name_pair (X Y: rep_space) (phi: names X) (psi: names Y) :=
+Definition name_pair X Y (phi: names X) (psi: names Y) :=
 	fun c => match c with
 		| inl s => (phi s, some_answer Y)
 		| inr t => (some_answer X, psi t)
@@ -551,6 +551,8 @@ Notation "f '\is_realized_by' F" := (is_rlzr F f) (at level 2).
 Notation "F '\is_realizer_of' f" := (is_rlzr F f) (at level 2).
 Notation "f '\has_continuous_realizer'" := (hcr f) (at level 2).
 Notation "X c-> Y" := (rep_space_cont_fun X Y) (at level 2).
+Notation lnprj X Y := (@lprj (questions X) (answers X) (questions Y) (answers Y)).
+Notation rnprj X Y := (@rprj (questions X) (answers X) (questions Y) (answers Y)).
 
 Section COMPUTABILITY_DEFINITIONS.
 Definition is_comp_elt (X: rep_space) (x: X) :=
