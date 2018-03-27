@@ -314,7 +314,7 @@ Qed.
 Fixpoint b q (x: R) :=
  if q is a :: q' then
    let t := b q' x in
-   let a1 := a + x * t.1 - t.2 in
+   let a1 := a + x *+ 2 * t.1 - t.2 in
    (a1, t.1) else (0, 0).
 
 Definition Cshaw_rec q x := (b q x).1 - x * (b q x).2.
@@ -323,18 +323,16 @@ Definition Cshaw p := Cshaw_rec p.
 
 Definition CP2P p := \sum_(0 <= i < size p) (nth 0%R p i *: (pT i)).
 
-Lemma Cshaw_CP2P p :
-	forall r, p.[r] = Cshaw (CP2P p) r.
-Proof.
-move => r.
-Admitted.
+Definition rm0 :=
+ (mulr0, mul0r, subr0, sub0r, add0r, addr0, mul0rn, mulr0n, oppr0).
+
+Definition rm1 := (mulr1, mul1r, mulr1n).
 
 Lemma Cshaw0:
 	forall r, Cshaw 0%:P r = 0.
 Proof.
 move => r; rewrite /Cshaw/Cshaw_rec/b/=.
-rewrite polyseq0 /=.
-by rewrite mulr0 subr0.
+by rewrite polyseq0 /= !rm0.
 Qed.
 
 Lemma Cshawc c:
@@ -345,19 +343,29 @@ case E: (c == 0).
 	exact Cshaw0.
 move => r; rewrite /Cshaw/Cshaw_rec/b/=.
 have neq: (c != 0) by rewrite E.
-rewrite polyseqC neq/=.
-by rewrite !mulr0 !subr0 addr0.
+by rewrite polyseqC neq/= !rm0.
 Qed.
 
 Lemma CshawX:
-	forall r, Cshaw 'X r = 0.
+	forall r, Cshaw 'X r = r.
+Proof.
+by move => r; rewrite /Cshaw/Cshaw_rec/b polyseqX/= !rm0 !rm1 (mulr2n r) addrK.
+Qed.
+
+Require Import Psatz.
+
+Lemma Cshaw_CP2P p :
+	forall r, p.[r] = Cshaw (CP2P p) r.
 Proof.
 move => r.
-rewrite /Cshaw/Cshaw_rec/b.
-rewrite polyseqX/=.
-by rewrite !mulr0 !subr0 !addr0 !mulr1 add0r subrr.
-Qed.
-(* What? *)
+move: (leqnn (size p)).
+move: {2}(size p).
+elim.
+	move => ineq.
+	have le: (size p <= 0)%coq_nat by apply /leP.
+	have eq: size p = 0%nat by lia.
+	have eq':= size0nil eq.
+Admitted.
 
 End Tcheby.
 
