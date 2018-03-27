@@ -17,16 +17,10 @@ Local Open Scope Z_scope.
 Import QArith.
 Local Open Scope R_scope.
 
-Coercion IZR : Z >-> R.
-
 Definition rep_R : (positive -> Q * Q) -> R -> Prop :=
   fun phi x => (forall n, Q2R (phi n).1 <= x <= Q2R (phi n).2)
   /\
 	forall eps, eps > 0 -> exists N, forall n, (N <= n)%positive -> Q2R (phi n).2 - Q2R (phi n).1 <= eps.
-(* This is close to the standard definition of the chauchy representation. Usually integers
-are prefered to avoid to many possible answers. I tried using integers, but it got very ugly
-so I gave up at some point. I feel like the above is the most natural formulation of the Cauchy
-representation anyway. *)
 
 Lemma cond_eq_Rle:
 	forall x y : R, (forall eps : R, 0 < eps -> Rabs (x - y) <= eps) -> x = y.
@@ -61,31 +55,27 @@ Proof.
 split.
 	exact: rep_R_sing.
 move => x.
-exists (fun n =>
-	(Qmake (Int_part( (INR (Pos.to_nat n)) * x)) n,
-	Qmake (up ( (INR (Pos.to_nat n)) * x)) n)).
+exists (fun n => (Int_part ((IPR n) * x)#n, up ((IPR n) * x)#n)).
 split.
 	move => n /=.
 	rewrite /Q2R /=.
-	have eq: x = (x * INR (Pos.to_nat n)* / INR (Pos.to_nat n)).
+	have eq: x = (x * (IPR n)* / (IPR n)).
 		field.
-		suffices: 0 < INR (Pos.to_nat n) by lra.
-		apply pos_INR_nat_of_P.
+		Search _ IPR.
+		apply IZR_nz.
 	split.
 		rewrite {2}eq.
 		apply Rmult_le_compat_r.
-			suffices: 0 < / INR (Pos.to_nat n) by lra.
-			apply Rinv_0_lt_compat.
-			exact: pos_INR_nat_of_P.
+			apply Rlt_le; apply Rinv_0_lt_compat.
+			admit.
 		rewrite Rmult_comm.
-		exact: (base_Int_part (x* INR (Pos.to_nat n))).1.
+		exact: (base_Int_part (x* (Z.pos n))).1.
 	rewrite {1}eq.
 	apply Rmult_le_compat_r.
-		suffices: 0 < / INR (Pos.to_nat n) by lra.
-		apply Rinv_0_lt_compat.
-		exact: pos_INR_nat_of_P.
+		apply Rlt_le; apply Rinv_0_lt_compat.
+		admit.
 	rewrite Rmult_comm;	apply Rlt_le; apply Rgt_lt.
-	exact: (archimed (INR (Pos.to_nat n) * x)).1.
+	exact: (archimed ((Z.pos n) * x)).1.
 move => eps ineq.
 exists (Z.to_pos (Int_part (x/eps))).
 move => n ineq'.
@@ -106,7 +96,7 @@ Canonical rep_space_R := @make_rep_space
 	positive
 	(Q * Q)
 	rep_R
-	(1%Q,1%Q)
+	(0%Q,0%Q)
 	positive_countable
 	rationals_countable
 	rep_R_is_rep.

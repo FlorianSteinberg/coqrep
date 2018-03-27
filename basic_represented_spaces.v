@@ -161,6 +161,7 @@ Canonical rep_space_S := @make_rep_space
   (option_one_count)
   (rep_S_is_rep).
 End BASIC_REP_SPACES.
+
 (*
 Lemma iso_one (X :rep_space) (somex: X):
 	(rep_space_one c-> X) ~=~ X.
