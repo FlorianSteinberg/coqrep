@@ -11,6 +11,7 @@ Open Local Scope ring_scope.
 Section Tcheby.
 
 Variable R : ringType.
+Implicit Types (pl : seq R) (p: {poly R}) .
 
 (* Chebychev *)
 
@@ -289,7 +290,6 @@ Proof.
 by move=> n; apply/leq_sizeP => j Hj; rewrite coef_pT Hj.
 Qed.
 
-
 (* Pell equation *)
 
 Lemma pell: forall n, (pT n.+1)^+2 - ('X^2 - 1) * (pU n)^+2 = 1.
@@ -311,8 +311,6 @@ congr (_ + _); first by rewrite -commr_pU -!mulrA commr_pU.
 by rewrite opprB addrC addrA IH [_+1]addrC addrK.
 Qed.
 
-Implicit Types (q : seq R) (p: {poly R}) .
-
 Fixpoint b q (x: R) :=
  if q is a :: q' then
    let t := b q' x in
@@ -321,7 +319,45 @@ Fixpoint b q (x: R) :=
 
 Definition Cshaw_rec q x := (b q x).1 - x * (b q x).2.
 
-Definition Cshaw p := horner_rec p.
+Definition Cshaw p := Cshaw_rec p.
+
+Definition CP2P p := \sum_(0 <= i < size p) (nth 0%R p i *: (pT i)).
+
+Lemma Cshaw_CP2P p :
+	forall r, p.[r] = Cshaw (CP2P p) r.
+Proof.
+move => r.
+Admitted.
+
+Lemma Cshaw0:
+	forall r, Cshaw 0%:P r = 0.
+Proof.
+move => r; rewrite /Cshaw/Cshaw_rec/b/=.
+rewrite polyseq0 /=.
+by rewrite mulr0 subr0.
+Qed.
+
+Lemma Cshawc c:
+	forall r, Cshaw c%:P r = c.
+Proof.
+case E: (c == 0).
+	have ->: c = 0 by apply /eqP.
+	exact Cshaw0.
+move => r; rewrite /Cshaw/Cshaw_rec/b/=.
+have neq: (c != 0) by rewrite E.
+rewrite polyseqC neq/=.
+by rewrite !mulr0 !subr0 addr0.
+Qed.
+
+Lemma CshawX:
+	forall r, Cshaw 'X r = 0.
+Proof.
+move => r.
+rewrite /Cshaw/Cshaw_rec/b.
+rewrite polyseqX/=.
+by rewrite !mulr0 !subr0 !addr0 !mulr1 add0r subrr.
+Qed.
+(* What? *)
 
 End Tcheby.
 
