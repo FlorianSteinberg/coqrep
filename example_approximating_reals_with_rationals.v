@@ -425,6 +425,14 @@ rewrite {2 4}/Q2R/=.
 split_Rabs; lra.
 Admitted.
 
+Lemma Z_tech a b : (0 < b -> a / b * b > a  - b)%Z.
+Proof.
+move=> Pb.
+rewrite {2}(Z_div_mod_eq a b); try lia.
+suffices : (0 <= a mod b < b)%Z by lia.
+by apply: Z_mod_lt; lia.
+Qed.
+
 Definition Int_partQ eps := ((Qnum eps)/(Z.pos (Qden eps)))%Z.
 Lemma base_Int_partQ eps:
 	IZR (Int_partQ eps) <= Q2R eps /\ IZR (Int_partQ eps) - Q2R eps > -1.
@@ -443,8 +451,20 @@ split.
 		apply IZR_lt; lia.
 	rewrite Rmult_comm -mult_IZR.
 	by apply IZR_le; apply Z_mult_div_ge; lia.
-suffices: IZR (Qnum eps / Z.pos (Qden eps)) > IZR (Qnum eps) * / IZR (Z.pos (Qden eps)) - 1 by lra.
-Admitted.
+have ineq': ((Qnum eps / Z.pos (Qden eps)) * (Z.pos (Qden eps)) > Qnum eps - Z.pos (Qden eps))%Z.
+apply (@Z_tech (Qnum eps) (Z.pos (Qden eps))); lia.
+apply Rlt_gt.
+suffices ineq'': (Qnum eps - Z.pos (Qden eps)) < (Qnum eps / Z.pos (Qden eps))%Z * Z.pos (Qden eps).
+	suffices:(Qnum eps * / Z.pos (Qden eps) - 1 < (Qnum eps / Z.pos (Qden eps))%Z) by lra.
+	replace (Qnum eps * / Z.pos (Qden eps) - 1) with ((Qnum eps  - Z.pos (Qden eps))/ Z.pos (Qden eps)); last field.
+	replace (IZR(Qnum eps / Z.pos (Qden eps))%Z) with
+		((Qnum eps / Z.pos (Qden eps))%Z * Z.pos (Qden eps)/ Z.pos (Qden eps)); last field => //.
+	by apply Rmult_lt_compat_r; first by apply Rinv_0_lt_compat; apply IZR_lt; lia.
+	Search _ (_ <> 0)%Z Zlt.
+	apply IZR_neq; apply Z.neg_pos_cases; right; lia.
+rewrite -mult_IZR -minus_IZR.
+apply IZR_lt; lia.
+Qed.
 
 Definition upQ eps:= (Int_partQ eps + 1)%Z.
 Lemma archimedQ r:
@@ -469,7 +489,7 @@ Definition Z_size z:= match z with
 	| Z.neg p => Pos_size p
 end.
 
-Lemma Z_size_le z:
+Lemma Z_size_lt z:
 	(z < two_power_nat (Z_size z))%Z.
 Proof.
 elim: z => // p.
@@ -487,36 +507,56 @@ Proof.
 by move => xn x x' [_ limxnx] [_ limxnx']; apply: lim_sing; first apply limxnx.
 Qed.
 
+Lemma Qnum_gt:
+	forall eps: Q, (0 < eps)%Q -> (0 < Qnum eps)%Z.
+Proof.
+move => eps epsg0.
+rewrite Zlt_Qlt/inject_Z.
+have eq: eps == Qnum eps # Qden eps by trivial.
+have lt: (0 * (Z.pos (Qden eps)#1) < eps * ((Z.pos (Qden eps))#1))%Q by apply Qmult_lt_compat_r.
+apply Rlt_Qlt.
+have:= (Qlt_Rlt (0 * (Z.pos (Qden eps) # 1)) (eps * (Z.pos (Qden eps) # 1)) (lt)).
+rewrite Q2R_mult /Q2R/= mult_IZR Pos.mul_1_r !Rmult_assoc Rinv_r; last exact: IZR_nz.
+by rewrite Rinv_1.
+Qed.
+
 Lemma lim_eff_prec:
 	lim_eff \is_prec.
 Proof.
-exists (fun phin eps => phin (S (Z_size (upQ (/eps)))%nat, (Qmult eps (1#2)))).
+exists (fun phin eps => phin (S (Pos_size (Qden eps))%nat, (Qmult eps (1#2)))).
 rewrite /is_rlzr F2MF_comp.
 move => phin [x [[xn [phinxn [[y eff] limxnx]]] prop]].
 have limxny: lim xn y.
 	move => eps epsg0.
-	set N:= (Z_size (upQ (/eps))); exists N.
+	set N:= (Pos_size (Qden eps)); exists N.
 	move => n ineq.
 	rewrite Rabs_minus_sym.
 	apply/ Rle_trans; first apply (eff n).
 	have ineq': 1/2^N <= Q2R eps.
 		rewrite /Q2R/Rdiv /Qdiv.
-		apply Rmult_le_compat; first by lra.
-					admit.
-				admit.
-			apply Rinv_le_contravar.
-			admit.
-		admit.
-	apply/Rle_trans; last apply ineq'.
-	rewrite /Rdiv !Rmult_1_l.
-	apply Rinv_le_contravar.
-		admit.
+		apply Rmult_le_compat; [ | apply Rlt_le; apply Rinv_0_lt_compat; apply pow_lt | | ]; try lra.
+			apply IZR_le.
+			suffices: (0 < Qnum eps)%Z by lia.
+			by apply Qnum_gt; apply Rlt_Qlt; rewrite {1}/Q2R/=; lra.
+		apply Rinv_le_contravar.
+			replace (IZR (Z.pos (Qden eps))) with (INR (Pos.to_nat (Qden eps))) by by rewrite INR_IPR.
+			exact: pos_INR_nat_of_P.
+		apply/ Rle_trans; first by apply Rlt_le; apply IZR_lt; apply Z_size_lt.
+		rewrite two_power_nat_correct/=.
+		replace 2%Z with (Z.of_nat 2) by trivial.
+		rewrite Zpower_nat_powerRZ -pow_powerRZ.
+		replace (IZR (Z.of_nat 2)) with (INR 2) by trivial.
+		apply Rle_pow; first by rewrite /INR; lra.
+		rewrite /N/=; lia.
+	apply/ Rle_trans; last by apply ineq'.
+	apply Rmult_le_compat_l; first by lra.
+	apply Rinv_le_contravar; first by apply: pow_lt; lra.
 	by apply Rle_pow; first by lra.
 rewrite (lim_sing limxny limxnx) in eff.
 move: y limxny => _ _.
-have: (fun eps : Q => phin ((Z_size (upQ (/ eps))).+1, (eps * (1 # 2))%Q)) \is_name_of x.
+have: (fun eps : Q => phin ((Pos_size (Qden eps)).+1, (eps * (1 # 2))%Q)) \is_name_of x.
 	move => eps epsg0.
-	set N := (Z_size (upQ (/ eps))).+1.
+	set N := (Pos_size (Qden eps)).+1.
 	replace (x - Q2R (phin (N, (eps * (1 # 2))%Q))) with
 		((x - xn N) + (xn N - Q2R (phin (N, (eps * (1 # 2))%Q)))) by ring.
 	apply triang.
@@ -526,16 +566,38 @@ have: (fun eps : Q => phin ((Z_size (upQ (/ eps))).+1, (eps * (1 # 2))%Q)) \is_n
 	apply/Rle_trans.
 		rewrite Rabs_minus_sym.
 		apply: (eff N).
-		admit.
+		suffices: (2 / (2 ^ N ) <= Q2R eps) by lra.
+		rewrite -{1}(Rinv_involutive 2); try lra.
+		rewrite /Rdiv -Rinv_mult_distr; try apply pow_nonzero; try lra.
+		rewrite /Q2R -(Rmult_1_l(/ (/ 2 * 2 ^ N))).
+		apply Rmult_le_compat; try lra.
+				apply Rlt_le.
+				apply Rinv_0_lt_compat.
+				suffices: (0 < 2 ^ N) by lra.
+				apply pow_lt; lra.
+			apply IZR_le.
+			suffices: (0 < Qnum eps)%Z by lia.
+			by apply Qnum_gt; apply Rlt_Qlt; rewrite {1}/Q2R/=; lra.
+		apply Rinv_le_contravar.
+			replace (IZR (Z.pos (Qden eps))) with (INR (Pos.to_nat (Qden eps))) by by rewrite INR_IPR.
+			exact: pos_INR_nat_of_P.
+		rewrite /N.
+		apply/ Rle_trans; first by apply Rlt_le; apply IZR_lt; apply Z_size_lt.
+		suffices: IZR (two_power_nat (Z_size (Z.pos (Qden eps)))) = / 2 * 2 ^ (Pos_size (Qden eps)).+1 by lra.
+		rewrite two_power_nat_correct/=.
+		replace 2%Z with (Z.of_nat 2) by trivial.
+		rewrite Zpower_nat_powerRZ -pow_powerRZ.
+		replace (IZR (Z.of_nat 2)) with (INR 2) by trivial.
+		field; rewrite /INR; lra.
 	apply/Rle_trans; first apply phinxn; rewrite Q2R_mult {2}/Q2R/=; lra.
 split; first by exists x.
 move => y cond.
-rewrite (rep_sing rep_space_R (fun eps : Q => phin ((Z_size (upQ (/ eps))).+1, (eps * (1 # 2))%Q)) y x) => //.
+rewrite (rep_sing rep_space_R (fun eps : Q => phin ((Pos_size (Qden eps)).+1, (eps * (1 # 2))%Q)) y x) => //.
 split; first by exists xn; split => //; split => //; exists x.
 move => yn phinyn.
 rewrite (rep_sing _ phin yn xn) => //.
 by exists x; split => //; exists x.
-Admitted.
+Qed.
 
 Definition I := (@rep_space_sub_space rep_space_R (fun x => -1 <= x <= 1)).
 Lemma analytic (an: nat -> R):
