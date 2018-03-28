@@ -127,16 +127,6 @@ Lemma ply_equal p q :
 Proof.
 Admitted.
 
-Lemma nth_iota p k:
-	nth 0%R [seq nth 0%R p n0 | n0 <- iota 0 (size p)] k = nth 0%R p k.
-Proof.
-case E: (k < size p)%nat.
-rewrite (@nth_map nat 0%nat R 0%R (fun n => nth 0%R p n) k (iota 0 (size p))); last by rewrite size_iota.
-by rewrite seq.nth_iota => //.
-have ineq: (size p <= k)%nat by rewrite leqNgt E.
-by rewrite nth_default; [ rewrite nth_default | rewrite size_map size_iota].
-Qed.
-
 Definition quot np (f: poly_R) :=
 	exists p, size p = np.1 /\ eval p = projT1 f /\ forall n, nth 0%R p n = np.2 n.
 
@@ -236,5 +226,3 @@ have xmexcomp: (fun x:R => Rmult x (Reval q x)) \is_prec_function.
 	by trivial.
 by apply /prec_fun_comp; [apply xmexcomp | apply xprcomp | ].
 Defined.
-
-End POLYNOMIALS.

@@ -600,14 +600,11 @@ by exists x; split => //; exists x.
 Qed.
 
 Definition I := (@rep_space_sub_space rep_space_R (fun x => -1 <= x <= 1)).
+
 Lemma analytic (an: nat -> R):
-	(fun (x: I) (y: R) => infinite_sum (fun n => an n * pow (projT1 x) n) y) \is_prec.
+	eff_zero an -> (fun (x: I) (y: R) => infinite_sum (fun n => an n * pow (projT1 x) n) y) \is_prec.
 Proof.
 Admitted.
-
-Search _ sum.
-Search _ infinite_sum.
-
 
 
 
