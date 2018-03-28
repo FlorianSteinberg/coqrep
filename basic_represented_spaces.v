@@ -226,8 +226,8 @@ Proof.
 apply comp_sing; last exact (rep_sing _).
 exact: F2MF_sing.
 Qed.
-
-Lemma rep_sing_rep X:
+(*
+Lemma rep_list_rep X:
 	(@rep_list X) \is_representation.
 Proof.
 split; first exact: rep_list_sing.
@@ -252,25 +252,8 @@ case: K phinK => [_ | a K phinK].
 		rewrite /lprj/=/rprj/=/mf_prod_prod/=/NXN_lst/F2MF/=; split.
 	by move => s names; apply F2MF_tot.
 set nK := map (fun n => (fun q => (phi (inr (inr (n, q)))).2.2)) (iota 0 (phi (inl star)).2.1).
-exists (fun q => match q with
-	| inl str => (some star, some_answer _)
-	| inr q' => match q' with
-		| inl str => (some star, (0 , some_answer _))
-		| inr q'' => (some star, (0 , psi q''.2))
-	end
-end)
-
-have phi := 
-exists (fun strq => (0,some_answer X)).
-rewrite /rep_list/=.
-	split.
-	exists (0, fun _=> x).
-		split.
-		rewrite /prod_rep
-	
-rewrite /rep_list.
-have n := lprj phi star.
-
+Admitted.
+*)
 End BASIC_CONSTRUCTIONS.
 
 Section BASIC_PROPERTIES.
