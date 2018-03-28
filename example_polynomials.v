@@ -142,6 +142,7 @@ rewrite (ply_equal p q) => n.
 by rewrite (fp n) (gq n).
 Qed.
 
+(*
 Lemma rep_poly_R_rep:
 	rep_poly_R \is_representation.
 Proof.
@@ -226,3 +227,5 @@ have xmexcomp: (fun x:R => Rmult x (Reval q x)) \is_prec_function.
 	by trivial.
 by apply /prec_fun_comp; [apply xmexcomp | apply xprcomp | ].
 Defined.
+*)
+End POLYNOMIALS.
