@@ -202,14 +202,10 @@ by rewrite eq; apply Mcmpt.
 by rewrite Nope; apply Ncmpt.
 Qed.
 
-Fixpoint N_XN_lst
+Definition N_XN_lst
 	(X: rep_space)
 	(n: rep_space_nat)
-	(an: rep_space_usig_prod X):=
-	match n with
-		| 0 => [:: an 0]
-		| S n' => (an (S n') :: N_XN_lst n' an)
-	end.
+	(an: rep_space_usig_prod X):= map an (iota 0 n).
 
 Definition NXN_lst X 
 	(nan: rep_space_opt (rep_space_prod rep_space_nat (rep_space_usig_prod X)))
@@ -226,7 +222,16 @@ Proof.
 apply comp_sing; last exact (rep_sing _).
 exact: F2MF_sing.
 Qed.
-(*
+
+Lemma map_nth_iota T (x:T) p:
+	[seq nth x p n0 | n0 <- iota 0 (size p)] = p.
+Proof.
+apply (@eq_from_nth T x); rewrite size_map size_iota => //.
+move => k E.
+rewrite (@nth_map nat 0%nat T x (fun n => nth x p n) k (iota 0 (size p))); last by rewrite size_iota.
+by rewrite seq.nth_iota => //.
+Qed.
+
 Lemma rep_list_rep X:
 	(@rep_list X) \is_representation.
 Proof.
@@ -235,25 +240,137 @@ move => L.
 elim L.
 	exists (fun _ => (None, some_answer (rep_space_prod rep_space_nat (rep_space_usig_prod X)))).
 	by rewrite /rep_list/=; split; [exists None | move => s names; apply: F2MF_tot].
-move => x K [phi phinK].
-case: K phinK => [_ | a K phinK].
-	have [psi psina]:= rep_sur X x.
-	exists (fun q => match q with
-		| inl str => (some star, some_answer _)
-		| inr q' => match q' with
-			| inl str => (some star, (0 , some_answer _))
-			| inr q'' => (some star, (0 , psi q''.2))
-		end
-	end).
-	rewrite /rep_list/=.
-	split.
-		exists (Some (0,(fun n => x))).
-		by rewrite /rep_opt/=/prod_rep/=/id_rep/=/rep_usig_prod/=;
-		rewrite /lprj/=/rprj/=/mf_prod_prod/=/NXN_lst/F2MF/=; split.
-	by move => s names; apply F2MF_tot.
-set nK := map (fun n => (fun q => (phi (inr (inr (n, q)))).2.2)) (iota 0 (phi (inl star)).2.1).
-Admitted.
-*)
+move => x K [/=phi [[/=y [phiny yK]] _]].
+rewrite /F2MF in yK.
+set n := size K.
+have [psi psina]:= rep_sur X x.
+set nK := map (fun n => (fun q => (phi (inr (inr (n, q)))).2.2)) (iota 0 n).
+exists (fun q => match q with
+	| inl str => (some star, (0, some_answer X))
+	| inr q' => match q' with
+		| inl str => (some star, (S n, some_answer X))
+		| inr p => (some star, (some_answer rep_space_nat, match p.1 with
+			| 0 => psi p.2
+			| S n => nth psi nK n p.2
+		end))
+	end
+end).
+rewrite /rep_list/=.
+split; last by move => a b; exact: F2MF_tot.
+exists (Some (S n, (fun n => nth x (x:: K) n))).
+rewrite /rep_opt/=/prod_rep/=/id_rep/=/rep_usig_prod/=;
+rewrite /lprj/=/rprj/=/mf_prod_prod/=/NXN_lst/F2MF/=.
+split.
+	split => //.
+	split => //.
+	move => k.
+	case E: (k <= n); rewrite /n in E.
+		case E': k => [ | m]//=.
+		rewrite /rep_opt in phiny.
+		case: y phiny yK.
+			move => nan [/=sm name] nanK.
+			rewrite /nK.
+			rewrite /N_XN_lst in nanK.
+			rewrite /prod_rep/=/id_rep/=/lprj/rprj/=/mf_prod_prod/=/rep_usig_prod/= in name.
+			move: name => [nnan prop].
+			have ineq: m < n by rewrite /n; apply /leP; rewrite -E'; apply /leP; rewrite E.
+			rewrite (nth_map 0); last by rewrite size_iota.
+			specialize (prop m); rewrite nth_iota => //.
+			suffices ->: (nth x K m) = nan.2 m by trivial.
+			rewrite -nanK/=.
+			have -> : nan.1 = n by rewrite /n -nanK size_map size_iota.
+			rewrite (nth_map 0); last by rewrite size_iota.
+			by rewrite nth_iota.
+		rewrite /NXN_lst/N_XN_lst => _ eq; rewrite -eq/= in E.
+		have k0: k= 0 by apply /eqP; rewrite -leqn0 E.
+		by rewrite k0 in E'.
+	case: k E => // m E.
+	by rewrite !nth_default => //=; [rewrite ltnS | rewrite /nK size_map size_iota/n]; rewrite leqNgt E.
+rewrite /N_XN_lst/n.
+replace (size K).+1 with (size ( x:: K)) by trivial.
+by rewrite map_nth_iota.
+Qed.
+
+Canonical rep_space_list (X: rep_space) := @make_rep_space
+	(list X)
+	_
+	_
+	(@rep_list X)
+	(Some star, (some_answer rep_space_nat, some_answer X))
+	(countable_questions (rep_space_opt (rep_space_prod rep_space_nat (rep_space_usig_prod X))))
+	(countable_answers (rep_space_opt (rep_space_prod rep_space_nat (rep_space_usig_prod X))))
+	(@rep_list_rep X).
+
+Lemma cons_prec_fun (X: rep_space):
+	(fun p => cons (p.1: X) p.2) \is_prec_function.
+Proof.
+pose sK (phi: names (rep_space_prod X (rep_space_list X))) := match (rprj phi (inl star)).1 with
+	| Some str => (rprj phi (inr (inl star))).2.1
+	| None => 0
+end.
+pose nK (phi: names (rep_space_prod X (rep_space_list X))) :=
+	map (fun n => (fun q => (rprj phi (inr (inr (n, q)))).2.2)) (iota 0 (sK phi)).
+exists (fun (phi: names (rep_space_prod X (rep_space_list X))) q => match q with
+	| inl str => (some star, (0, some_answer X))
+	| inr q' => match q' with
+		| inl str => (some star, (S (sK phi), some_answer X))
+		| inr p => (some star, (some_answer rep_space_nat, match p.1 with
+			| 0 => lprj phi p.2
+			| S n => nth (lprj phi) (nK phi) n p.2
+		end))
+	end
+end).
+move => phi [x K] [/=phinx [[y [/=phiny yK]] _]].
+rewrite /rep_list/=.
+split; last by move => a b; exact: F2MF_tot.
+exists (Some (S (size K), (fun n => nth x (x:: K) n))).
+rewrite /rep_opt/=/prod_rep/=/id_rep/=/rep_usig_prod/=;
+rewrite /lprj/=/rprj/=/mf_prod_prod/=/NXN_lst/F2MF/=.
+have eq: sK phi = size K.
+	rewrite /rep_opt in phiny.
+	case: y phiny yK; last by rewrite /sK/F2MF/NXN_lst/N_XN_lst => -> <-.
+	move => nan [/=sm name] nanK.
+	rewrite /nK.
+	rewrite /N_XN_lst in nanK.
+	rewrite /prod_rep/=/id_rep/=/lprj/rprj/=/mf_prod_prod/=/rep_usig_prod/= in name.
+	move: name => [nnan prop].
+	rewrite /sK sm nnan -nanK /NXN_lst/N_XN_lst.
+	by rewrite size_map size_iota.
+split.
+	split => //.
+	split; first by rewrite eq.
+	move => k.
+	case E: (k <= (size K)).
+		case E': k => [ | m]//=.
+		rewrite /delta/rep_opt/= in phinx.
+		case: y phiny yK.
+			move => nan [/=sm name] nanK.
+			rewrite /nK.
+			rewrite /N_XN_lst in nanK.
+			rewrite /prod_rep/=/id_rep/=/lprj/rprj/=/mf_prod_prod/=/rep_usig_prod/= in name.
+			move: name => [nnan prop].
+			have ineq: m < size K by rewrite /sK; apply /leP; rewrite -E'; apply /leP; rewrite E.
+			rewrite /F2MF/NXN_lst/N_XN_lst/= in nanK.
+			rewrite (nth_map 0); last by rewrite size_iota eq.
+			specialize (prop m); rewrite nth_iota; last by rewrite eq.
+			suffices ->: (nth x K m) = nan.2 m by trivial.
+			rewrite -nanK/= /N_XN_lst.
+			have -> : nan.1 = sK phi by rewrite /sK sm.
+			rewrite (nth_map 0); last by rewrite size_iota eq.
+			by rewrite nth_iota; last by rewrite eq.
+		rewrite /NXN_lst/N_XN_lst/F2MF/= => name eq'.
+		rewrite -eq'/= in E.
+		have k0: k= 0 by apply /eqP; rewrite -leqn0 E.
+		by rewrite k0 in E'.
+	case: k E => // m E.
+	rewrite !nth_default => //=.
+		by rewrite ltnS leqNgt E.
+	by rewrite /nK size_map eq size_iota leqNgt E.
+rewrite /N_XN_lst/sK.
+replace (size K).+1 with (size ( x:: K)) by trivial.
+by rewrite map_nth_iota.
+Qed.
+
 End BASIC_CONSTRUCTIONS.
 
 Section BASIC_PROPERTIES.
