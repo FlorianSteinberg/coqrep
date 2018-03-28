@@ -9,6 +9,11 @@ Require Import multi_valued_functions baire_space continuity.
 Require Import machines oracle_machines universal_machine.
 Require Import representations representation_facts.
 Require Import Qreals Reals Psatz FunctionalExtensionality ClassicalChoice.
+Require Import Interval.Interval_specific_ops.
+Require Import Interval.Interval_bigint_carrier.
+Require Import Interval.Interval_interval_float_full.
+Require Import Interval.Interval_interval.
+Require Import Interval.Interval_xreal.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -17,10 +22,72 @@ Local Open Scope Z_scope.
 Import QArith.
 Local Open Scope R_scope.
 
-Definition rep_R : (positive -> Q * Q) -> R -> Prop :=
-  fun phi x => (forall n, Q2R (phi n).1 <= x <= Q2R (phi n).2)
+Module SFBI2 := SpecificFloat BigIntRadix2.
+Module I := FloatIntervalFull SFBI2.
+
+(* All the operations *)
+Search Interval_interval_float.f_interval _.
+
+
+(* An example *)
+
+(* Precision *)
+Definition prec := SFBI2.PtoP 10.
+
+(* [-1;-1] *)
+Definition I1 := I.fromZ (-1)%Z.
+
+(* [-2; -2] *)
+Definition I2 := I.fromZ (-2)%Z.
+
+(* [-2; -1] *)
+Definition I3 := I.meet I1 I2.
+
+Compute I3.
+
+(* [-3; -3] *)
+Definition I4 := I.fromZ (-3)%Z.
+
+(* [-4; -4] *)
+Definition I5 := I.fromZ (-4)%Z.
+
+(* [-4; -3] *)
+Definition I6 := I.meet I4 I5.
+
+Compute I6.
+
+(* [-6; -4] = [-2; -1] + [-4; -3] *)
+Compute I.add prec I3 I6.
+
+(* [3; 8] = [-2; -1] * [-4; -3] *)
+Compute I.mul prec I3 I6.
+Check I1.
+
+
+Notation D:= SFBI2.type.
+Notation mant := BigIntRadix2.smantissa_type.
+Notation xpnt := BigIntRadix2.exponent_type.
+Print mant.
+Print BigIntRadix2.smantissa_type.
+Search _ (_ -> BigZ.BigZ.t).
+Notation ID := (Interval_interval_float.f_interval SFBI2.type).
+Notation XR := Interval_xreal.ExtendedR.
+Notation Xreal := Interval_xreal.Xreal.
+Notation cntd x I := (Interval_interval.contains (I.convert I) x).
+Notation "x '\contained_in' I" := (cntd x I) (at level 2).
+Coercion I.convert: ID >-> Interval_interval.interval.
+Notation D2R := I.T.toR.
+Coercion I.T.toR: D >-> R.
+Notation lower := I.lower.
+Notation upper := I.upper.
+Notation diam I := (I.upper I - I.lower I).
+Notation bounded := I.bounded.
+
+Definition rep_R : (positive -> ID) -> R -> Prop :=
+  fun I x => (forall n,  bounded (I n) -> lower (I n) <= x <= upper (I n))
   /\
-	forall eps, eps > 0 -> exists N, forall n, (N <= n)%positive -> Q2R (phi n).2 - Q2R (phi n).1 <= eps.
+	forall eps, eps > 0 -> exists N, forall n, (N <= n)%positive
+		-> bounded (I n) /\ diam (I n) <= eps.
 
 Lemma cond_eq_Rle:
 	forall x y : R, (forall eps : R, 0 < eps -> Rabs (x - y) <= eps) -> x = y.
@@ -33,21 +100,15 @@ Qed.
 
 Lemma rep_R_sing: rep_R \is_single_valued.
 Proof.
-move => phi x x' [xeIn convIn] [x'eIn _].
+move => In x x' [xeIn convIn] [x'eIn _].
 apply cond_eq_Rle => eps ineq.
 have [N prop]:= convIn eps ineq.
 have ineq': (N <= N)%positive by lia.
-specialize (prop N ineq').
-specialize (xeIn N).
-specialize (x'eIn N).
+have [Ibnd dI]:= (prop N ineq').
+specialize (xeIn N Ibnd).
+specialize (x'eIn N Ibnd).
 split_Rabs; lra.
 Qed.
-
-Fixpoint IPR p:= match p with
-	| xH => 1
-	| xI p' => 2*(IPR p') + 1
-	| xO p' => 2 * (IPR p')
-end.
 
 (* The notation is_representation is for being single_valued and surjective. *)
 Lemma rep_R_is_rep: rep_R \is_representation.
@@ -55,9 +116,14 @@ Proof.
 split.
 	exact: rep_R_sing.
 move => x.
-exists (fun n => (Int_part ((IPR n) * x)#n, up ((IPR n) * x)#n)).
-split.
-	move => n /=.
+rewrite /codom.
+exists (fun n => I.bnd 
+	(Float (BigZ.BigZ.of_Z (Int_part (x * (IPR n)))) (BigZ.BigZ.of_Z (Z.pos n)))
+	(Float (BigZ.BigZ.of_Z (up (x * (IPR n)))) (BigZ.BigZ.of_Z (Z.pos n)))).
+Admitted.
+(*
+split => /=.
+	move => n _ .
 	rewrite /Q2R /=.
 	have eq: x = (x * (IPR n)* / (IPR n)).
 		field.
@@ -158,4 +224,4 @@ Lemma Rmult_cmpt:
 Proof.
 apply prec_fun_cmpt.
 exact Rmult_prec.
-Qed.
+Qed. *)
