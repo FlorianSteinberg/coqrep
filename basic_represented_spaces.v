@@ -48,6 +48,45 @@ Canonical rep_space_nat := @make_rep_space
 	nat_count
 	(id_rep_is_rep nat).
 
+Inductive Sirp := top | bot.
+
+Definition rep_S phi s :=
+	(exists n:nat, phi n = Some star) <-> s = top.
+
+Lemma rep_S_is_rep:
+ rep_S \is_representation.
+Proof.
+split => [ phi s s' [imp imp'] [pmi pmi'] | s].
+	case (classic (exists n, phi n = Some star)) => ex; first by rewrite (imp ex) (pmi ex).
+	case E: s; first by exfalso; apply ex; apply (imp' E).
+	apply NNPP => neq.
+	have eq: s' = top by case Q: s' => //; exfalso; apply neq.
+	by apply ex; apply pmi'.
+case s; last by exists (fun _ => None); split => // [[n ev]].
+by exists (fun _ => some star); split => // _; by exists 0.
+Qed.
+
+Lemma option_one_count:
+	(option one) \is_countable.
+Proof.
+by exists (fix c n := match n with
+	| 0 => Some star
+	| S n' => None
+end) => s; case: s; [exists 0; elim: a| exists 1].
+Qed.
+
+Canonical rep_space_S := @make_rep_space
+	(Sirp)
+	(nat)
+	(option one)
+	(rep_S)
+	(None)
+  (nat_count)
+  (option_one_count)
+  (rep_S_is_rep).
+End BASIC_REP_SPACES.
+
+Section BASIC_CONSTRUCTIONS.
 Definition rep_usig_prod (X: rep_space) phi (xn: nat -> X):=
 	forall n, (fun p => (phi (n,p))) \is_name_of (xn n).
 
@@ -73,6 +112,168 @@ Canonical rep_space_usig_prod (X: rep_space) := @make_rep_space
   (countable_answers X)
   (@rep_usig_prod_is_rep X).
 
+Definition rep_opt X phi x := match x with
+	| some x => (phi (inl star)).1 = some star
+		/\
+		 @delta X (fun q => (phi (inr q)).2) x
+	| None => (phi (inl star)).1 = None
+end.
+
+Lemma rep_opt_sing X:
+	(@rep_opt X) \is_single_valued.
+Proof.
+move => phi x y phinx phiny.
+case: x phinx.
+	case: y phiny; last by move => /= Nope a [eq phina]; rewrite eq in Nope.
+	move => a/= [eq phina] b [eq' phinb].
+	by rewrite (rep_sing X (fun q => (phi (inr q)).2) a b).
+case: y phiny => //.
+move => /= a [eq phina] Nope.
+by rewrite eq in Nope.
+Qed.
+
+Lemma rep_opt_rep X:
+	(@rep_opt X) \is_representation.
+Proof.
+split; first exact: rep_opt_sing.
+move => x.
+case x => [a | ].
+	have [phi phinx]:= (rep_sur X a).
+	by exists (fun q => match q with
+		|inl str => (some star, some_answer X)
+		|inr q => (some star, phi q)
+	end).
+by exists (fun q => (None, some_answer X)).
+Qed.
+
+Lemma option_count T:
+	T \is_countable -> (option T) \is_countable.
+Proof.
+move => [cnt sur].
+exists (fun n => match n with
+	| 0 => None
+	| S n' => Some (cnt n')
+end).
+move => x.
+case x; last by exists 0.
+move => a.
+have [n cntna]:= sur a.
+by exists (S n); rewrite cntna.
+Qed.
+
+Canonical rep_space_opt (X: rep_space) := @make_rep_space
+	(option X)
+	(one + questions X)
+	(option one * answers X)
+	(@rep_opt X)
+	((None, some_answer X))
+	(sum_count one_count (countable_questions X))
+	(prod_count (option_count one_count) (countable_answers X))
+	(@rep_opt_rep X).
+
+Lemma rs_prec_option_rec_inv (X: rep_space) (Y: rep_space) (f: option X -> Y):
+	f \is_prec_function
+	->
+	(fun a => f (some a)) \is_prec_function * (f None) \is_computable_element.
+Proof.
+move => [M Mcmpt].
+split.
+exists (fun phi => (M (fun q => match q with
+	| inl str => (some star, some_answer X)
+	| inr q => (some star, phi q)
+	end))).
+by move => phi x phinx; apply Mcmpt.
+exists (M (fun _ => (None, some_answer X))).
+by apply Mcmpt.
+Qed.
+
+Lemma rs_prec_option_rec (X: rep_space) (Y: rep_space) (f: option X -> Y):
+	(fun a => f (some a)) \is_prec_function * (f None) \is_computable_element
+	-> f \is_prec_function.
+Proof.
+move => [[M Mcmpt] [N Ncmpt]].
+exists (fun phi => match (phi (inl star)).1 with
+	| None => N
+	| Some str => M (fun q => (phi (inr q)).2)
+end).
+move => phi x phinx.
+case: x phinx => [/=a [eq phina] |/= Nope].
+by rewrite eq; apply Mcmpt.
+by rewrite Nope; apply Ncmpt.
+Qed.
+
+Fixpoint N_XN_lst
+	(X: rep_space)
+	(n: rep_space_nat)
+	(an: rep_space_usig_prod X):=
+	match n with
+		| 0 => [:: an 0]
+		| S n' => (an (S n') :: N_XN_lst n' an)
+	end.
+
+Definition NXN_lst X 
+	(nan: rep_space_opt (rep_space_prod rep_space_nat (rep_space_usig_prod X)))
+	:= match nan with
+		| None => [::]
+		| some nan => N_XN_lst nan.1 nan.2
+	end.
+
+Definition rep_list (X: rep_space) := (F2MF (@NXN_lst X)) o (@delta _).
+
+Lemma rep_list_sing X:
+	(@rep_list X) \is_single_valued.
+Proof.
+apply comp_sing; last exact (rep_sing _).
+exact: F2MF_sing.
+Qed.
+
+Lemma rep_sing_rep X:
+	(@rep_list X) \is_representation.
+Proof.
+split; first exact: rep_list_sing.
+move => L.
+elim L.
+	exists (fun _ => (None, some_answer (rep_space_prod rep_space_nat (rep_space_usig_prod X)))).
+	by rewrite /rep_list/=; split; [exists None | move => s names; apply: F2MF_tot].
+move => x K [phi phinK].
+case: K phinK => [_ | a K phinK].
+	have [psi psina]:= rep_sur X x.
+	exists (fun q => match q with
+		| inl str => (some star, some_answer _)
+		| inr q' => match q' with
+			| inl str => (some star, (0 , some_answer _))
+			| inr q'' => (some star, (0 , psi q''.2))
+		end
+	end).
+	rewrite /rep_list/=.
+	split.
+		exists (Some (0,(fun n => x))).
+		by rewrite /rep_opt/=/prod_rep/=/id_rep/=/rep_usig_prod/=;
+		rewrite /lprj/=/rprj/=/mf_prod_prod/=/NXN_lst/F2MF/=; split.
+	by move => s names; apply F2MF_tot.
+set nK := map (fun n => (fun q => (phi (inr (inr (n, q)))).2.2)) (iota 0 (phi (inl star)).2.1).
+exists (fun q => match q with
+	| inl str => (some star, some_answer _)
+	| inr q' => match q' with
+		| inl str => (some star, (0 , some_answer _))
+		| inr q'' => (some star, (0 , psi q''.2))
+	end
+end)
+
+have phi := 
+exists (fun strq => (0,some_answer X)).
+rewrite /rep_list/=.
+	split.
+	exists (0, fun _=> x).
+		split.
+		rewrite /prod_rep
+	
+rewrite /rep_list.
+have n := lprj phi star.
+
+End BASIC_CONSTRUCTIONS.
+
+Section BASIC_PROPERTIES.
 (* This Definition is equivalent to the notion Arno introduces in "https://arxiv.org/pdf/1204.3763.pdf".
 One of the drawbacks fo the version here is that it does not have a computable version.*)
 Definition is_dscrt X :=
@@ -123,44 +324,6 @@ suffices <-: n = psi by trivial.
 apply functional_extensionality => str.
 by elim str; rewrite coin.1.
 Qed.
-
-Inductive Sirp := top | bot.
-
-Definition rep_S phi s :=
-	(exists n:nat, phi n = Some star) <-> s = top.
-
-Lemma rep_S_is_rep:
- rep_S \is_representation.
-Proof.
-split => [ phi s s' [imp imp'] [pmi pmi'] | s].
-	case (classic (exists n, phi n = Some star)) => ex; first by rewrite (imp ex) (pmi ex).
-	case E: s; first by exfalso; apply ex; apply (imp' E).
-	apply NNPP => neq.
-	have eq: s' = top by case Q: s' => //; exfalso; apply neq.
-	by apply ex; apply pmi'.
-case s; last by exists (fun _ => None); split => // [[n ev]].
-by exists (fun _ => some star); split => // _; by exists 0.
-Qed.
-
-Lemma option_one_count:
-	(option one) \is_countable.
-Proof.
-by exists (fix c n := match n with
-	| 0 => Some star
-	| S n' => None
-end) => s; case: s; [exists 0; elim: a| exists 1].
-Qed.
-
-Canonical rep_space_S := @make_rep_space
-	(Sirp)
-	(nat)
-	(option one)
-	(rep_S)
-	(None)
-  (nat_count)
-  (option_one_count)
-  (rep_S_is_rep).
-End BASIC_REP_SPACES.
 
 (*
 Lemma iso_one (X :rep_space) (somex: X):
@@ -270,3 +433,5 @@ have crlzr: forall xn: nat -> X, hcr (F2MF xn).
 		by apply functional_extensionality => /= str; elim: str; apply coin.
 	by rewrite -eq => Fpsi FpsiFpsi; rewrite -FpsiFpsi -FphiFphi.*)
 Admitted. *)
+End BASIC_PROPERTIES.
+
