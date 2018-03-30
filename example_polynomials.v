@@ -4,6 +4,7 @@ Require Import multi_valued_functions representation_facts.
 Require Import FunctionalExtensionality.
 Require Import example_approximating_reals_with_rationals representations.
 Require Import basic_represented_spaces.
+Require Import ClassicalChoice.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -53,7 +54,6 @@ Fixpoint multa a p :=  [seq b * a | b <- p].
 Fixpoint mult p q := 
   if p is a :: p' then add (multa a q) (multx (mult p' q)) else [::].
 
-
 (* As example the chebycheff polynomials: *)
 Fixpoint T n := 
   if n is n'.+1 then
@@ -76,29 +76,25 @@ elim p.
 	move => phi x phinx eps ineq; rewrite {1}/Q2R/=.
 	apply/ Rbasic_fun.Rabs_le; lra.
 move => r q comp /=.
-have rcomp: (fun x:R => Q2R r) \is_prec_function.
-	exists (fun _ eps => r) => phi x phinx eps ineq.
-	apply/ Rbasic_fun.Rabs_le; lra.
 have xprcomp: (fun x:R => Rplus x (Q2R r)) \is_prec_function.
-	apply/ prec_fun_comp; [ | apply Rplus_prec | ].
-		apply/ prec_fun_comp; [apply diag_prec_fun | apply prod_prec_fun | ].
-				by apply id_prec_fun.
-			by apply rcomp.
-		by trivial.
-	by trivial.
-have xmexcomp: (fun x:R => Rmult x (Reval q x)) \is_prec_function.
-	apply /prec_fun_comp; [ | apply Rmult_prec | ].
-		apply /prec_fun_comp; [apply diag_prec_fun | apply prod_prec_fun | ].
-				by apply id_prec_fun.
-			by apply comp.
-		by trivial.
-	by trivial.
-by apply /prec_fun_comp; [apply xmexcomp | apply xprcomp | ].
+apply/ prec_fun_comp; [apply diag_prec_fun | | ] => /=.
+apply/ prec_fun_comp; [ apply prod_prec_fun; [apply id_prec_fun | apply cnst_fun_prec] | | ].
+apply (Q_cmpt_elts r).
+apply Rplus_prec.
+done.
+done.
+apply /prec_fun_comp; [apply diag_prec_fun | | ].
+apply /prec_fun_comp; [apply prod_prec_fun; [apply id_prec_fun | apply comp] | | ].
+apply /prec_fun_comp; [apply Rmult_prec | | ].
+apply xprcomp.
+done.
+done.
+done.
 Defined.
 
-Compute projT1 (Reval_prec (T 5)) (projT1 (Q_cmpt_elts (2#3))) (1#100).
+Compute Qred (projT1 (Reval_prec (T 5)) (projT1 (Q_cmpt_elts (2#3))) (1#100)).
 (* This is exact due to the names used for rationals: *)
-Compute Qeval (T 5) (2#3) - projT1 (Reval_prec (T 5)) (projT1 (Q_cmpt_elts (2#3))) (1#100).
+Compute Qred(Qeval (T 5) (2#3) - projT1 (Reval_prec (T 5)) (projT1 (Q_cmpt_elts (2#3))) (1#100)).
 (* However, the interpretation of the return value should be that it is an approximation
 to precision 1#100. Of course in this case there are easier ways to do this. For instance: *)
 Goal forall x, x = Reval (T 5) (Q2R (2#3)) -> x = x.
@@ -112,7 +108,7 @@ Unfortunately I have do not have any algorithms to compute non-rational numbers 
 
 (* You can also define a type for polynomials *)
 
-Definition ply := list R.
+Definition ply := rep_space_list rep_space_R.
 
 Fixpoint eval (p: ply) q :R := 
   if p is a :: L then q * (eval L q) + a else 0.
@@ -122,57 +118,34 @@ Definition poly_R :=
 
 Definition exist_ply:= @exist (R -> R) (fun f => (exists p:ply, forall x, eval p x = f x)).
 
-Lemma ply_equal p q :
-	eval p = eval q <-> forall n, nth 0%R p n = nth 0%R q n.
+Lemma ply_exist p:
+	exists q, forall x, eval q x = eval p x.
 Proof.
-Admitted.
+by exists p.
+Qed.
 
-Definition quot np (f: poly_R) :=
-	exists p, size p = np.1 /\ eval p = projT1 f /\ forall n, nth 0%R p n = np.2 n.
+Definition quot p := @exist_ply (eval p) (ply_exist p).
 
-Definition rep_poly_R := quot o (@delta (rep_space_prod rep_space_nat (rep_space_usig_prod rep_space_R))).
+Definition rep_poly_R := (F2MF quot) o (@delta _).
 
 Lemma rep_poly_R_sing:
 	rep_poly_R \is_single_valued.
 Proof.
 apply comp_sing; last exact: (rep_sing _).
-move => np f g [p [lp [valp fp]]] [q [lq [valq gq]]].
-apply eq_sub; rewrite -valp -valq.
-rewrite (ply_equal p q) => n.
-by rewrite (fp n) (gq n).
+exact: F2MF_sing.
 Qed.
 
-(*
 Lemma rep_poly_R_rep:
 	rep_poly_R \is_representation.
 Proof.
 split; first exact rep_poly_R_sing.
 move => [f [p evlpf]].
+have [phi phinp]:= rep_sur ply p.
+exists phi.
 rewrite /rep_poly_R.
-have [phi phinxn]:= (rep_sur (rep_space_usig_prod rep_space_R) (fun n => nth 0%R p n)).
-exists (@name_pair rep_space_nat (rep_space_usig_prod rep_space_R) (fun star => size p) (phi)).
-split.
-	exists (size p, (fun n => nth 0%R p n)).
-	split; first by split; rewrite lprj_pair => //=.
-	exists p;	split => //=; split; first by apply functional_extensionality => x; rewrite (evlpf x).
-	move => n; by case: n.
-move => [/=n yn] [/=phinn phinyn].
-have ex: exists p, forall x, eval (p) x = f x by exists p.
-exists (exist_ply ex).
-exists (map (fun n => nth 0%R p n) (iota 0 n)).
-split; first by rewrite size_map; apply size_iota.
-split => /=.
-	have ->: f = (eval p) by apply functional_extensionality => x.
-	apply ply_equal => k.
-	rewrite lprj_pair in phinn.
-	rewrite -phinn.
-	exact: nth_iota.
-move => m.
-rewrite lprj_pair/id_rep in phinn.
-rewrite rprj_pair in phinyn.
-rewrite (rep_sing _ _ _ _ phinyn phinxn).
-rewrite -phinn.
-exact: nth_iota.
+split; last by move => a b; exact: F2MF_tot.
+exists p; split => //.
+by rewrite /F2MF/quot; apply eq_sub; apply functional_extensionality.
 Qed.
 
 Canonical rep_space_poly_R := @make_rep_space
@@ -180,52 +153,93 @@ Canonical rep_space_poly_R := @make_rep_space
 	_
 	_
 	_
-	((0%nat, 0%Q))
-	(countable_questions (rep_space_prod rep_space_nat (rep_space_usig_prod rep_space_R)))
-	(countable_answers (rep_space_prod rep_space_nat (rep_space_usig_prod rep_space_R)))
+	(some_answer (rep_space_list rep_space_R))
+	(countable_questions (rep_space_list rep_space_R))
+	(countable_answers (rep_space_list rep_space_R))
 	rep_poly_R_rep
 	.
 
-Definition evaluation (p: poly_R) (x: R):= (projT1 p) x.
-
-Lemma poly_eval_prec_fix p:
-	p \is_computable_element -> (fun x => evaluation p x) \is_prec_function.
+Lemma quot_prec:
+	(fun p => quot p:poly_R) \is_prec_function.
 Proof.
-move => [/=phi phinp].
-set pn := fix pn n := match n with
-	| 0%nat => [::]
-	| S n' => ((fun eps => (phi (inr (n', eps))).2) :: pn n')
-end.
-set q := pn (phi (inl star)).1.
-elim: q.
-exists (fun phi eps => 0%Q).
-	move => psi x psinx.
-	have : evaluation p x = 0%R.
-	rewrite /evaluation.
-	rewrite
-elim: (phi (inl star)).1.
-	exists (fun phi eps => 0).
-	move => phi x phinx eps ineq; rewrite {1}/Q2R/=.
-	apply/ Rbasic_fun.Rabs_le; lra.
-move => r q comp /=.
-have rcomp: (fun x:R => Q2R r) \is_prec_function.
-	exists (fun _ eps => r) => phi x phinx eps ineq.
-	apply/ Rbasic_fun.Rabs_le; lra.
-have xprcomp: (fun x:R => Rplus x (Q2R r)) \is_prec_function.
-	apply/ prec_fun_comp; [ | apply Rplus_prec | ].
-		apply/ prec_fun_comp; [apply diag_prec_fun | apply prod_prec_fun | ].
-				by apply id_prec_fun.
-			by apply rcomp.
-		by trivial.
-	by trivial.
-have xmexcomp: (fun x:R => Rmult x (Reval q x)) \is_prec_function.
-	apply /prec_fun_comp; [ | apply Rmult_prec | ].
-		apply /prec_fun_comp; [apply diag_prec_fun | apply prod_prec_fun | ].
-				by apply id_prec_fun.
-			by apply comp.
-		by trivial.
-	by trivial.
-by apply /prec_fun_comp; [apply xmexcomp | apply xprcomp | ].
+exists (fun phi => phi).
+move => phi p phinp.
+rewrite /delta/=/rep_poly_R/=.
+split; last by move => a b; apply: F2MF_tot.
+by exists p.
+Qed.
+
+Definition quot_inv (f: poly_R) (p: ply):= forall x, eval p x = projT1 f x.
+
+Lemma quot_inv_prec:
+	quot_inv \is_prec.
+Proof.
+exists (fun phi => phi).
+move => phi stuff.
+split.
+	move: stuff => [p [[pf [[[q  [phinq _]] _] eq]]] _].
+	exists q.
+	split; first by exists phi.
+	by move => psi <-; exists q.
+move: stuff => [q[[pf [phinpf _]] eq]] r [[psi [<- phinr]] prop].
+split.
+	exists (exist_ply (ply_exist r)); split => //.
+	split; last by move => a b; exact: F2MF_tot.
+	by exists r => //.
+move => [pf' [p peqpf']] _.
+by exists p.
+Qed.
+
+Lemma quot_inv_not_sing:
+	~ quot_inv \is_single_valued.
+Proof.
+move => sing.
+have val: quot_inv (exist_ply (ply_exist [::])) [::0%R] by move => x /=; lra.
+have evl: (quot_inv (exist_ply (ply_exist [::])) [::]) by trivial.
+by have/=:= sing (exist_ply (ply_exist [::])) [::0%R] [::] val evl.
+Qed.
+
+Lemma quot_inv_tot:
+	quot_inv \is_total.
+Proof.
+by move => [pf [p val]]; exists p.
+Qed.
+
+Lemma eval_ply_prec:
+	(fun px => eval px.1 px.2) \is_prec_function.
+Proof.
+pose g (x: R) := 0%R.
+have gprec: g \is_prec_function.
+	apply cnst_fun_prec.
+	replace (0%R) with (Q2R 0%Q) by by rewrite /Q2R/=; lra.
+	apply: Q_cmpt_elts.
+pose h (zaT: rep_space_prod rep_space_R (rep_space_prod rep_space_R rep_space_R))
+	:= (zaT.1 * zaT.2.2 + zaT.2.1)%R.
+rewrite /= in h.
+suffices evp: (fun xp => eval xp.2 xp.1) \is_prec_function.
+	by apply/ prec_fun_comp; [apply switch_prec | apply evp | ].
+suffices hprec: h \is_prec_function.
+	apply/ (list_rs_prec_pind gprec hprec).
+	by move => [z K]; rewrite /eval; elim: K => // a K /= ->.
+rewrite /h.
+apply/ prec_fun_comp; [apply prod_prec_fun; [ apply id_prec_fun | apply switch_prec]| | ] => /=.
+apply/ prec_fun_comp; [apply prod_assoc_prec | | ] => /=.
+apply/ prec_fun_comp; [apply prod_prec_fun; [apply Rmult_prec | apply id_prec_fun]| apply Rplus_prec | ] => /=.
+done.
+done.
+done.
 Defined.
-*)
+
+Lemma eval_prec:
+	(fun px: poly_R * R => projT1 px.1 px.2) \is_prec_function.
+Proof.
+apply/ prec_fun_prec_comp; [ | apply prod_prec | apply eval_ply_prec | ] => /=.
+apply mfpp_tot.
+split.
+	apply quot_inv_tot.
+	apply F2MF_tot.
+apply quot_inv_prec.
+apply id_prec.
+by move => [f x] [p y] [/=qfp <-]/=; rewrite qfp.
+Qed.
 End POLYNOMIALS.
