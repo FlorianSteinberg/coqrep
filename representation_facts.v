@@ -38,6 +38,15 @@ end).
 by move => phipsi [x x'] [phinx psinx']; split; [apply Mrf | apply Nrg].
 Defined.
 
+Lemma prod_prec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
+	f \is_prec -> g \is_prec -> (f ** g) \is_prec.
+Proof.
+move => [M Mrf] [N Nrg].
+exists (mfpp_frlzr M N).
+rewrite mfpp_frlzr_rlzr.
+by apply prod_rlzr.
+Defined.
+
 Lemma cmpt_elt_mon_cmpt (X Y: rep_space) (f: X c-> Y):
 	f \is_computable_element -> (projT1 f) \is_monotone_computable.
 Proof. move => [psiF comp]; exists (U psiF); split => //; exact: U_mon. Qed.
@@ -54,6 +63,30 @@ move => [M comp] [N comp'] h eq.
 exists (fun phi => N (M phi)).
 by move => phi x phinx; rewrite eq; apply comp'; apply comp.
 Defined.
+
+Lemma prec_fun_prec_comp (X Y Z: rep_space) (f: X ->> Y) (g: Y -> Z):
+	f \is_total -> f \is_prec -> g \is_prec_function
+	-> forall h, (forall x y, f x y -> h x = g y) -> h \is_prec_function.
+Proof.
+move => ftot [M comp] [N comp'] h eq.
+exists (fun phi => N (M phi)).
+move => phi x phinx.
+have [y fxy]:= ftot x.
+have prop: phi \from_dom (f o (delta (r:=X))).
+	exists y.
+	split.
+		by exists x.
+	move => x' phinx'.
+	by rewrite (rep_sing X phi x' x).
+have [y' [[psi [<- name]] _]]:= (comp phi prop).1.
+rewrite (eq x y') => //.
+by apply comp'.
+have cond: ((delta (r:=Y)) o (F2MF M) phi y').
+	split; first by exists (M phi).
+	by move => Mpsi <-; exists y'.
+have [[x' [phinx' fx'y']] _] := (comp phi prop).2 y' cond.
+by rewrite (rep_sing X phi x x').
+Qed.
 
 Lemma prec_fun_cmpt_comp (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
 	f \is_prec_function -> g \is_computable_function
@@ -114,7 +147,7 @@ Section SPECIAL_FUNCTIONS.
 
 Lemma cnst_fun_prec (X Y: rep_space) (y: Y):
 	y \is_computable_element -> (fun x:X => y) \is_prec_function.
-Proof. by move => [psi psiny]; exists (fun _ => psi). Qed.
+Proof. by move => [psi psiny]; exists (fun _ => psi). Defined.
 
 Lemma prec_cmpt (X Y:rep_space) (f: X ->> Y):
 	f \is_prec -> f \is_computable.
@@ -212,6 +245,26 @@ Lemma snd_prec (X Y: rep_space):
 	(@snd X Y) \is_prec_function.
 Proof.
 by exists (@rprj X Y); move => phi x [_ phinx].
+Qed.
+
+Lemma switch_prec (X Y: rep_space):
+	(fun x: X * Y => (x.2, x.1)) \is_prec_function.
+Proof. 
+by exists (fun phi => name_pair (rprj phi) (lprj phi)); move => phi [x y] [phinx phiny].
+Qed.
+
+Lemma prod_assoc_prec (X Y Z: rep_space):
+	(fun x: X * (Y * Z) => (x.1, x.2.1,x.2.2)) \is_prec_function.
+Proof.
+exists (fun phi => name_pair (name_pair (lprj phi) (lprj (rprj phi))) (rprj (rprj phi))).
+by move => phi [x [y z]] [phinx [phiny phinz]].
+Qed.
+
+Lemma prod_assoc_inv_prec (X Y Z: rep_space):
+	(fun x: X * Y * Z => (x.1.1, (x.1.2, x.2))) \is_prec_function.
+Proof.
+exists (fun phi => name_pair (lprj (lprj phi)) (name_pair (rprj (lprj phi)) (rprj phi))).
+by move => phi [[x y] z] [[phinx phiny] phinz].
 Qed.
 
 Lemma fst_cont (X Y: rep_space):
