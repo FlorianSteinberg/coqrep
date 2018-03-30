@@ -16,11 +16,6 @@ Definition poly := list Q.
 
 Fixpoint Qeval (p: poly) q :Q := if p is a :: L then q * (Qeval L q) + a else 0.
 
-Lemma poly_equal p q :
-	(forall r, Qeval p r == Qeval q r) <-> forall n, nth 0%Q p n == nth 0%Q q n.
-Proof.
-Admitted.
-
 Lemma nth_iota p k:
 	nth 0%Q [seq nth 0%Q p n0 | n0 <- iota 0 (size p)] k == nth 0%Q p k.
 Proof.
@@ -35,17 +30,6 @@ Fixpoint add p q :=
   if p is a :: p then
     if q is b :: q then a + b :: (add p q) else a :: p
   else q.
-
-Lemma Qeval_add (p q: poly) (r: Q) :
-	Qeval (add p q) r == (Qeval p r) + (Qeval q r).
-Proof.
-case: (size q <= size p)%nat.
-	set q' := map (fun n => nth 0%Q q n) (iota 0%nat (size p)).
-	have eq: forall n, nth 0%Q q n == nth 0%Q q' n.
-		admit.
-	move: ((poly_equal q q').2 eq).
-	elim: (size p) q' eq.
-Admitted.
 
 Definition multx p := 0 :: p.
 
@@ -242,4 +226,29 @@ apply quot_inv_prec.
 apply id_prec.
 by move => [f x] [p y] [/=qfp <-]/=; rewrite qfp.
 Qed.
+
+Fixpoint ply_add (p q:ply) :=
+  if p is a :: p then
+    if q is b :: q then (a + b)%R :: (ply_add p q) else a :: p
+  else q.
+
+Definition ply_multx p := 0%R :: p.
+
+Fixpoint ply_multa a (p: ply) :=  [seq b * a | b <- p]%R.
+
+Fixpoint ply_mult (p q: ply) := 
+  if p is a :: p' then ply_add (ply_multa a q) (ply_multx (ply_mult p' q)) else [::]%R.
+
+(* As example the chebycheff polynomials: *)
+Fixpoint ply_T n := 
+  if n is n'.+1 then
+   if n' is n''.+1 then ply_add (ply_multa 2 (ply_multx (ply_T n'))) [seq -i | i <- ply_T n'']%R
+   else [::0%R; 1%R]
+  else [::1%R].
+
+Definition poly_add (fg: poly_R * poly_R) (h: poly_R):=
+	forall x, (projT1 fg.1 x + projT1 fg.2 x = projT1 h x)%R.
+
+Definition poly_mult (fg: poly_R * poly_R) (h: poly_R):=
+	forall x, (projT1 fg.1 x * projT1 fg.2 x = projT1 h x)%R.
 End POLYNOMIALS.
