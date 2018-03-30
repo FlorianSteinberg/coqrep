@@ -21,6 +21,8 @@ Definition pT := fix pT_rec (n : nat) {struct n} : {poly R} :=
     else 'X
   else 1.
 
+Notation "`T_ n " := (pT n) (at level 10).
+
 Lemma pT0 : pT 0 = 1.
 Proof. done. Qed.
 
@@ -138,7 +140,6 @@ move=> n; elim: n {-2}n (leqnn n)=> [[] // _ |m IH].
 move=> n; rewrite leq_eqVlt; case/orP=> [|Hn]; last first.
   by apply: IH; rewrite -ltnS.
 move/eqP->; case: m IH=> [_ i|m IH i].
-Search  "coef" "M".
   by rewrite coefMn coefX; case: i=> [|[|i]] //=;
      rewrite ?mul0rn //= -mulr_natl mulr1 mul1r. 
 rewrite pUSS coefB mulrnAl coefMn coefXM !IH //.
@@ -357,20 +358,164 @@ rewrite /Cshaw/Cshaw_rec/b.
 rewrite polyseqX/=.
 by rewrite !mulr0 !subr0 !addr0 !mulr1 add0r subrr.
 Qed.
-(* What? *)
+
+
+Section PT2P.
+
+Variable R1 : ringType.
+
+(* c + X * l *)
+Definition pconst (c : R1) l :=
+  if l is _ :: _ then c :: l
+  else if c == 0 then [::] else [:: c].
+
+(* c + l *)
+Definition add_const (c : R1) l :=
+ if l is a :: l1 then
+   pconst (c + a) l1
+ else
+   if c == 0 then [::] else [:: c].
+
+(* l1 + l2 *)
+Fixpoint ladd_poly (l1 l2 : seq R1) :=
+ if l1 is a :: l3 then
+   if l2 is b :: l5 then
+     pconst (a + b) (ladd_poly l3 l5)
+   else l1
+ else l2.
+
+(* -l *)
+Fixpoint lopp_poly (l : seq R1) :=
+ if l is a :: l1 then
+     -a :: (lopp_poly l1)
+ else [::].
+
+(* a *: l *)
+Fixpoint lscal_poly (a : R1) l :=
+ if l is b :: l1 then
+     pconst (a * b) (lscal_poly a l1)
+ else [::].
+
+(* l1 - l2 *)
+Fixpoint lsub_poly (l1 l2 : seq R1) :=
+ if l1 is a :: l3 then
+   if l2 is b :: l5 then
+     pconst (a - b) (lsub_poly l3 l5)
+   else l1
+ else lopp_poly l2.
+
+Fixpoint pT2p_rec l (p1 p2 : seq R1) :=
+match l with
+|  a :: l =>
+   ladd_poly (lscal_poly a p1)
+     (pT2p_rec l (lsub_poly (lscal_poly 2%:R (pconst 0 p1)) p2) p1)
+| _ => [::]
+end.
+
+Definition pT2p l :=
+ match l with 
+ | a :: l => 
+    ladd_poly
+    (pconst a [::])
+    (pT2p_rec l [::0; 1] [::1])
+  | _ => [::]
+  end.
+
+End PT2P.
+
+Compute pT2p  (ncons 11 (0%:R: int) [::1]).
+
+Section P2PT.
+
+Variable R1 : unitRingType.
+
+Fixpoint Tmulx_rec (l : seq R1) :=
+  match l with 
+  | a :: ((b :: c :: l) as l1) =>
+      2%:R^-1 * (a + c) :: Tmulx_rec l1 
+  | l =>  [seq 2%:R^-1 * x | x <- l]
+  end.
+
+Lemma size_Tmulx_rec l : size (Tmulx_rec l) = size l.
+Proof.
+elim: l => //= a [|b [|c l1]] IH //=.
+by rewrite IH.
+Qed.
+
+Definition Tmulx l :=
+  Tmulx_rec (0 :: if l is a :: l then (a *+ 2 :: l) else l).
+
+Lemma size_Tmulx l : size (Tmulx l) = (size l).+1.
+Proof. by case: l => // a l; rewrite size_Tmulx_rec. Qed.
+
+Definition Tadd_const a (l : seq R1) :=
+  match l with (b :: l) => (a + b :: l) | _ => [::a] end.
+
+Fixpoint p2pT_rec (l1 l2 : seq R1) :=
+ match l1 with 
+   a :: l1 => Tadd_const a (Tmulx (p2pT_rec l1 l2))
+ | _ => [::]
+end.
+
+Definition p2pT l := p2pT_rec l [::].
+
+Fixpoint Tmulx_rec1 (l : seq R1) :=
+  match l with 
+  | a :: ((b :: c :: l) as l1) => (a + c) :: Tmulx_rec1 l1 
+  | l =>  l
+  end.
+
+Lemma size_Tmulx_rec1 l : size (Tmulx_rec1 l) = size l.
+Proof.
+elim: l => //= a [|b [|c l1]] IH //=.
+by rewrite IH.
+Qed.
+
+Definition Tmulx1 l :=
+  Tmulx_rec1 (0 :: if l is a :: l then (a *+ 2 :: l) else l).
+
+Lemma size_Tmulx1 l : size (Tmulx1 l) = (size l).+1.
+Proof. by case: l => // a l; rewrite size_Tmulx_rec1. Qed.
+
+Definition Tadd_const1 a (l : seq R1) :=
+  match l with (b :: l) => (a + b :: l) | _ => [::a] end.
+
+Fixpoint p2pT_rec1 (l1 l2 : seq R1) :=
+ match l1 with 
+   a :: l1 => Tadd_const a (Tmulx (p2pT_rec l1 l2))
+ | _ => [::]
+end.
+
+Definition p2pT1 l := p2pT_rec1 l [::].
+
+End P2PT.
+
+(* T_0(x)	=	1 *)
+(* T_1(x)	=	x	 *)
+(* T_2(x)	=	2 x^2 - 1 *)
+(* T_3(x)	=	4 x^3 - 3 x *)
+(* T_4(x)	=	8 x^4 - 8 x^2 + 1	*)
+(* T_5(x)	=	16 x^5 - 20 x^3 + 5 x *)
+(* T_6(x)	=	32 x^6 - 48 x^4 + 18 x^2 - 1 *)
+
+Definition t0 := [:: ratz (Posz 1)].
+Definition t1 := [:: 0; ratz (Posz 1)].
+Definition t2 := [:: ratz (-(Posz 1)); 0; ratz (Posz 2)].
+Definition t3 := [:: 0; ratz (- (Posz 3)); 0; ratz (Posz 4)].
+Definition t4 := [:: ratz (Posz 1); 0; ratz (-(Posz 8)); 0; ratz (Posz 8)].
+Definition t5 := [:: 0; ratz (Posz 5); 0; ratz (- (Posz 20)); 0; ratz (Posz 16)].
+Definition t6 := [:: ratz (- (Posz 1)); 0; ratz (Posz 18); 0; ratz (- (Posz 48)); 0; ratz (Posz 32)].
+
+Compute p2pT t0.
+Compute p2pT t1.
+Compute p2pT t2.
+Compute p2pT t3.
+Compute p2pT t4.
+Compute p2pT t5.
+Compute p2pT t6.
+
 
 End Tcheby.
-
-
-
-
-
-
-
-
-
-
-
 
 
 
