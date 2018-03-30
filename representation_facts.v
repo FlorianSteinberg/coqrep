@@ -47,6 +47,12 @@ rewrite mfpp_frlzr_rlzr.
 by apply prod_rlzr.
 Defined.
 
+Lemma prec_fun_prec (X Y: rep_space) (f: X -> Y):
+	f \is_prec_function -> (F2MF f) \is_prec.
+Proof.
+move => [M Mprop]; by exists M; apply frlzr_rlzr.
+Qed.
+
 Lemma cmpt_elt_mon_cmpt (X Y: rep_space) (f: X c-> Y):
 	f \is_computable_element -> (projT1 f) \is_monotone_computable.
 Proof. move => [psiF comp]; exists (U psiF); split => //; exact: U_mon. Qed.
@@ -62,6 +68,15 @@ Proof.
 move => [M comp] [N comp'] h eq.
 exists (fun phi => N (M phi)).
 by move => phi x phinx; rewrite eq; apply comp'; apply comp.
+Defined.
+
+Lemma prec_comp (X Y Z: rep_space) (f: X ->> Y) (g: Y ->> Z) h:
+	f \is_prec -> g \is_prec -> h =~= g o f -> h \is_prec.
+Proof.
+move => [M comp] [N comp'] eq.
+exists (fun phi => N (M phi)); rewrite eq.
+suffices ->: F2MF (fun phi => N (M phi)) =~= (F2MF N) o (F2MF M) by apply rlzr_comp.
+by rewrite F2MF_comp.
 Defined.
 
 Lemma prec_fun_prec_comp (X Y Z: rep_space) (f: X ->> Y) (g: Y -> Z):
