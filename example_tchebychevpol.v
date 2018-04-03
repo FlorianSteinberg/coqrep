@@ -386,7 +386,6 @@ rewrite !ltnNge // (leq_trans (leq_b1 _)) //=.
 by rewrite addr0.
 Qed.
 
-
 (* c + l *)
 Definition ladd_const {R: ringType} (c : R) l :=
  if l is a :: l1 then
@@ -777,6 +776,24 @@ Lemma p2pT_spec (p : {poly R}) :
   p =
   \sum_(i < size (p2pT p)) (p2pT p)`_i *: `T_i :> {poly R}.
 Proof. by apply: lp2pT_spec. Qed.
+
+Lemma pT2p_p2pT (p : {poly R}):
+	pT2p (p2pT p) = p.
+Proof.
+rewrite {2}[p]p2pT_spec.
+by rewrite pT2p_spec.
+Qed.
+
+Lemma pT2p_linear:
+	forall (a: R) (p q : {poly R}), pT2p (a *: p) = a *: pT2p p.
+Proof.
+move => a p q.
+rewrite !pT2p_spec.
+pose f (i : 'I_(size (a*: p))) := a *: (p`_ i *: `T_(i + 1)).
+rewrite (eq_bigr f).
+have eq: ((size (a *: p)) = (size p)).
+	admit.
+Admitted.
 
 End P2PT.
 
