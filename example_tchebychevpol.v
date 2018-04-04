@@ -319,7 +319,7 @@ Qed.
 Fixpoint b q (x: R) :=
  if q is a :: q' then
    let t := b q' x in
-   let a1 := a + x * t.1 - t.2 in
+   let a1 := a + x *+ 2 * t.1 - t.2 in
    (a1, t.1) else (0, 0).
 
 Definition Cshaw_rec q x := (b q x).1 - x * (b q x).2.
@@ -328,18 +328,16 @@ Definition Cshaw p := Cshaw_rec p.
 
 Definition CP2P p := \sum_(0 <= i < size p) (nth 0%R p i *: (pT i)).
 
-Lemma Cshaw_CP2P p :
-	forall r, p.[r] = Cshaw (CP2P p) r.
-Proof.
-move => r.
-Admitted.
+Definition rm0 :=
+ (mulr0, mul0r, subr0, sub0r, add0r, addr0, mul0rn, mulr0n, oppr0).
+
+Definition rm1 := (mulr1, mul1r, mulr1n).
 
 Lemma Cshaw0:
 	forall r, Cshaw 0%:P r = 0.
 Proof.
 move => r; rewrite /Cshaw/Cshaw_rec/b/=.
-rewrite polyseq0 /=.
-by rewrite mulr0 subr0.
+by rewrite polyseq0 /= !rm0.
 Qed.
 
 Lemma Cshawc c:
@@ -350,19 +348,14 @@ case E: (c == 0).
 	exact Cshaw0.
 move => r; rewrite /Cshaw/Cshaw_rec/b/=.
 have neq: (c != 0) by rewrite E.
-rewrite polyseqC neq/=.
-by rewrite !mulr0 !subr0 addr0.
+by rewrite polyseqC neq/= !rm0.
 Qed.
 
 Lemma CshawX:
-	forall r, Cshaw 'X r = 0.
+	forall r, Cshaw 'X r = r.
 Proof.
-move => r.
-rewrite /Cshaw/Cshaw_rec/b.
-rewrite polyseqX/=.
-by rewrite !mulr0 !subr0 !addr0 !mulr1 add0r subrr.
+by move => r; rewrite /Cshaw/Cshaw_rec/b polyseqX/= !rm0 !rm1 (mulr2n r) addrK.
 Qed.
-
 
 Section PT2P.
 
@@ -398,7 +391,6 @@ case: i => //= [|i].
 rewrite !ltnNge // (leq_trans (leq_b1 _)) //=.
 by rewrite addr0.
 Qed.
-
 
 (* c + l *)
 Definition ladd_const {R: ringType} (c : R) l :=
@@ -825,7 +817,45 @@ Lemma p2pTK :
   cancel p2pT (@pT2p R).
 Proof. by move=> I2 p; rewrite {2}[p]p2pT_spec // pT2p_spec. Qed.
 
+Lemma pT2p_p2pT (p : {poly R}):
+	pT2p (p2pT p) = p.
+Proof.
+rewrite {2}[p]p2pT_spec.
+by rewrite pT2p_spec.
+Qed.
+
 End P2PT.
+
+Section LEMMAS.
+
+Variable R: idomainType.
+
+Lemma pT2p_0:
+	@pT2p R 0 = 0.
+Proof.
+by apply /val_eqP; rewrite /= polyseq0.
+Qed.
+
+Search _ (_ *: _) size.
+
+Lemma pT2p_hom:
+	forall (a: R) (p q : {poly R}), pT2p (a *: p) = a *: pT2p p.
+Proof.
+move => a p q.
+case: (boolP (a == 0)) => ass.
+rewrite (eqP ass) !scale0r; exact: pT2p_0.
+rewrite !pT2p_spec.
+pose f (i : 'I_(size (a*: p))) := a *: (p`_ i *: `T_i).
+rewrite (eq_bigr f) {}/f.
+have eq: ((size (a *: p)) = (size p)) by rewrite size_scale => //.
+by rewrite eq scaler_sumr.
+rewrite -mul_polyC.
+move => i _.
+rewrite scalerA.
+Admitted.
+
+
+End LEMMAS.
 
 (* T_0(x)	=	1 *)
 (* T_1(x)	=	x	 *)
