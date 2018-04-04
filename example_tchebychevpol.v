@@ -790,30 +790,33 @@ Section LEMMAS.
 
 Variable R: idomainType.
 
-Lemma pT2p_0:
-	@pT2p R 0 = 0.
+Lemma pT2p0:
+	pT2p 0 = 0:> {poly R}.
 Proof.
 by apply /val_eqP; rewrite /= polyseq0.
 Qed.
 
-Search _ (_ *: _) size.
-
-Lemma pT2p_hom:
+Lemma pT2pZ:
 	forall (a: R) (p q : {poly R}), pT2p (a *: p) = a *: pT2p p.
 Proof.
 move => a p q.
 case: (boolP (a == 0)) => ass.
-rewrite (eqP ass) !scale0r; exact: pT2p_0.
+rewrite (eqP ass) !scale0r; exact: pT2p0.
 rewrite !pT2p_spec.
 pose f (i : 'I_(size (a*: p))) := a *: (p`_ i *: `T_i).
 rewrite (eq_bigr f) {}/f.
 have eq: ((size (a *: p)) = (size p)) by rewrite size_scale => //.
-by rewrite eq scaler_sumr.
-rewrite -mul_polyC.
-move => i _.
-rewrite scalerA.
-Admitted.
+	by rewrite eq scaler_sumr.
+by move => i _; rewrite scalerA coefZ.
+Qed.
 
+Lemma pT2p_lin:
+	linear (@pT2p R).
+Proof.
+move => a p q.
+rewrite -pT2pZ.
+rewrite !pT2p_spec.
+Admitted.
 
 End LEMMAS.
 
