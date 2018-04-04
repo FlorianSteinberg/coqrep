@@ -817,13 +817,6 @@ Lemma p2pTK :
   cancel p2pT (@pT2p R).
 Proof. by move=> I2 p; rewrite {2}[p]p2pT_spec // pT2p_spec. Qed.
 
-Lemma pT2p_p2pT (p : {poly R}):
-	pT2p (p2pT p) = p.
-Proof.
-rewrite {2}[p]p2pT_spec.
-by rewrite pT2p_spec.
-Qed.
-
 End P2PT.
 
 Section LEMMAS.
@@ -847,8 +840,8 @@ rewrite (eqP ass) !scale0r; exact: pT2p_0.
 rewrite !pT2p_spec.
 pose f (i : 'I_(size (a*: p))) := a *: (p`_ i *: `T_i).
 rewrite (eq_bigr f) {}/f.
-have eq: ((size (a *: p)) = (size p)) by rewrite size_scale => //.
-by rewrite eq scaler_sumr.
+  have eq: ((size (a *: p)) = (size p)) by rewrite size_scale => //.
+  by rewrite eq scaler_sumr.
 rewrite -mul_polyC.
 move => i _.
 rewrite scalerA.
