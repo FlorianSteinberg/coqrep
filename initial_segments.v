@@ -1,7 +1,7 @@
 From mathcomp Require Import all_ssreflect.
 Require Import multi_valued_functions baire_space continuity.
 Require Import ClassicalChoice Psatz.
-Open Scope coq_nat_scope.
+Local Open Scope coq_nat_scope.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -129,8 +129,11 @@ Fixpoint in_seg m := match m with
   | S n => cons (cnt n) (in_seg n)
 end.
 
-Lemma length_inseg n : length (in_seg n) = n.
+Lemma size_inseg n : size (in_seg n) = n.
 Proof. by elim: n => // n ih; rewrite -{2}ih. Qed.
+
+Lemma length_inseg n : length (in_seg n) = n.
+Proof. exact: size_inseg. Qed.
 
 Lemma inseg_mon n m:
 	  n <= m -> (in_seg n) \is_sublist_of (in_seg m).
