@@ -16,16 +16,6 @@ Definition poly := list Q.
 
 Fixpoint Qeval (p: poly) q :Q := if p is a :: L then q * (Qeval L q) + a else 0.
 
-Lemma nth_iota p k:
-	nth 0%Q [seq nth 0%Q p n0 | n0 <- iota 0 (size p)] k == nth 0%Q p k.
-Proof.
-case E: (k < size p)%nat.
-rewrite (@nth_map nat 0%nat Q 0%Q (fun n => nth 0%Q p n) k (iota 0 (size p))); last by rewrite size_iota.
-by rewrite seq.nth_iota => //.
-have ineq: (size p <= k)%nat by rewrite leqNgt E.
-by rewrite nth_default; [ rewrite nth_default | rewrite size_map size_iota].
-Qed.
-
 Fixpoint add p q :=
   if p is a :: p then
     if q is b :: q then a + b :: (add p q) else a :: p
@@ -77,7 +67,7 @@ done.
 Defined.
 
 Compute Qred (projT1 (Reval_prec (T 5)) (projT1 (Q_cmpt_elts (2#3))) (1#100)).
-(* This is exact due to the names used for rationals: *)
+(* This is exact due to the names used for rationals. *)
 Compute Qred(Qeval (T 5) (2#3) - projT1 (Reval_prec (T 5)) (projT1 (Q_cmpt_elts (2#3))) (1#100)).
 (* However, the interpretation of the return value should be that it is an approximation
 to precision 1#100. Of course in this case there are easier ways to do this. For instance: *)
@@ -94,8 +84,8 @@ Unfortunately I have do not have any algorithms to compute non-rational numbers 
 
 Definition ply := rep_space_list rep_space_R.
 
-Fixpoint eval (p: ply) q :R := 
-  if p is a :: L then q * (eval L q) + a else 0.
+Fixpoint eval (p: ply) x: R := 
+  if p is a :: q then x * (eval q x) + a else 0.
 
 Definition poly_R :=
 	{f: R -> R | exists p:ply, forall x, eval p x = f x}.
@@ -104,9 +94,7 @@ Definition exist_ply:= @exist (R -> R) (fun f => (exists p:ply, forall x, eval p
 
 Lemma ply_exist p:
 	exists q, forall x, eval q x = eval p x.
-Proof.
-by exists p.
-Qed.
+Proof. by exists p. Qed.
 
 Definition quot p := @exist_ply (eval p) (ply_exist p).
 
