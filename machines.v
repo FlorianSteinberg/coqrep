@@ -7,7 +7,7 @@ Require Import FunctionalExtensionality ClassicalChoice Psatz.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
+Local Open Scope coq_nat_scope.
 Section MACHINES.
 Context (A Q: Type) (C: countType).
 Notation B := (Q -> A).

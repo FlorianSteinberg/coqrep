@@ -12,7 +12,7 @@ Require Import ClassicalChoice Psatz FunctionalExtensionality.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
+Local Open Scope coq_nat_scope.
 Section UNIVERSAL_MACHINE.
 
 (* Q: Questions, A: Answers *)

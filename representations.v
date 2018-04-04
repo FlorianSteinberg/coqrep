@@ -8,7 +8,7 @@ Require Import Morphisms initial_segments.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
+Local Open Scope coq_nat_scope.
 Section REPRESENTED_SPACES.
 
 Definition is_rep S T (delta: S ->> T):=
