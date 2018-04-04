@@ -224,5 +224,11 @@ Lemma comp_cont Q'' A'' (F: B ->> B') (G: B' ->> (Q'' -> A'')):
 Proof.
 exact: cont_comp.
 Qed.
+
+Lemma cnst_cont (Fphi: B'):
+	(fun (phi: B) (Fphi': B') => forall q, Fphi' q = Fphi q) \is_continuous.
+Proof.
+by move => phi q _; exists nil; move => Fphi' ->/= psi _ Fpsi ->.
+Qed.
 End CONTINUITY_LEMMAS.
 Notation "mf '\is_modulus_of' F" := (is_mod F mf) (at level 2).
