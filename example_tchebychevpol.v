@@ -816,6 +816,12 @@ Proof.
 move => a p q.
 rewrite -pT2pZ.
 rewrite !pT2p_spec.
+pose f (i : 'I_(size (a*: p + q))) := (a *: p)`_ i *: `T_i + q`_i *: `T_i.
+rewrite (eq_bigr f) {}/f; last by move => i _; rewrite coefD scalerDl.
+rewrite big_split/=.
+rewrite -(@big_mkord _ 0 (fun p q => p + q) (size (a*: p + q)) (fun _ => true) (fun i => (a *: p)`_i *: `T_ i))/=.
+rewrite -(@big_mkord _ 0 (fun p q => p + q) (size (a*: p + q)) (fun _ => true) (fun i => q`_i *: `T_ i))/=.
+have:= (@big_cat_nat R 0 _ (size (a*: p + q)) 0 (max (size p) (size q)) (fun _ => true)).
 Admitted.
 
 End LEMMAS.
