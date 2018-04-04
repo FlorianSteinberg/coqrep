@@ -784,18 +784,38 @@ rewrite {2}[p]p2pT_spec.
 by rewrite pT2p_spec.
 Qed.
 
-Lemma pT2p_linear:
+End P2PT.
+
+Section LEMMAS.
+
+Variable R: idomainType.
+
+Lemma pT2p_0:
+	@pT2p R 0 = 0.
+Proof.
+by apply /val_eqP; rewrite /= polyseq0.
+Qed.
+
+Search _ (_ *: _) size.
+
+Lemma pT2p_hom:
 	forall (a: R) (p q : {poly R}), pT2p (a *: p) = a *: pT2p p.
 Proof.
 move => a p q.
+case: (boolP (a == 0)) => ass.
+rewrite (eqP ass) !scale0r; exact: pT2p_0.
 rewrite !pT2p_spec.
-pose f (i : 'I_(size (a*: p))) := a *: (p`_ i *: `T_(i + 1)).
-rewrite (eq_bigr f).
-have eq: ((size (a *: p)) = (size p)).
-	admit.
+pose f (i : 'I_(size (a*: p))) := a *: (p`_ i *: `T_i).
+rewrite (eq_bigr f) {}/f.
+have eq: ((size (a *: p)) = (size p)) by rewrite size_scale => //.
+by rewrite eq scaler_sumr.
+rewrite -mul_polyC.
+move => i _.
+rewrite scalerA.
 Admitted.
 
-End P2PT.
+
+End LEMMAS.
 
 (* T_0(x)	=	1 *)
 (* T_1(x)	=	x	 *)
