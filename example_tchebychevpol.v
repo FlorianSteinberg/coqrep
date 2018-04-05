@@ -578,7 +578,7 @@ Lemma pT2p_spec p :
    pT2p p = \sum_(i < size p) p`_i *: `T_i.
 Proof. by apply/val_eqP/eqP/lpT2p_spec. Qed.
 
-Lemma size_pT2p p : (size (pT2p p) <= size p)%N.
+Lemma size_pT2p_leq p : (size (pT2p p) <= size p)%N.
 Proof.
 rewrite pT2p_spec.
 apply: (leq_trans (size_sum _ _ _)).
@@ -587,7 +587,8 @@ apply: leq_trans (size_scale_leq _ _) _.
 by apply: leq_trans (size_pT_leq _) _.
 Qed.
 
-Search "char" prime in ssralg.
+Lemma pT2p0 : pT2p 0 = 0 :> {poly R}.
+Proof. by apply /val_eqP; rewrite /= polyseq0. Qed.
 
 End PT2P.
 
@@ -817,26 +818,111 @@ Lemma p2pTK :
   cancel p2pT (@pT2p R).
 Proof. by move=> I2 p; rewrite {2}[p]p2pT_spec // pT2p_spec. Qed.
 
+Lemma p2pT0 : p2pT 0 = 0 :> {poly R}.
+Proof.
+apply /val_eqP; rewrite /= polyseq0.
+by rewrite /lp2pTg; case: (_ \is a _).
+Qed.
+
 End P2PT.
+
+Section RBase.
+
+Variable R : ringType.
+Variable F : nat -> {poly R}.
+
+Lemma polybase_widen (p : {poly R}) n :
+    (size p <= n)%N -> \sum_(i < n) p`_i *: F i = \sum_(i < size p) p`_i *: F i.
+Proof.
+move=> Hs.
+rewrite -(big_mkord xpredT (fun i => p`_i *: F i)).
+rewrite (big_cat_nat _ _ _ _ Hs) //= big_mkord.
+rewrite addrC big_nat_cond big1 ?add0r // => i.
+rewrite andbT => /andP[/(@leq_sizeP R) // H1 H2].
+by rewrite H1 ?scale0r.
+Qed.
+
+End RBase.
+
+Section Base.
+
+Variable R : idomainType.
+Variable F : nat -> {poly R}.
+Hypothesis F0 : F 0 != 0.
+Hypothesis F_size : forall n, size (F n) = n.+1.
+
+Lemma size_polybase n p : 
+   size (\sum_(i < n) p`_ i *: F i) = \max_(i < n | p`_i != 0) i.+1.
+Proof.
+elim: n => [|n IH]; first by rewrite !big_ord0 size_poly0.
+rewrite [RHS]big_mkcond /= !big_ord_recr /= -big_mkcond /=.
+have [/eqP Hp| Hnp /=] := boolP (p`_n == 0).
+  by rewrite Hp scale0r addr0 IH /= maxn0.
+have Hs : size (p`_ n *: F n) = n.+1 by rewrite size_scale.
+case: (n) Hs IH => [Hs _|n1 Hs IH].
+  by rewrite !big_ord0 add0r Hs.
+rewrite addrC size_addl Hs.
+  rewrite (maxn_idPr _) //.
+  apply/bigmax_leqP=> i _.
+  by apply: leq_trans (ltn_ord i) _; rewrite ltnW.
+rewrite ltnS IH.
+by apply/bigmax_leqP => i _.
+Qed.
+
+Lemma polybase_eq0 n p : 
+   \sum_(i < n) p`_ i *: F i = 0 -> forall i, (i < n)%N -> p`_i = 0.
+Proof.
+move=> H i Hi.
+suff P j : (0 < j < n)%N -> p`_j = 0.
+  have := H.
+  case: (n) Hi P => // n1 Hi P /eqP.
+  rewrite big_ord_recl big1 => [|j _]; last first.
+    by rewrite P ?scale0r // lift0 /= ltnS.
+  rewrite addr0  scale_poly_eq0 (negPf F0) orbF.
+  case: i Hi => [_ /eqP->//|i Hi _].
+  by apply: P.
+move=> /andP[HP1 HP2].
+have /eqP := (H).
+rewrite -size_poly_eq0 size_polybase -leqn0 => /bigmax_leqP/(_ (Ordinal HP2)).
+by rewrite /=; case: eqP => //= _ /(_ isT).
+Qed.
+
+End Base.
 
 Section LEMMAS.
 
 Variable R: idomainType.
+Variable V2 : (2%:R : R) \is a GRing.unit.
 
-Lemma pT2p_0:
-	@pT2p R 0 = 0.
+Lemma size_pT n : size (`T_ n : {poly R}) = n.+1.
 Proof.
-by apply /val_eqP; rewrite /= polyseq0.
+have := size_pT_leq R n.
+rewrite leq_eqVlt => /orP[/eqP//|].
+rewrite ltnS => /leq_sizeP/(_ _ (leqnn _))/eqP.
+rewrite coef_pTn natrX expf_eq0 andbC.
+have := divrr V2.
+case: eqP => [->|//] /eqP.
+by rewrite mul0r eq_sym oner_eq0.
 Qed.
 
-Search _ (_ *: _) size.
+Lemma size_pT2p (p : {poly R}) : size (pT2p p) = size p.
+Proof.
+have [/eqP->|pNZ] := boolP (p == 0); first by rewrite pT2p0.
+rewrite pT2p_spec size_polybase => [|i]; last by apply: size_pT.
+rewrite {-7}(polySpred pNZ).
+rewrite big_mkcond big_ord_recr /= -big_mkcond /=.
+rewrite -lead_coefE lead_coef_eq0 pNZ /= -(polySpred pNZ).
+rewrite (maxn_idPr _) //.
+apply/bigmax_leqP=> i _.
+by apply: leq_trans (leq_pred  _).
+Qed.
 
 Lemma pT2p_hom:
 	forall (a: R) (p q : {poly R}), pT2p (a *: p) = a *: pT2p p.
 Proof.
 move => a p q.
 case: (boolP (a == 0)) => ass.
-rewrite (eqP ass) !scale0r; exact: pT2p_0.
+rewrite (eqP ass) !scale0r; exact: pT2p0.
 rewrite !pT2p_spec.
 pose f (i : 'I_(size (a*: p))) := a *: (p`_ i *: `T_i).
 rewrite (eq_bigr f) {}/f.
@@ -847,6 +933,19 @@ move => i _.
 rewrite scalerA.
 Admitted.
 
+Lemma size_p2pT (p : {poly R}) : size (p2pT p) = size p.
+Proof.
+have [/eqP->|pNZ] := boolP (p == 0); first by rewrite p2pT0.
+rewrite {2}[p]p2pT_spec //.
+rewrite size_polybase => [|n]; last by apply: size_pT.
+have [/eqP->|p2NZ] := boolP (p2pT p == 0); first by rewrite size_poly0 big_ord0.
+rewrite {-1}(polySpred p2NZ).
+rewrite big_mkcond big_ord_recr -big_mkcond.
+rewrite -lead_coefE lead_coef_eq0 p2NZ /=.
+rewrite -(polySpred p2NZ) (maxn_idPr _) //.
+apply/bigmax_leqP=> i _.
+by apply: leq_trans (leq_pred  _).
+Qed.
 
 End LEMMAS.
 
