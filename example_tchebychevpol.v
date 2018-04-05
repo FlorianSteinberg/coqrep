@@ -575,7 +575,8 @@ Proof. by rewrite lpT2p_spec; case: (\sum_ (_ < _) _). Qed.
 Definition pT2p (p : {poly R}) : {poly R} := Polynomial (last_lpT2p_spec p).
 
 Lemma pT2p_spec p :
-   pT2p p = \sum_(i < size p) p`_i *: `T_i.
+pT2p p =
+\sum_(i < size p) p`_i *: `T_i.
 Proof. by apply/val_eqP/eqP/lpT2p_spec. Qed.
 
 Lemma size_pT2p_leq p : (size (pT2p p) <= size p)%N.
@@ -809,6 +810,7 @@ Definition p2pT (p : {poly R}) : {poly R} := Polynomial (last_lp2pTg (last_poly 
 
 Lemma p2pT_spec (p : {poly R}) :
   (2%:R : R) \is a GRing.unit -> 
+ 
   p =
   \sum_(i < size (p2pT p)) (p2pT p)`_i *: `T_i :> {poly R}.
 Proof. by apply: lp2pTg_spec. Qed.
@@ -817,6 +819,31 @@ Lemma p2pTK :
   (2%:R : R) \is a GRing.unit -> 
   cancel p2pT (@pT2p R).
 Proof. by move=> I2 p; rewrite {2}[p]p2pT_spec // pT2p_spec. Qed.
+
+Lemma pT_eq (p q : {poly R}) :
+  p = q <-> \sum_(i < size p) p`_i *: `T_ i = 
+            \sum_(i < size q) q`_i *: `T_ i.
+Proof.
+by move->.
+Qed.
+
+Admitted.
+
+Lemma pTK2p : 
+  (2%:R : R) \is a GRing.unit -> 
+  cancel (@pT2p R) p2pT.
+Proof. 
+move=> I2 p.
+apply/pT_eq.
+rewrite -p2pT_spec //.
+by rewrite pT2p_spec.
+Qed.
+
+
+p = q <-> \sum p * T^i = \sum q * T^i
+
+ rewrite {2}[p]p2pT_spec // pT2p_spec. Qed.
+
 
 Lemma p2pT0 : p2pT 0 = 0 :> {poly R}.
 Proof.
@@ -918,9 +945,9 @@ by apply: leq_trans (leq_pred  _).
 Qed.
 
 Lemma pT2pZ:
-	forall (a: R) (p q : {poly R}), pT2p (a *: p) = a *: pT2p p.
+	forall (a: R) (p : {poly R}), pT2p (a *: p) = a *: pT2p p.
 Proof.
-move => a p q.
+move => a p.
 case: (boolP (a == 0)) => ass.
 rewrite (eqP ass) !scale0r; exact: pT2p0.
 rewrite !pT2p_spec.
@@ -945,9 +972,7 @@ have ineq: ((size q) <= maxn (size p) (size q))%N.
 	by apply/ leq_trans; last exact: leq_maxr.
 rewrite -(polybase_widen _ ineq); move: ineq => _.
 have ineq: ((size (a *: p + q))%R <= maxn (size p) (size q))%N.
-	apply/ leq_trans.
-	apply size_add.
-	Search _ maxn.
+	apply: leq_trans (size_add _ _) _.
 	rewrite geq_max; apply /andP; split; last exact: leq_maxr.
 	apply/ leq_trans; last exact: leq_maxl.
 	exact: size_scale_leq.
@@ -955,7 +980,7 @@ rewrite -(polybase_widen _ ineq); move: ineq => _.
 pose f (i : 'I_( maxn (size p) (size q))) := (a *: p)`_ i *: `T_i + q`_i *: `T_i.
 rewrite (eq_bigr f) {}/f; last by move => i _; rewrite coefD scalerDl.
 by rewrite big_split/=.
-Admitted.
+Qed.
 
 Lemma size_p2pT (p : {poly R}) : size (p2pT p) = size p.
 Proof.
