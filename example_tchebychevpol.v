@@ -937,12 +937,24 @@ Proof.
 move => a p q.
 rewrite -pT2pZ.
 rewrite !pT2p_spec.
-pose f (i : 'I_(size (a*: p + q))) := (a *: p)`_ i *: `T_i + q`_i *: `T_i.
+have ineq: ((size (a *: p)) <= maxn (size p) (size q))%N.
+	apply/ leq_trans; last exact: leq_maxl.
+	exact: size_scale_leq.
+rewrite -(polybase_widen _ ineq); move: ineq => _.
+have ineq: ((size q) <= maxn (size p) (size q))%N.
+	by apply/ leq_trans; last exact: leq_maxr.
+rewrite -(polybase_widen _ ineq); move: ineq => _.
+have ineq: ((size (a *: p + q))%R <= maxn (size p) (size q))%N.
+	apply/ leq_trans.
+	apply size_add.
+	Search _ maxn.
+	rewrite geq_max; apply /andP; split; last exact: leq_maxr.
+	apply/ leq_trans; last exact: leq_maxl.
+	exact: size_scale_leq.
+rewrite -(polybase_widen _ ineq); move: ineq => _.
+pose f (i : 'I_( maxn (size p) (size q))) := (a *: p)`_ i *: `T_i + q`_i *: `T_i.
 rewrite (eq_bigr f) {}/f; last by move => i _; rewrite coefD scalerDl.
-rewrite big_split/=.
-rewrite -(@big_mkord _ 0 (fun p q => p + q) (size (a*: p + q)) (fun _ => true) (fun i => (a *: p)`_i *: `T_ i))/=.
-rewrite -(@big_mkord _ 0 (fun p q => p + q) (size (a*: p + q)) (fun _ => true) (fun i => q`_i *: `T_ i))/=.
-have:= (@big_cat_nat R 0 _ (size (a*: p + q)) 0 (max (size p) (size q)) (fun _ => true)).
+by rewrite big_split/=.
 Admitted.
 
 Lemma size_p2pT (p : {poly R}) : size (p2pT p) = size p.
