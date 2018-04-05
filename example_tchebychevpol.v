@@ -820,31 +820,6 @@ Lemma p2pTK :
   cancel p2pT (@pT2p R).
 Proof. by move=> I2 p; rewrite {2}[p]p2pT_spec // pT2p_spec. Qed.
 
-Lemma pT_eq (p q : {poly R}) :
-  p = q <-> \sum_(i < size p) p`_i *: `T_ i = 
-            \sum_(i < size q) q`_i *: `T_ i.
-Proof.
-by move->.
-Qed.
-
-Admitted.
-
-Lemma pTK2p : 
-  (2%:R : R) \is a GRing.unit -> 
-  cancel (@pT2p R) p2pT.
-Proof. 
-move=> I2 p.
-apply/pT_eq.
-rewrite -p2pT_spec //.
-by rewrite pT2p_spec.
-Qed.
-
-
-p = q <-> \sum p * T^i = \sum q * T^i
-
- rewrite {2}[p]p2pT_spec // pT2p_spec. Qed.
-
-
 Lemma p2pT0 : p2pT 0 = 0 :> {poly R}.
 Proof.
 apply /val_eqP; rewrite /= polyseq0.
@@ -872,7 +847,6 @@ Qed.
 End RBase.
 
 Section Base.
-
 Variable R : idomainType.
 Variable F : nat -> {poly R}.
 Hypothesis F0 : F 0 != 0.
@@ -896,11 +870,11 @@ rewrite ltnS IH.
 by apply/bigmax_leqP => i _.
 Qed.
 
-Lemma polybase_eq0 n p : 
-   \sum_(i < n) p`_ i *: F i = 0 -> forall i, (i < n)%N -> p`_i = 0.
+Lemma polybase_eq0 n (l: seq R) : 
+   \sum_(i < n) l`_ i *: F i = 0 -> forall i, (i < n)%N -> l`_i = 0.
 Proof.
 move=> H i Hi.
-suff P j : (0 < j < n)%N -> p`_j = 0.
+suff P j : (0 < j < n)%N -> l`_j = 0.
   have := H.
   case: (n) Hi P => // n1 Hi P /eqP.
   rewrite big_ord_recl big1 => [|j _]; last first.
@@ -930,6 +904,46 @@ rewrite coef_pTn natrX expf_eq0 andbC.
 have := divrr V2.
 case: eqP => [->|//] /eqP.
 by rewrite mul0r eq_sym oner_eq0.
+Qed.
+
+Lemma pT_eq (p q : {poly R}) :
+  p = q <-> \sum_(i < size p) p`_i *: `T_ i = 
+            \sum_(i < size q) q`_i *: `T_ i.
+Proof.
+split; first by move->.
+move => /eqP eq.
+have ineq: (size p <= maxn (size p) (size q))%N by exact: leq_maxl.
+rewrite -(polybase_widen _ ineq) in eq; move: ineq => _.
+have ineq: (size q <= maxn (size p) (size q))%N by exact: leq_maxr.
+rewrite -(polybase_widen _ ineq) in eq; move: ineq => _.
+rewrite -subr_eq0 in eq.
+rewrite -sumrB in eq.
+pose f (i : 'I_(maxn (size p) (size q))) := ((p- q)`_i) *: `T_ i.
+rewrite (eq_bigr f) {}/f in eq.
+	move/eqP: eq => eq.
+	apply /eqP.
+	rewrite -subr_eq0.
+	apply/eqP.
+	rewrite -polyP => i.
+	rewrite coef0.
+	have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
+		apply: polybase_eq0 eq _ ineq.
+			by rewrite pT0 oner_eq0.
+		by apply size_pT.
+	apply/ leq_sizeP; last apply ineq.
+	rewrite -[size q]size_opp.
+	exact: size_add.
+by move => i _; rewrite coefB scalerBl.
+Qed.
+
+Lemma pTK2p : 
+  (2%:R : R) \is a GRing.unit -> 
+  cancel (@pT2p R) (@p2pT R).
+Proof. 
+move=> I2 p.
+apply/pT_eq.
+rewrite -p2pT_spec //.
+by rewrite pT2p_spec.
 Qed.
 
 Lemma size_pT2p (p : {poly R}) : size (pT2p p) = size p.
