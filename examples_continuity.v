@@ -2,7 +2,7 @@
 a space that can be thought about continuity on. *)
 From Coq.micromega Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
-Require Import baire_space continuity initial_segments multi_valued_functions.
+Require Import all_core.
 Require Import Classical.
 
 Open Scope coq_nat_scope.

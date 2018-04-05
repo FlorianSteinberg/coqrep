@@ -1,6 +1,6 @@
 (* This file provides basic notions for spaces of the form Q -> A for some arbitrary types Q and A.*)
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions.
+Require Import core_mf.
 Require Import FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.

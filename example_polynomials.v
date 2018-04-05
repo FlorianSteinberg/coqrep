@@ -1,10 +1,7 @@
 From mathcomp Require Import all_ssreflect all_algebra.
 Require Import Qreals QArith Psatz Reals Field.
-Require Import multi_valued_functions representation_facts.
-Require Import FunctionalExtensionality.
-Require Import example_approximating_reals_with_rationals representations.
-Require Import basic_represented_spaces.
-Require Import ClassicalChoice.
+Require Import core_mf rs_base representation_facts basic_represented_spaces  rs_creals.
+Require Import FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -234,8 +231,43 @@ Fixpoint ply_T n :=
    else [::0%R; 1%R]
   else [::1%R].
 
+Definition seq_add (fg: (nat -> R) * (nat -> R)) :=
+	(fun n => (fg.1 n) + (fg.2 n))%R.
+
+Lemma seq_add_prec_fun:
+	seq_add \is_prec_function.
+Proof.
+have [Mplus Mprop]:= Rplus_prec.
+exists (fun (phi: names (rep_space_prod (rep_space_usig_prod rep_space_R)(rep_space_usig_prod rep_space_R))) q =>
+	Mplus (name_pair (fun q' => lprj phi (q.1, q')) (fun q' => rprj phi (q.1, q'))) q.2).
+move => phi [an bn] [/=phinan phinbn] n/=.
+rewrite /seq_add/=.
+apply ((Mprop (name_pair (fun q' => lprj phi (n, q')) (fun q' => rprj phi (n, q')))) (an n, bn n)).
+by split; rewrite rprj_pair lprj_pair/=; [apply phinan | apply phinbn].
+Qed.
+
+Definition seq_mult (fg: (nat -> R) * (nat -> R)) :=
+	(fun n => (fg.1 n) * (fg.2 n))%R.
+
+Lemma seq_mult_prec_fun:
+	seq_mult \is_prec_function.
+Proof.
+have [Mmult Mprop]:= Rmult_prec.
+exists (fun (phi: names (rep_space_prod (rep_space_usig_prod rep_space_R)(rep_space_usig_prod rep_space_R))) q =>
+	Mmult (name_pair (fun q' => lprj phi (q.1, q')) (fun q' => rprj phi (q.1, q'))) q.2).
+move => phi [an bn] [/=phinan phinbn] n/=.
+rewrite /seq_mult/=.
+apply ((Mprop (name_pair (fun q' => lprj phi (n, q')) (fun q' => rprj phi (n, q')))) (an n, bn n)).
+by split; rewrite rprj_pair lprj_pair/=; [apply phinan | apply phinbn].
+Qed.
+
 Definition poly_add (fg: poly_R * poly_R) (h: poly_R):=
 	forall x, (projT1 fg.1 x + projT1 fg.2 x = projT1 h x)%R.
+
+Lemma poly_add_prec:
+	poly_add \is_prec.
+Proof.
+Admitted.
 
 Definition poly_mult (fg: poly_R * poly_R) (h: poly_R):=
 	forall x, (projT1 fg.1 x * projT1 fg.2 x = projT1 h x)%R.
