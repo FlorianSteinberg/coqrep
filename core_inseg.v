@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions baire_space continuity.
+Require Import core_mf core_bs core_cont.
 Require Import ClassicalChoice Psatz.
 Local Open Scope coq_nat_scope.
 

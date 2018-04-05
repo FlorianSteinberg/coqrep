@@ -1,8 +1,7 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions continuity machines oracle_machines initial_segments.
-Require Import representations representation_facts baire_space universal_machine.
+Require Import all_core rs_base representation_facts.
 Require Import FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.

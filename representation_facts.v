@@ -1,7 +1,7 @@
 (* This file provides an alternative formulation of represented spaces that saves
 the input and output types of the names *)
 From mathcomp Require Import all_ssreflect.
-Require Import continuity universal_machine multi_valued_functions machines oracle_machines representations.
+Require Import all_core rs_base.
 Require Import FunctionalExtensionality ClassicalFacts ClassicalChoice Psatz ProofIrrelevance.
 Require Import Morphisms.
 

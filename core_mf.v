@@ -117,6 +117,15 @@ Proof.
 split => [[[r [grs fst]] prop] | fgrt ]; first by rewrite grs.
 by split => [ | r eq]; [exists (g s) | exists t; rewrite -eq].
 Qed.
+End MULTIVALUED_FUNCTIONS.
+Notation "f =~= g" := (equiv f g) (at level 70).
+Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
+Notation "s '\from_dom' f" := (dom f s) (at level 2).
+Notation "f 'o' g" := (mf_comp f g) (at level 2).
+Notation "f 'o_R' g" := (rel_comp f g) (at level 2).
+
+Section MFPROPERTIES.
+Context (S T S' T': Type).
 
 Definition is_tot S T (f: S ->> T) := forall s, s \from_dom f.
 Notation "f '\is_total'" := (is_tot f) (at level 2).
@@ -210,6 +219,23 @@ have eq: g =~= h.
 	by exfalso; apply notcodom; exists s; rewrite val2.1.
 case: (classic (g t true)) => ass; last by apply ass.
 by case: ((eq t true).1 ass).
+Qed.
+
+Definition sur_fun (f: S -> T) := forall t, exists s, f s = t.
+Notation "f '\is_surjective_function'" := (sur_fun f) (at level 2).
+
+Lemma sur_fun_sur (f: S -> T):
+	f \is_surjective_function <-> (F2MF f) \is_surjective.
+Proof.
+split.
+	move => sur R g h.
+	rewrite !F2MF_comp => eq s t.
+	have [r <-]:= sur s.
+	exact: (eq r t).
+move => sur t.
+have cotot: (F2MF f) \is_cototal by apply sur_cotot.
+have [s fst]:= cotot t.
+by exists s.
 Qed.
 
 (* The opposite implication does not hold in general*)
@@ -332,21 +358,19 @@ Qed.
 Lemma mfpp_codom (f: S ->> T) (g : S' ->> T') :
   forall s t, s \from_codom f /\ t \from_codom g -> (s,t) \from_codom (f ** g).
 Proof. by move => s t [[s' fs's] [t' ft't]]; exists (s',t'). Qed.
-End MULTIVALUED_FUNCTIONS.
-Notation "f =~= g" := (equiv f g) (at level 70).
-Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
+End MFPROPERTIES.
 Notation "f ** g" := (mf_prod_prod f g) (at level 50).
 Notation "f '\is_single_valued'" := (is_sing f) (at level 2).
 Notation "f '\restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
 Notation "t '\from_codom' f" := (codom f t) (at level 2).
 Notation "f '\is_surjective_partial_function'" := (sur_par_fun f) (at level 2).
-Notation "s '\from_dom' f" := (dom f s) (at level 2).
+Notation "f '\is_surjective_function'" := (sur_fun f) (at level 2).
 Notation "f '\is_total'" := (is_tot f) (at level 2).
-Notation "f 'o' g" := (mf_comp f g) (at level 2).
 Notation "f '\range_restricted_to' P" := (fun s t => f s t /\ P t) (at level 2).
 
 Section TIGHT_EXTENDS_ICF.
 Context (S T: Type).
+
 Definition tight S T (f: S ->> T) (g: S ->> T) :=
 	forall s, s \from_dom f -> s \from_dom g /\ forall t, g s t -> f s t.
 Notation "f '\is_tightened_by' g" := (tight f g) (at level 2).

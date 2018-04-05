@@ -5,16 +5,14 @@ that approach but it lead to extensive additional work so I gave up at some poin
 the approach in the present file is more appropriate. *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions baire_space continuity.
-Require Import machines oracle_machines universal_machine.
-Require Import representations representation_facts.
+Require Import all_core rs_base representation_facts.
 Require Import Qreals Reals Psatz FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Local Open Scope Z_scope.
+Section CAUCHYREALS.
 Import QArith.
 Local Open Scope R_scope.
 Coercion IZR : Z >-> R.
@@ -302,7 +300,28 @@ Require Import basic_represented_spaces.
 instead of real. It should be straight forward to proof the limits to be equivalent by using the 
 density of the rationals *)
 Definition lim xn x :=
-	forall eps, Q2R eps > 0 -> exists N:nat, forall n:nat, (N <= n)%coq_nat -> Rabs (x - xn n) <= Q2R eps.
+	forall eps, Q2R eps > 0 -> exists N, forall n, (N <= n)%nat -> Rabs (x - xn n) <= Q2R eps.
+
+Lemma lim_sing:
+	lim \is_single_valued.
+Proof.
+move => xn x x' limxnx limxnx'.
+apply/ cond_eq_rat => eps ineq.
+have ineq': Q2R (eps * (1#2)) > 0 by rewrite Q2R_mult {2}/Q2R/=; lra.
+move: (limxnx (Qmult eps (1#2)) ineq') => [N prop].
+move: (limxnx' (Qmult eps (1#2)) ineq') => [M prop'].
+rewrite -(Rplus_0_r x).
+rewrite -(Rplus_opp_r (xn (M + N)%nat)).
+replace (x + (xn (M + N)%nat + - xn (M + N)%nat) - x')
+	with ((x - xn (M + N)%nat) - (x' - xn (M + N)%nat)) by field.
+apply triang.
+replace (Q2R eps) with (Q2R eps/2 + Q2R eps/ 2) by field.
+have ->: Q2R eps / 2 = Q2R (Qmult eps (1#2)) by rewrite Q2R_mult {3}/Q2R/=; lra.
+apply: Rplus_le_compat.
+	apply (prop (M + N)%nat); rewrite /addn/addn_rec; apply /leP;	lia.
+rewrite Rabs_Ropp.
+by apply (prop' (M + N)%nat); rewrite /addn/addn_rec; apply/leP; lia.
+Qed.
 
 Lemma pow_n_prec:
 	forall n, (fun x => pow x n) \is_prec_function.
@@ -327,27 +346,6 @@ exists (fun phi eps => (projT1 (pow_n_prec ((rprj phi) (star:questions rep_space
 move => phi x [lphinx rphinn].
 have prop:= (projT2 (pow_n_prec (rprj phi star)) (lprj phi) x.1 lphinx).
 by have ->: x.2 = rprj phi star by rewrite /delta/= in rphinn; rewrite rphinn.
-Qed.
-
-Lemma lim_sing:
-	lim \is_single_valued.
-Proof.
-move => xn x x' limxnx limxnx'.
-apply/ cond_eq_rat => eps ineq.
-have ineq': Q2R (eps * (1#2)) > 0 by rewrite Q2R_mult {2}/Q2R/=; lra.
-move: (limxnx (Qmult eps (1#2)) ineq') => [N prop].
-move: (limxnx' (Qmult eps (1#2)) ineq') => [M prop'].
-rewrite -(Rplus_0_r x).
-rewrite -(Rplus_opp_r (xn (M + N)%coq_nat)).
-replace (x + (xn (M + N)%coq_nat + - xn (M + N)%coq_nat) - x')
-	with ((x - xn (M + N)%coq_nat) - (x' - xn (M + N)%coq_nat)) by field.
-apply triang.
-replace (Q2R eps) with (Q2R eps/2 + Q2R eps/ 2) by field.
-have ->: Q2R eps / 2 = Q2R (Qmult eps (1#2)) by rewrite Q2R_mult {3}/Q2R/=; lra.
-apply: Rplus_le_compat.
-	by apply (prop (M + N)%coq_nat); lia.
-rewrite Rabs_Ropp.
-by apply (prop' (M + N)%coq_nat); lia.
 Qed.
 
 Lemma lim_not_cont: ~lim \has_continuous_realizer.
@@ -391,6 +389,7 @@ have limyn3: lim yn 3.
 	case: ifP; last by split_Rabs; lra.
 	move  => ineq''.
 	have: (n <= m)%coq_nat by apply /leP.
+	have: (m < n)%coq_nat by apply /leP.
 	lia.
 have rnfdF: rn \from_dom F.
 	have rnfd: rn \from_dom (lim o (delta (r:=rep_space_usig_prod rep_space_R))).
@@ -551,12 +550,12 @@ have limxny: lim xn y.
 	apply/ Rle_trans; last by apply ineq'.
 	apply Rmult_le_compat_l; first by lra.
 	apply Rinv_le_contravar; first by apply: pow_lt; lra.
-	by apply Rle_pow; first by lra.
+	by apply Rle_pow; [lra | apply /leP].
 rewrite (lim_sing limxny limxnx) in eff.
 move: y limxny => _ _.
-have: (fun eps : Q => phin ((Pos_size (Qden eps)).+1, (eps * (1 # 2))%Q)) \is_name_of x.
+have: (fun eps : Q => phin (S (Pos_size (Qden eps)), (eps * (1 # 2))%Q)) \is_name_of x.
 	move => eps epsg0.
-	set N := (Pos_size (Qden eps)).+1.
+	set N := S (Pos_size (Qden eps)).
 	replace (x - Q2R (phin (N, (eps * (1 # 2))%Q))) with
 		((x - xn N) + (xn N - Q2R (phin (N, (eps * (1 # 2))%Q)))) by ring.
 	apply triang.
@@ -592,35 +591,10 @@ have: (fun eps : Q => phin ((Pos_size (Qden eps)).+1, (eps * (1 # 2))%Q)) \is_na
 	apply/Rle_trans; first apply phinxn; rewrite Q2R_mult {2}/Q2R/=; lra.
 split; first by exists x.
 move => y cond.
-rewrite (rep_sing rep_space_R (fun eps : Q => phin ((Pos_size (Qden eps)).+1, (eps * (1 # 2))%Q)) y x) => //.
+rewrite (rep_sing rep_space_R (fun eps : Q => phin (S (Pos_size (Qden eps)), (eps * (1 # 2))%Q)) y x) => //.
 split; first by exists xn; split => //; split => //; exists x.
 move => yn phinyn.
 rewrite (rep_sing _ phin yn xn) => //.
 by exists x; split => //; exists x.
 Qed.
-
-Definition I := (@rep_space_sub_space rep_space_R (fun x => -1 <= x <= 1)).
-
-Lemma analytic (an: nat -> R):
-	eff_zero an -> (fun (x: I) (y: R) => infinite_sum (fun n => an n * pow (projT1 x) n) y) \is_prec.
-Proof.
-Admitted.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+End CAUCHYREALS.

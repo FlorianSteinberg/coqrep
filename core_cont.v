@@ -1,7 +1,7 @@
 (* This file provides a definition of continuity of functions between spaces of the form
 Q -> A for some arbitrary types Q and A. It also proves some basic Lemmas about this notion.*)
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions baire_space.
+Require Import core_mf core_bs.
 Require Import FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.

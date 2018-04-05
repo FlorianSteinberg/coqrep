@@ -1,7 +1,7 @@
 (* This file contains some definitions of what it can mean for functions
 between different spaces to be computable. *)
 From mathcomp Require Import all_ssreflect.
-Require Import multi_valued_functions continuity initial_segments oracle_machines.
+Require Import core_mf core_cont core_inseg core_omach.
 Require Import FunctionalExtensionality ClassicalChoice Psatz.
 
 Set Implicit Arguments.
