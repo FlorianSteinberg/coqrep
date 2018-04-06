@@ -9,9 +9,23 @@ core_mach.v
 all_core.v
 
 rs_base.v
-representation_facts.v
-basic_represented_spaces.v
-rs_creals.v
+rs_base_prod.v
+rs_base_sub.v
+rs_base_fun.v
+rs_base_facts.v
+rs_base_iso.v
+all_rs_base.v
+
+rs_dscrt.v
+rs_opt.v
+rs_usig.v
+rs_list.v
+rs_list_rev.v
+rs_sets.v
+rs_sprd.v
+all_rs.v
+
+rs_reals_creals.v
 
 examples_continuity.v
 example_polynomials.v

@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect all_algebra.
 Require Import Qreals QArith Psatz Reals Field.
-Require Import core_mf rs_base representation_facts basic_represented_spaces  rs_creals.
+Require Import all_rs rs_reals_creals.
 Require Import FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.

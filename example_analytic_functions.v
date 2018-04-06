@@ -5,8 +5,7 @@ that approach but it lead to extensive additional work so I gave up at some poin
 the approach in the present file is more appropriate. *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import all_core.
-Require Import rs_base basic_represented_spaces representation_facts rs_creals.
+Require Import all_rs rs_reals_creals.
 Require Import Qreals Reals Psatz FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.
