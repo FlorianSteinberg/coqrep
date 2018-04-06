@@ -198,11 +198,10 @@ have rab_pos: forall phi, Q2R (rab phi) >= 1.
 pose trunc eps := if Qlt_le_dec eps 1 then eps else 1%Q.
 have ineq: forall eps, Q2R (trunc eps) <= (Q2R eps).
 	by move => eps; rewrite /trunc; case: (Qlt_le_dec eps 1) => ass /=; [lra | apply Qle_Rle].
-set Rmult_realizer := (fun phi eps =>
+exists (fun phi eps =>
   ((phi (inl (trunc eps / (1 + 1)/(rab (fun q => (phi(inr q)).2))))).1
   *
   (phi (inr (eps / (1 + 1)/(rab (fun q => (phi(inl q) ).1))))).2))%Q.
-exists Rmult_realizer.
 move => phipsi [x y] [phinx psiny] eps eg0 /=.
 rewrite Q2R_mult.
 set phi := (fun q:Q => (phipsi (inl q)).1:Q).
@@ -211,14 +210,12 @@ set psi := (fun q:Q => (phipsi (inr q)).2:Q).
 rewrite -/psi/= in psiny.
 set r := Q2R (phi (trunc eps / (1 + 1) / rab psi)%Q).
 set q := Q2R (psi (eps / (1 + 1) / rab phi)%Q).
-rewrite /Rmult_realizer; move: Rmult_realizer => _; specialize (ineq eps).
+specialize (ineq eps).
 have truncI: 0 < Q2R (trunc eps) <= 1.
 	rewrite /trunc; case: (Qlt_le_dec eps 1) => /= ass; last by rewrite /Q2R/=; lra.
 	split => //; apply Rlt_le; replace 1 with (Q2R 1) by by rewrite /Q2R/=; lra.
 	by apply Qlt_Rlt.
-have g0: 0 < Q2R (eps / (1 + 1)).
-	rewrite Q2R_div; last by lra.
-	rewrite {2}/Q2R/=; lra.
+have g0: 0 < Q2R (eps / (1 + 1)) by rewrite Q2R_div; first rewrite {2}/Q2R/=; lra.
 have rabneq: forall phi', ~ rab phi' == 0.
 	move => phi' eq; move: (Qeq_eqR (rab phi') 0 eq).
 	apply Rgt_not_eq; replace (Q2R 0) with 0 by by rewrite /Q2R/=; lra.
@@ -226,68 +223,59 @@ have rabneq: forall phi', ~ rab phi' == 0.
 replace (x * y - r * q) with ((x - r) * y + r * (y - q)) by field.
 apply: triang.
 replace (Q2R eps) with (Q2R (eps/ (1 + 1)) + Q2R (eps/ (1 + 1))); last first.
-	rewrite Q2R_div; last by lra.
-	by rewrite {2 4}/Q2R/=; lra.
+	rewrite Q2R_div; first rewrite {2 4}/Q2R/=; lra.
 apply: Rplus_le_compat.
 	specialize (rab_pos psi).
 	rewrite Rabs_mult.
 	case: (classic (y = 0)) => [eq | neq].
-		apply/ Rle_trans; last apply Rlt_le;last apply: g0.
-		by rewrite eq Rabs_R0; lra.
+		by apply/ Rle_trans; last apply/ Rlt_le /g0; rewrite eq Rabs_R0; lra.
 	rewrite -(Rmult_1_r (Q2R (eps / (1 + 1)))) -(Rinv_l (Rabs y)); last by split_Rabs; lra.
 	rewrite -Rmult_assoc;	apply: Rmult_le_compat; [ split_Rabs | split_Rabs | | ]; try lra.
-	apply/ Rle_trans; first apply phinx; last first.
-		rewrite Q2R_div => //.
-		apply Rmult_le_compat; [ | apply Rlt_le; apply Rinv_0_lt_compat; lra | | ].
-				rewrite Q2R_div; first rewrite {2}/Q2R/=; first apply Rlt_le; lra.
-			by rewrite !Q2R_div; [ | lra | lra]; apply Rmult_le_compat_r; first by rewrite /Q2R/=; lra.
-		apply: Rinv_le_contravar; first	exact: Rabs_pos_lt.
-		rewrite /rab {1}/Q2R/=; replace (/1) with 1 by lra; rewrite Rmult_1_r.
-		apply/ Rle_trans; last apply/ Rlt_le; last apply: (archimed (Rabs (Q2R (psi (1#2)))+1)).1.
-		suffices: (Rabs y -Rabs (Q2R (psi (1#2))) <= 1) by lra.
-		apply/ Rle_trans; first by apply: Rabs_triang_inv.
-		apply: Rle_trans; first apply: psiny; rewrite /Q2R/=; lra.
-	rewrite Q2R_div => //.
-	apply Rmult_gt_0_compat; last by apply Rlt_gt; apply Rinv_0_lt_compat; lra.
-	apply Rlt_gt; rewrite Q2R_div; last by lra.
-	rewrite {2}/Q2R/=; lra.
+	apply/ Rle_trans; first apply phinx; rewrite Q2R_div => //.
+		apply Rmult_gt_0_compat; last by apply Rlt_gt; apply Rinv_0_lt_compat; lra.
+		by apply Rlt_gt; rewrite Q2R_div; first rewrite {2}/Q2R/=; lra.
+	apply Rmult_le_compat; [ | apply Rlt_le; apply Rinv_0_lt_compat; lra | | ].
+			rewrite Q2R_div; first rewrite {2}/Q2R/=; first apply Rlt_le; lra.
+		by rewrite !Q2R_div; [ | lra | lra]; apply Rmult_le_compat_r; first by rewrite /Q2R/=; lra.
+	apply: Rinv_le_contravar; first	exact: Rabs_pos_lt.
+	rewrite /rab {1}/Q2R/=; replace (/1) with 1 by lra; rewrite Rmult_1_r.
+	apply/ Rle_trans; last apply/ Rlt_le; last apply: (archimed (Rabs (Q2R (psi (1#2)))+1)).1.
+	suffices: (Rabs y -Rabs (Q2R (psi (1#2))) <= 1) by lra.
+	apply/ Rle_trans; first by apply: Rabs_triang_inv.
+	apply: Rle_trans; first apply: psiny; rewrite /Q2R/=; lra.
 rewrite Rabs_mult.
 case: (classic (r = 0)) => [eq | neq].
-	apply/ Rle_trans; last apply Rlt_le;last apply: g0.
-	by rewrite eq Rabs_R0; lra.
+	by apply/ Rle_trans; [rewrite eq Rabs_R0 | apply/ Rlt_le/ g0]; lra.
 rewrite /Qdiv -(Rmult_1_l (Q2R (eps / (1 + 1)))).
 rewrite -(Rinv_r (Rabs r)); last by split_Rabs; lra.
 rewrite Rmult_assoc.
 apply: Rmult_le_compat; [ split_Rabs | split_Rabs | | ]; try lra; rewrite Rmult_comm.
-apply/ Rle_trans; first rewrite /q; first apply psiny; last first.
-	rewrite Q2R_div => //.
-	apply Rmult_le_compat_l => //; first by rewrite Q2R_div => //; apply Rlt_le; rewrite {2}/Q2R/=; lra.
-	apply Rle_Rinv; first exact: Rabs_pos_lt.
-		specialize (rab_pos phi); lra.
-	rewrite /rab {1}/Q2R/=; replace (/1) with 1 by lra; rewrite Rmult_1_r.
-	apply/ Rle_trans; last apply/ Rlt_le; last apply: (archimed (Rabs (Q2R (phi (1#2)))+1)).1.
-	suffices: (Rabs r -Rabs (Q2R (phi (1#2))) <= 1) by lra.
-	apply/ Rle_trans; first apply: Rabs_triang_inv.
-	apply: Rle_trans.
-		replace (r - Q2R (phi (1#2))) with ((r - x) - (Q2R (phi (1#2)) - x)) by field.
-		apply triang.
-		apply/ Rplus_le_compat.
-			rewrite Rabs_minus_sym; apply phinx.
-			specialize (rab_pos psi); rewrite !Q2R_div => //; rewrite {2}/Q2R/=.
-			by apply Rmult_gt_0_compat; last apply Rlt_gt; last apply Rinv_0_lt_compat; lra.
-		rewrite Ropp_minus_distr.
-		by apply phinx; rewrite /Q2R/=; lra.
-	specialize (rab_pos psi).
-	rewrite !Q2R_div; [ | by lra | ] => //.
-	rewrite {4}/Q2R/= {1}/Rdiv.
-	replace (1 * / 2) with (/2 * 1) by lra.
-	rewrite -(Rinv_r (Q2R (rab psi))); try lra.
-	rewrite -Rmult_assoc -Rmult_plus_distr_r.
-	apply: Rmult_le_compat_r; first by apply Rlt_le; apply Rinv_0_lt_compat; lra.
-	suffices: Q2R (trunc eps) / Q2R (1 + 1) <= Q2R (rab psi)/2 by lra.
-	rewrite !/Rdiv {2}/Q2R/=; apply Rmult_le_compat; try lra.
-rewrite Q2R_div => //; apply Rmult_gt_0_compat=>//; apply Rlt_gt.
-apply Rinv_0_lt_compat; have:= rab_pos phi; lra.
+apply/ Rle_trans; first rewrite /q; first apply psiny.
+	rewrite Q2R_div => //; apply Rmult_gt_0_compat=>//; apply Rlt_gt.
+	by apply Rinv_0_lt_compat; have:= rab_pos phi; lra.
+rewrite Q2R_div => //.
+apply Rmult_le_compat_l => //; first by rewrite Q2R_div => //; apply Rlt_le; rewrite {2}/Q2R/=; lra.
+apply Rle_Rinv; first exact: Rabs_pos_lt.
+	specialize (rab_pos phi); lra.
+rewrite /rab {1}/Q2R/=; replace (/1) with 1 by lra; rewrite Rmult_1_r.
+apply/ Rle_trans; last apply/ Rlt_le; last apply: (archimed (Rabs (Q2R (phi (1#2)))+1)).1.
+suffices: (Rabs r -Rabs (Q2R (phi (1#2))) <= 1) by lra.
+apply/ Rle_trans; first apply: Rabs_triang_inv.
+apply: Rle_trans.
+	replace (r - Q2R (phi (1#2))) with ((r - x) - (Q2R (phi (1#2)) - x)) by field.
+	apply /triang/ Rplus_le_compat; last by rewrite Ropp_minus_distr; apply phinx; rewrite /Q2R/=; lra.
+	rewrite Rabs_minus_sym; apply phinx.
+	specialize (rab_pos psi); rewrite !Q2R_div => //; rewrite {2}/Q2R/=.
+	by apply Rmult_gt_0_compat; try lra; apply /Rlt_gt/ Rinv_0_lt_compat; lra.
+specialize (rab_pos psi).
+rewrite !Q2R_div; [ | by lra | trivial].
+rewrite {4}/Q2R/= {1}/Rdiv.
+replace (1 * / 2) with (/2 * 1) by lra.
+rewrite -(Rinv_r (Q2R (rab psi))); try lra.
+rewrite -Rmult_assoc -Rmult_plus_distr_r.
+apply: Rmult_le_compat_r; first by apply Rlt_le; apply Rinv_0_lt_compat; lra.
+suffices: Q2R (trunc eps) / Q2R (1 + 1) <= Q2R (rab psi)/2 by lra.
+by rewrite !/Rdiv {2}/Q2R/=; apply Rmult_le_compat; try lra.
 Defined.
 
 Lemma Rmult_cmpt:
@@ -321,31 +309,6 @@ rewrite Rabs_Ropp.
 by apply (prop' (M + N)%nat); rewrite /addn/addn_rec; apply/leP; lia.
 Qed.
 
-Lemma pow_n_prec:
-	forall n, (fun x => pow x n) \is_prec_function.
-Proof.
-elim.
-	rewrite /pow/=.
-	exists (fun phi eps => 1%Q).
-	move => phi x phinx eps epsg0; split_Rabs; lra.
-move => n ih /=.
-apply/ prec_fun_comp; [apply diag_prec_fun | | ].
-	apply/ prec_fun_comp; [ apply prod_prec_fun; [ apply (id_prec_fun) | apply ih] | apply Rmult_prec | ].
-	by move => x.
-by trivial.
-Defined.
-
-Compute (projT1 (pow_n_prec 5)) (projT1 (Q_cmpt_elts (1#2))) 1%Q.
-
-Lemma pow_prec:
-	(fun p => pow p.1 p.2) \is_prec_function.
-Proof.
-exists (fun phi eps => (projT1 (pow_n_prec ((rprj phi) (star:questions rep_space_nat)))) (lprj phi) eps).
-move => phi x [lphinx rphinn].
-have prop:= (projT2 (pow_n_prec (rprj phi star)) (lprj phi) x.1 lphinx).
-by have ->: x.2 = rprj phi star by rewrite /delta/= in rphinn; rewrite rphinn.
-Qed.
-
 Lemma lim_not_cont: ~lim \has_continuous_realizer.
 Proof.
 move => [/= F [/= rlzr cont]].
@@ -369,12 +332,14 @@ have qnfdF: qn \from_dom F.
 	have [x [[phi [Fqnphi]]] _ _]:= (rlzr qn qnfd).1.
 	by exists phi.
 have [L Lprop]:= (cont qn 1%Q qnfdF).
-set m:= List.fold_left max (unzip1 L) 0%N.
+set fold := @List.fold_right nat nat.
+set m:= fold maxn 0%N (unzip1 L).
 have mprop: forall n eps, List.In (n, eps) L -> (n <= m)%nat.
 	move: Lprop => _; rewrite /m; move: m => _.
 	elim: L => // a L ih n eps /= lstn.
-	rewrite /= in lstn.
-	admit.
+	case: lstn => ass.
+		by apply/ leq_trans; last apply leq_maxl; rewrite ass.
+	by apply/ leq_trans; last apply leq_maxr; apply (ih n eps).
 pose yn n := if (n <= m)%nat then 0 else 3.
 pose rn (p: nat * Q) := if (p.1 <= m)%nat then 0%Q else 3#1.
 have rnyn: @delta (rep_space_usig_prod rep_space_R) rn yn.
@@ -420,7 +385,7 @@ have:= psin0 1%Q l01.
 have:= phin3 1%Q l01.
 rewrite {2 4}/Q2R/=.
 split_Rabs; lra.
-Admitted.
+Qed.
 
 Lemma Z_tech a b : (0 < b -> a / b * b > a  - b)%Z.
 Proof.
@@ -457,7 +422,6 @@ suffices ineq'': (Qnum eps - Z.pos (Qden eps)) < (Qnum eps / Z.pos (Qden eps))%Z
 	replace (IZR(Qnum eps / Z.pos (Qden eps))%Z) with
 		((Qnum eps / Z.pos (Qden eps))%Z * Z.pos (Qden eps)/ Z.pos (Qden eps)); last field => //.
 	by apply Rmult_lt_compat_r; first by apply Rinv_0_lt_compat; apply IZR_lt; lia.
-	Search _ (_ <> 0)%Z Zlt.
 	apply IZR_neq; apply Z.neg_pos_cases; right; lia.
 rewrite -mult_IZR -minus_IZR.
 apply IZR_lt; lia.
