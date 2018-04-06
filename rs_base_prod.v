@@ -258,6 +258,15 @@ split => /=; [rewrite lprj_pair | rewrite rprj_pair].
 by apply Grg; rewrite rprj_pair.
 Qed.
 
-Definition is_prec_prod_fun (X Y Z: rep_space) (f: X -> Y -> Z) :=
-	{F | F \is_realizer_function_for (fun p => f p.1 p.2)}.
+(*
+Fixpoint T n := match n with
+	| 0 => rep_space
+	| S n => (rep_space * T n)%type
+end.
+Fixpoint curry (n: nat): T n -> rep_space -> Type:=
+	match n with
+		| 0 => (fun X Y => X -> Y)
+		| S n => (fun p Y => (p.1: rep_space) -> curry p.2 Y)
+	end.
+*)
 End PRODUCTSPACES.
