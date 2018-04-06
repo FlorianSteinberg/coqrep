@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import all_core rs_base rs_dscrt.
+Require Import all_rs_base rs_dscrt.
 Require Import FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.
@@ -35,6 +35,21 @@ Canonical rep_space_usig_prod (X: rep_space) := @make_rep_space
 Lemma usig_base X (an: nat -> space X) phi:
 	phi \is_name_of an -> forall n, (fun q => phi (n,q)) \is_name_of (an n).
 Proof. done. Qed.
+
+Definition ptw (X: rep_space) (op: X * X -> X) (fg: (nat -> X) * (nat -> X)) :=
+	(fun n => op (fg.1 n, fg.2 n)).
+
+Lemma ptw_prec X (op: rep_space_prod X X -> X):
+	op \is_prec_function -> (ptw op) \is_prec_function.
+Proof.
+move => [Mop Mprop].
+exists (fun (phi: names (rep_space_prod (rep_space_usig_prod X)(rep_space_usig_prod X))) q =>
+	Mop (name_pair (fun q' => lprj phi (q.1, q')) (fun q' => rprj phi (q.1, q'))) q.2).
+move => phi [an bn] [/=phinan phinbn] n/=.
+rewrite /ptw/=.
+apply ((Mprop (name_pair (fun q' => lprj phi (n, q')) (fun q' => rprj phi (n, q')))) (an n, bn n)).
+by split; rewrite rprj_pair lprj_pair/=; [apply phinan | apply phinbn].
+Qed.
 
 (*
 Lemma wiso_usig X:
