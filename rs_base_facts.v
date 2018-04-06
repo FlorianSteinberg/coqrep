@@ -7,6 +7,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Section COMPUTABILITIES_AND_COMPOSITION.
+Set Printing Implicit.
 
 Lemma prec_fun_cmpt_elt (X Y: rep_space) (f: X -> Y) (x: X):
 	x \is_computable_element -> f \is_prec_function -> (f x) \is_computable_element.
@@ -125,8 +126,8 @@ End COMPUTABILITIES_AND_COMPOSITION.
 Section SPECIAL_FUNCTIONS.
 
 Lemma cnst_fun_prec (X Y: rep_space) (y: Y):
-	y \is_computable_element -> (fun x:X => y) \is_prec_function.
-Proof. by move => [psi psiny]; exists (fun _ => psi). Defined.
+	y \is_computable_element -> (fun _: X => y) \is_prec_function.
+Proof. by move => /=[psi psiny]; exists (fun _ => psi). Defined.
 
 Lemma prec_cmpt (X Y:rep_space) (f: X ->> Y):
 	f \is_prec -> f \is_computable.
