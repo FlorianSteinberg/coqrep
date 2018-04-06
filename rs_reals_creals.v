@@ -5,7 +5,7 @@ that approach but it lead to extensive additional work so I gave up at some poin
 the approach in the present file is more appropriate. *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import all_core rs_base representation_facts.
+Require Import all_rs_base rs_dscrt rs_usig.
 Require Import Qreals Reals Psatz FunctionalExtensionality ClassicalChoice.
 
 Set Implicit Arguments.
@@ -294,8 +294,6 @@ Lemma Rmult_cmpt:
 	(fun p => Rmult p.1 p.2) \is_computable_function.
 Proof. by apply prec_fun_cmpt; apply Rmult_prec. Qed.
 
-Require Import basic_represented_spaces.
-
 (* The following is different from what is used in the standard library in that epsilon is rational
 instead of real. It should be straight forward to proof the limits to be equivalent by using the 
 density of the rationals *)
@@ -523,7 +521,7 @@ Lemma lim_eff_prec:
 	lim_eff \is_prec.
 Proof.
 exists (fun phin eps => phin (S (Pos_size (Qden eps))%nat, (Qmult eps (1#2)))).
-rewrite /is_rlzr F2MF_comp.
+rewrite /rlzr F2MF_comp.
 move => phin [x [[xn [phinxn [[y eff] limxnx]]] prop]].
 have limxny: lim xn y.
 	move => eps epsg0.

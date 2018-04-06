@@ -39,6 +39,21 @@ apply (@Countable.Mixin _ sec (fun q => some (cnt q))).
 move => q; congr Some; apply issec.
 Qed.
 
+Lemma option_count T:
+	T \is_countable -> (option T) \is_countable.
+Proof.
+move => [cnt sur].
+exists (fun n => match n with
+	| 0 => None
+	| S n' => Some (cnt n')
+end).
+move => x.
+case x; last by exists 0.
+move => a.
+have [n cntna]:= sur a.
+by exists (S n); rewrite cntna.
+Qed.
+
 Lemma sum_count Q Q':
   Q \is_countable -> Q' \is_countable -> (Q + Q') \is_countable.
 Proof.
@@ -95,6 +110,23 @@ end.
 exists cnt.
 move => q.
 exists (@pickle (prod_countType (Countable.Pack ctQ Q) (Countable.Pack ctQ' Q')) q).
+by rewrite /cnt (issec q).
+Qed.
+
+Lemma list_count Q:
+	Q \is_countable -> (list Q) \is_countable.
+Proof.
+move => Qcount.
+have [ctQ _] := count_countType Qcount.
+have [Qcnt Qsur]:= Qcount.
+have issec:= (@pickleK_inv (seq_countType (Countable.Pack ctQ Q))).
+pose cnt n := match (@pickle_inv (seq_countType (Countable.Pack ctQ Q))) n with
+	| Some q => q
+	| None => nil
+end.
+exists cnt.
+move => q.
+exists (@pickle (seq_countType (Countable.Pack ctQ Q)) q).
 by rewrite /cnt (issec q).
 Qed.
 End COUNTABILITY.
