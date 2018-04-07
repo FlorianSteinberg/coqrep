@@ -16,11 +16,13 @@ rs_base_facts.v
 rs_base_iso.v
 all_rs_base.v
 
-rs_dscrt.v
+rs_one.v
+rs_nat.v
 rs_opt.v
 rs_usig.v
 rs_list.v
 rs_list_rev.v
+rs_dscrt.v
 rs_sets.v
 rs_sprd.v
 all_rs.v
