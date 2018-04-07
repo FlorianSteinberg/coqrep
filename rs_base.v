@@ -143,14 +143,14 @@ rewrite (sing x y z) => //.
 by rewrite (rep_sing X phi x x').
 Qed.
 
-Lemma sing_rlzr (X Y: rep_space) (f: X ->> Y) F: f \is_single_valued -> F \is_single_valued ->
+Lemma sing_rlzr (X Y: rep_space) (f: X ->> Y) F: F \is_single_valued -> f \is_single_valued ->
 	F \is_realizer_of f
 	<->
 	(forall phi x, phi \is_name_of x -> x \from_dom f -> phi \from_dom F)
 		/\
 	(forall phi x Fphi y, phi \is_name_of x -> f x y -> F phi Fphi -> Fphi \is_name_of y).
 Proof.
-move => fsing Fsing.
+move => Fsing fsing.
 split.
 	by move => Frf; split; [exact: rlzr_dom | exact: rlzr_val_sing].
 move => [prp cnd] phi [y [[x [phinx fxy]] _]].
@@ -198,6 +198,28 @@ split; first by exists x; rewrite (rep_sing Y (F phi) y'' y').
 by move => x' phinx'; rewrite (rep_sing X phi x' x).
 Qed.
 
+Lemma rlzr_F2MF (X Y: rep_space) (f: X -> Y) F:
+	F \is_realizer_of (F2MF f)
+	<->
+	forall phi x, phi \is_name_of x -> phi \from_dom F /\ forall Fphi, F phi Fphi -> Fphi \is_name_of (f x).
+Proof.
+split.
+	move => Frf phi x phinx; split; first by apply/ rlzr_dom; [apply Frf | apply phinx | apply F2MF_tot ].
+	by move => Fphi FphiFphi; apply/ rlzr_val_sing; [apply F2MF_sing | apply Frf | apply phinx | | ].
+move => prp phi [_ [[x [phinx _]] _]].
+split.
+	exists (f x).
+	split; last by move => Fphi FphiFphi; exists (f x); apply (prp phi x phinx).2.
+	have [Fphi FphiFphi]:= (prp phi x phinx).1.
+	exists Fphi; split => //.
+	by apply (prp phi x phinx).2.
+move => y [[Fphi [FphiFphi Fphiny]] cnd].
+split; last by move => a b; exact: F2MF_tot.
+exists x; split => //.
+have Fphinfx := (prp phi x phinx).2 Fphi FphiFphi.
+by rewrite (rep_sing Y Fphi y (f x)).
+Qed.
+
 Lemma frlzr_is_rep X Y:
   (@frlzr X Y) \is_representation.
 Proof.
@@ -237,7 +259,8 @@ Notation "f '\is_realized_by' F" := (rlzr F f) (at level 2).
 Notation "F '\is_realizer_of' f" := (rlzr F f) (at level 2).
 Notation "F '\is_realizer_function_for' f" := (frlzr F f) (at level 2).
 
-Section COMPUTABILITY_DEFINITIONS.
+Section DEFINITIONS.
+
 Definition is_comp_elt (X: rep_space) (x: X) :=
 	{phi| phi \is_name_of x}.
 
@@ -255,7 +278,7 @@ Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
 
 Definition is_prec_fun (X Y: rep_space) (f: X -> Y) :=
 	{M | M \is_realizer_function_for f}.
-End COMPUTABILITY_DEFINITIONS.
+End DEFINITIONS.
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
 Notation "x '\is_computable_element'" := (is_comp_elt x) (at level 2).
 Notation "f '\is_computable'" := (is_comp f) (at level 2).

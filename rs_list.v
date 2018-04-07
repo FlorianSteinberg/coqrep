@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import all_rs_base rs_dscrt rs_opt rs_usig.
+Require Import all_rs_base rs_dscrt rs_one rs_nat rs_opt rs_usig.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

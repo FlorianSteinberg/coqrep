@@ -12,6 +12,10 @@ Definition is_count Q :=
 	exists cnt: nat -> Q, cnt \is_surjective_function.
 Notation "T '\is_countable'" := (is_count T) (at level 2).
 
+Lemma nat_count:
+	nat \is_countable.
+Proof. exists (fun n => n) => n; by exists n. Qed.
+
 Lemma count_countType Q:
 	Q \is_countable -> exists P:Countable.class_of Q, true.
 Proof.

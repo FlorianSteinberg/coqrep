@@ -259,14 +259,15 @@ by apply Grg; rewrite rprj_pair.
 Qed.
 
 (*
-Fixpoint T n := match n with
-	| 0 => rep_space
-	| S n => (rep_space * T n)%type
-end.
-Fixpoint curry (n: nat): T n -> rep_space -> Type:=
-	match n with
-		| 0 => (fun X Y => X -> Y)
-		| S n => (fun p Y => (p.1: rep_space) -> curry p.2 Y)
-	end.
+Class Uncurry T (f : T) src tgt := { prog : src -> tgt }.
+Arguments prog {T} f {src tgt _}.
+
+Instance Uncurry_base (X Y : rep_space) f : @Uncurry (X -> Y) f _ _ :=
+  {| prog := f |}.
+Instance Uncurry_step (X Y : rep_space) Z (f : X -> Y -> Z)
+                       T (g : forall a, @Uncurry (Y -> Z) (f a) Y T) :
+                                          @Uncurry (X -> Y -> Z) f (X * Y) T :=
+  {| prog := (fun x : rep_space_prod X Y => @prog _ _ _ _ (g (fst x)) (snd x)) |}.
+Notation "f '\is_prec_function'" := (is_prec_fun (prog f)) (at level 2).
 *)
 End PRODUCTSPACES.
