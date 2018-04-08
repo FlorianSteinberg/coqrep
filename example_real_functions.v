@@ -1,8 +1,5 @@
-(* This is example shows how to use a representation of the real numbers by means of rational
-approximations to compute on the reals. Usually integers are prefered to avoid to many problems
-that arise due to the possibility to use unnecessary high precission approximations. I tried
-that approach but it lead to extensive additional work so I gave up at some point. I feel that
-the approach in the present file is more appropriate. *)
+(* This is example uses the Cauchy representation on the reals. This means that everything is executable 
+but slow. *)
 
 From mathcomp Require Import all_ssreflect.
 Require Import all_rs rs_reals_creals example_polynomials.
@@ -15,18 +12,14 @@ Unset Printing Implicit Defensive.
 Import QArith.
 Local Open Scope R_scope.
 
-(* The following is different from what is used in the standard library in that epsilon is rational
-instead of real. It should be straight forward to proof the limits to be equivalent by using the 
-density of the rationals *)
-
 Section REALFUNCTIONS.
+
+(* To prove that the power function is computable, we first prove that for each n the function x => x^n is
+computable (prec is for "primitive recursive" and is stronger than computability). *)
 Lemma pow_n_prec:
 	forall n, (fun x => pow x n) \is_prec_function.
 Proof.
-elim.
-	rewrite /pow/=.
-	exists (fun phi eps => 1%Q).
-	move => phi x phinx eps epsg0; split_Rabs; lra.
+elim; first by exists (fun phi eps => 1%Q) => phi x phinx eps epsg0; split_Rabs; lra.
 move => n ih /=.
 apply/ prec_fun_comp; [apply diag_prec_fun | | ].
 	apply/ prec_fun_comp; [ apply prod_prec_fun; [ apply (id_prec_fun) | apply ih] | apply Rmult_prec | ].
@@ -34,8 +27,16 @@ apply/ prec_fun_comp; [apply diag_prec_fun | | ].
 by trivial.
 Defined.
 
-Compute (projT1 (pow_n_prec 5)) (projT1 (Q_cmpt_elts (1#2))) 1%Q.
+(* The above is directly executable. To execute in a rational number q, you first have to get a name of the
+rational number. You can either proof that (fun _ => q) does the trick or use the lemma Q_cmpt_elts.
+To get the algorithmic content use projT1. So the following composes an algorithm extracted from the
+above lemma where n is set to 5 with an algorithm extracted from the lemma Q_cmpt_elts where the rational
+parameter is set to 1/2 to get an algorithm that produces arbitrary precision approximations to (1/2)^5 and
+we execute this algorithm on input 1/100 to get a 1/100-approximation. *)
+Compute (projT1 (pow_n_prec 5)) (projT1 (Q_cmpt_elts (1#2))) (1#100)%Q.
 
+(* The proof that x^n is computable is uniform and can be turned into a statment that the function (n,x) => x^n
+is computable. In terms of executability this does not add anything. *)
 Lemma pow_prec:
 	(fun p => pow p.1 p.2) \is_prec_function.
 Proof.
@@ -45,51 +46,41 @@ have prop:= (projT2 (pow_n_prec (rprj phi star)) (lprj phi) x.1 lphinx).
 by have ->: x.2 = rprj phi star by rewrite /delta/= in rphinn; rewrite rphinn.
 Qed.
 
+(* The standard library likes to use real epsilons and strict inequality, we use rational epsilons and <=.
+These differences are irrelevant since the rationals accumulate at zero. For instance, compare the limit
+"Un_cv" defined in the standard library and the limit "lim" defined in this library. Here "=~=" is the
+a notation for the equality of multivalued functions and translates to forall s t, f s t <-> g s t *)
+Lemma Uncv_lim:
+	Un_cv =~= lim.
+Proof.
+move => xn x.
+split => limxnx eps epsg0.
+	have [N Nprop]:= limxnx (Q2R eps) epsg0.
+	exists N => n ineq.
+	have ineq': (n >= N)%coq_nat by apply /leP.
+	have:= Nprop n ineq'; rewrite /R_dist.
+	split_Rabs; lra.
+have [qeps [qepsg0 qepsleps]]:= Q_accumulates_to_zero epsg0.
+have [N Nprop]:= limxnx (qeps) qepsg0.
+exists N => n ineq.
+have ineq': (N <= n)%nat by apply /leP.
+have:= Nprop n ineq'; rewrite /R_dist.
+split_Rabs; lra.
+Qed.
+
+(* Thus, the discontinuity proven for lim can be transfered to Un_cv *)
+Lemma Uncv_not_cont:
+	~ Un_cv \has_continuous_realizer.
+Proof.
+move => discont.
+apply lim_not_cont.
+rewrite -Uncv_lim.
+done.
+Qed.
+
+
+(* It is easy to define subspaces *)
 Definition I := (@rep_space_sub_space rep_space_R (fun x => -1 <= x <= 1)).
-
-Definition ps_eval an (x: I) y:=
-	lim (fun m => eval (in_seg an m) (projT1 x)) y.
-
-Definition geo_series n := 1/(two_power_nat n).
-
-Lemma geo_series_comp_elt:
-	geo_series \is_computable_element.
-Proof.
-exists (fun p => 1/inject_Z (two_power_nat p.1))%Q.
-move => n eps epsg0 /=.
-suffices <-: geo_series n  = Q2R (1 / inject_Z (two_power_nat n)) by split_Rabs; lra.
-rewrite /geo_series.
-suffices ->: (Q2R (1 / inject_Z (two_power_nat n))) = (1/ Q2R (inject_Z (two_power_nat n))).
-	suffices ->: IZR (two_power_nat n) = Q2R (inject_Z(two_power_nat n)) by trivial.
-	by rewrite /Q2R/inject_Z /=; rewrite Rinv_1 Rmult_1_r.
-by rewrite /Q2R/= Rinv_1 Rmult_1_r/=.
-Defined.
-
-(*
-Lemma cont_rlzr_cont (f: R -> R):
-	(F2MF f) \has_continuous_realizer <-> continuity f.
-Proof.
-split.
-	move => [F [Frf Fcont]] x e eg0.
-have [phi phinx]:= rep_sur rep_space_R x.
-have [eps [epsg0 ineq]]: exists eps: Q, 0 < Q2R eps < e.
-	admit.
-have phifd: phi \from_dom F by apply/ rlzr_dom; [apply Frf |	apply phinx | apply F2MF_tot].
-have [L Lprop]:= Fcont phi eps phifd.
-Admitted.
-
-Lemma geo_series_sum x:
-	ps_eval geo_series x (1/(1-(projT1 x)/2)).
-Proof.
-Admitted.
-
-Lemma analytic (an: nat -> R):
-	eff_zero an -> (fun (x: I) (y: R) => ps_eval an x y) \is_prec.
-Proof.
-move => ez.
-rewrite /eff_zero in ez.
-Admitted.
-*)
 End REALFUNCTIONS.
 
 
