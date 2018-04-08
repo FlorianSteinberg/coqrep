@@ -564,4 +564,58 @@ split; first by exists xn; do 2 split => //; exists x.
 move => yn phinyn; rewrite (rep_sing _ phin yn xn) => //.
 by exists x; split => //; exists x.
 Qed.
+
+(*
+Lemma cont_rlzr_cont (f: R -> R):
+	(F2MF f) \has_continuous_realizer <-> continuity f.
+Proof.
+split.
+	move => [F [Frf Fcont]] x e eg0.
+	have [phi phinx]:= rep_sur rep_space_R x.
+	have [eps [epsg0 epsle]]:= Q_accumulates_to_zero eg0.
+	have phifd: phi \from_dom F by apply/ rlzr_dom; [apply Frf |	apply phinx | apply F2MF_tot].
+	have [L Lprop]:= Fcont phi eps phifd.
+	set fold := @List.fold_right R Q.
+	set delta:= fold (fun q => Rmin (Q2R q)) (Q2R eps) L.
+	exists delta.
+		have: delta <= e.
+			rewrite /delta/=.
+			elim: (L) => /=; try lra; move => a K ih.
+			apply/ Rle_trans; [exact: Rmin_r | exact: ih].
+	split.
+
+Admitted.
+*)
+
+Definition ps_eval an (x: I) y:=
+	lim (fun m => eval (in_seg an m) (projT1 x)) y.
+
+Definition geo_series n := 1/(two_power_nat n).
+
+Lemma geo_series_comp_elt:
+	geo_series \is_computable_element.
+Proof.
+exists (fun p => 1/inject_Z (two_power_nat p.1))%Q.
+move => n eps epsg0 /=.
+suffices <-: geo_series n  = Q2R (1 / inject_Z (two_power_nat n)) by split_Rabs; lra.
+rewrite /geo_series.
+suffices ->: (Q2R (1 / inject_Z (two_power_nat n))) = (1/ Q2R (inject_Z (two_power_nat n))).
+	suffices ->: IZR (two_power_nat n) = Q2R (inject_Z(two_power_nat n)) by trivial.
+	by rewrite /Q2R/inject_Z /=; rewrite Rinv_1 Rmult_1_r.
+by rewrite /Q2R/= Rinv_1 Rmult_1_r/=.
+Defined.
+
+(*
+Lemma geo_series_sum x:
+	ps_eval geo_series x (1/(1-(projT1 x)/2)).
+Proof.
+Admitted.
+
+Lemma analytic (an: nat -> R):
+	eff_zero an -> (fun (x: I) (y: R) => ps_eval an x y) \is_prec.
+Proof.
+move => ez.
+rewrite /eff_zero in ez.
+Admitted.
+*)
 End CAUCHYREALS.
