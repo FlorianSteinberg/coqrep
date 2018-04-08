@@ -245,6 +245,10 @@ Definition hcr (X Y : rep_space) (f : X ->> Y) :=
 	@is_cont (questions X) (answers X) (questions Y) (answers Y) F.
 Notation "f '\has_continuous_realizer'":= (hcr f) (at level 2).
 
+Global Instance hcr_prpr (X Y: rep_space):
+	Proper (@equiv (names X) (names Y) ==> @equiv (space X) (space Y) ==> iff) (@rlzr X Y).
+Proof. by move => F G FeG f g feg; rewrite /rlzr FeG feg. Qed.
+
 Lemma comp_hcr (X Y Z: rep_space) (f: X ->> Y) (g: Y ->> Z):
 	f \has_continuous_realizer -> g \has_continuous_realizer -> (g o f) \has_continuous_realizer.
 Proof.
