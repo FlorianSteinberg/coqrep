@@ -31,4 +31,4 @@ rs_reals_creals.v
 
 examples_continuity.v
 example_polynomials.v
-example_analytic_functions.v
+example_real_functions.v
