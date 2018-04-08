@@ -18,6 +18,28 @@ Canonical rep_space_nat := @make_rep_space
 	nat_count
 	(id_rep_is_rep nat).
 
+Notation nS phi q := (S (phi q)).
+
+Lemma S_prec_fun:
+	S \is_prec_function.
+Proof.
+by exists (fun phi q => nS phi q); move => phi x /= <-.
+Qed.
+
+Lemma nat_prec_fun (f: nat -> nat):
+	f \is_prec_function.
+Proof.
+exists (fun phi q => f (phi q): answers rep_space_nat).
+by move => phi x /= <-.
+Qed.
+
+Lemma nat_nat_prec_fun (f: nat -> nat -> nat):
+	(fun p => f p.1 p.2) \is_prec_function.
+Proof.
+exists (fun phi q => f (phi (inl star)).1 (phi (inr star)).2: answers rep_space_nat).
+by move => phi x /= [<- <-].
+Qed.
+
 Lemma nat_rs_prec_pind (Z X: rep_space) (f0: Z -> X) (fS: (Z * X) -> X) (f: (Z * nat) -> X):
 	f0 \is_prec_function -> fS \is_prec_function ->
 		(forall p, f p = (fix f' z n := match n with
@@ -60,5 +82,4 @@ rewrite feq /=; apply MSprop.
 specialize (ih (fun _ => n)).
 by rewrite feq/= in ih; apply ih.
 Qed.
-
 End NATURALS.
