@@ -293,4 +293,23 @@ done.
 done.
 done.
 Qed.
+
+Lemma iota0_prec_fun:
+	(iota 0) \is_prec_function.
+Proof.
+exists (fun phi q => match (phi star) with
+	| 0 => (None, (0, 0))
+	| S n => match q with 
+		| inl str => (Some star, (0, 0))
+		| inr (inl star) => (None, (S n, 0))
+		| inr (inr p) => (None, (0, p.1))
+	end
+end).
+move => phi n ->/=.
+case E: n => [ | m]; first by split; [exists None | move => a b; apply F2MF_tot].
+split; last by move => a b; apply F2MF_tot.
+exists (Some (n, fun i => i)).
+by split; last by rewrite /F2MF/NXN_lst_rev -E /= map_id.
+Qed.
+
 End REVERSEDLISTS.

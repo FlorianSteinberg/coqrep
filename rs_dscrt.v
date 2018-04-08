@@ -7,11 +7,10 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Section DISCRETENESS.
-(* This Definition is equivalent to the notion Arno introduces in "https://arxiv.org/pdf/1204.3763.pdf".
-One of the drawbacks fo the version here is that it does not have a computable version.*)
-Definition is_dscrt X :=
+(* This Definition is equivalent to the notion Arno introduces in "https://arxiv.org/pdf/1204.3763.pdf".*)
+Definition dscrt X :=
 	forall Y (f: (space X) -> (space Y)), (F2MF f) \has_continuous_realizer.
-Notation "X '\is_discrete'" := (is_dscrt X) (at level 2).
+Notation "X '\is_discrete'" := (dscrt X) (at level 2).
 
 Lemma dscrt_rel X: X \is_discrete ->
 	(forall Y (f: (space X) ->> (space Y)), f \has_continuous_realizer).
