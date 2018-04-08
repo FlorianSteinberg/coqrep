@@ -152,6 +152,20 @@ move => eps ineq.
 apply/ Rbasic_fun.Rabs_le; lra.
 Defined.
 
+Lemma Ropp_prec:
+	Ropp \is_prec_function.
+Proof.
+exists (fun phi q => Qopp (phi q)) => phi x phinx eps epsg0.
+rewrite Q2R_opp; move: (phinx eps epsg0); split_Rabs; lra.
+Defined.
+
+Lemma Ropp_cmpt:
+	Ropp \is_computable_function.
+Proof.
+apply prec_fun_cmpt.
+exact: Ropp_prec.
+Qed.
+
 Lemma Rplus_prec : (fun x => Rplus (x.1) (x.2)) \is_prec_function.
 Proof.
 set Rplus_realizer := (fun phi eps =>
@@ -282,9 +296,6 @@ Lemma Rmult_cmpt:
 	(fun p => Rmult p.1 p.2) \is_computable_function.
 Proof. by apply prec_fun_cmpt; apply Rmult_prec. Qed.
 
-(* The following is different from what is used in the standard library in that epsilon is rational
-instead of real. It should be straight forward to proof the limits to be equivalent by using the 
-density of the rationals *)
 Definition lim xn x :=
 	forall eps, Q2R eps > 0 -> exists N, forall n, (N <= n)%nat -> Rabs (x - xn n) <= Q2R eps.
 
@@ -520,43 +531,37 @@ have: (fun eps : Q => phin (S (Pos_size (Qden eps)), (eps * (1 # 2))%Q)) \is_nam
 	set N := S (Pos_size (Qden eps)).
 	replace (x - Q2R (phin (N, (eps * (1 # 2))%Q))) with
 		((x - xn N) + (xn N - Q2R (phin (N, (eps * (1 # 2))%Q)))) by ring.
-	apply triang.
-	rewrite -(eps2 (Q2R eps)).
-	apply Rplus_le_compat.
+	apply triang; rewrite -(eps2 (Q2R eps)).
+	apply Rplus_le_compat; last by apply/Rle_trans; first apply phinxn; rewrite Q2R_mult {2}/Q2R/=; lra.
 	have g0: Q2R eps /2 > 0 by lra.
-	apply/Rle_trans.
-		rewrite Rabs_minus_sym.
-		apply: (eff N).
-		suffices: (2 / (2 ^ N ) <= Q2R eps) by lra.
-		rewrite -{1}(Rinv_involutive 2); try lra.
-		rewrite /Rdiv -Rinv_mult_distr; try apply pow_nonzero; try lra.
-		rewrite /Q2R -(Rmult_1_l(/ (/ 2 * 2 ^ N))).
-		apply Rmult_le_compat; try lra.
-				apply Rlt_le.
-				apply Rinv_0_lt_compat.
-				suffices: (0 < 2 ^ N) by lra.
-				apply pow_lt; lra.
-			apply IZR_le.
-			suffices: (0 < Qnum eps)%Z by lia.
-			by apply Qnum_gt; apply Rlt_Qlt; rewrite {1}/Q2R/=; lra.
-		apply Rinv_le_contravar.
-			replace (IZR (Z.pos (Qden eps))) with (INR (Pos.to_nat (Qden eps))) by by rewrite INR_IPR.
-			exact: pos_INR_nat_of_P.
-		rewrite /N.
-		apply/ Rle_trans; first by apply Rlt_le; apply IZR_lt; apply Z_size_lt.
-		suffices: IZR (two_power_nat (Z_size (Z.pos (Qden eps)))) = / 2 * 2 ^ (Pos_size (Qden eps)).+1 by lra.
-		rewrite two_power_nat_correct/=.
-		replace 2%Z with (Z.of_nat 2) by trivial.
-		rewrite Zpower_nat_powerRZ -pow_powerRZ.
-		replace (IZR (Z.of_nat 2)) with (INR 2) by trivial.
-		field; rewrite /INR; lra.
-	apply/Rle_trans; first apply phinxn; rewrite Q2R_mult {2}/Q2R/=; lra.
+	apply/Rle_trans; first by rewrite Rabs_minus_sym; apply: (eff N).
+	suffices: (2 / (2 ^ N ) <= Q2R eps) by lra.
+	rewrite -{1}(Rinv_involutive 2); last by lra.
+	rewrite /Rdiv -Rinv_mult_distr; try apply pow_nonzero; try lra.
+	rewrite /Q2R -(Rmult_1_l(/ (/ 2 * 2 ^ N))).
+	apply Rmult_le_compat; try lra.
+			apply /Rlt_le/Rinv_0_lt_compat.
+			suffices: (0 < 2 ^ N) by lra.
+			by apply pow_lt; lra.
+		apply IZR_le.
+		suffices: (0 < Qnum eps)%Z by lia.
+		by apply / Qnum_gt /Rlt_Qlt; rewrite {1}/Q2R/=; lra.
+	apply Rinv_le_contravar.
+		replace (IZR (Z.pos (Qden eps))) with (INR (Pos.to_nat (Qden eps))) by by rewrite INR_IPR.
+		exact: pos_INR_nat_of_P.
+	rewrite /N.
+	apply/ Rle_trans; first by apply Rlt_le; apply IZR_lt; apply Z_size_lt.
+	suffices: IZR (two_power_nat (Z_size (Z.pos (Qden eps)))) = / 2 * 2 ^ (Pos_size (Qden eps)).+1 by lra.
+	rewrite two_power_nat_correct/=.
+	replace 2%Z with (Z.of_nat 2) by trivial.
+	rewrite Zpower_nat_powerRZ -pow_powerRZ.
+	replace (IZR (Z.of_nat 2)) with (INR 2) by trivial.
+	field; rewrite /INR; lra.
 split; first by exists x.
 move => y cond.
 rewrite (rep_sing rep_space_R (fun eps : Q => phin (S (Pos_size (Qden eps)), (eps * (1 # 2))%Q)) y x) => //.
-split; first by exists xn; split => //; split => //; exists x.
-move => yn phinyn.
-rewrite (rep_sing _ phin yn xn) => //.
+split; first by exists xn; do 2 split => //; exists x.
+move => yn phinyn; rewrite (rep_sing _ phin yn xn) => //.
 by exists x; split => //; exists x.
 Qed.
 End CAUCHYREALS.
