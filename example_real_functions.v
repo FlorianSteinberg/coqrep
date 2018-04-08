@@ -5,8 +5,8 @@ that approach but it lead to extensive additional work so I gave up at some poin
 the approach in the present file is more appropriate. *)
 
 From mathcomp Require Import all_ssreflect.
-Require Import all_rs rs_reals_creals.
-Require Import Qreals Reals Psatz FunctionalExtensionality ClassicalChoice.
+Require Import all_rs rs_reals_creals example_polynomials.
+Require Import Qreals Reals Psatz.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -19,6 +19,7 @@ Local Open Scope R_scope.
 instead of real. It should be straight forward to proof the limits to be equivalent by using the 
 density of the rationals *)
 
+Section REALFUNCTIONS.
 Lemma pow_n_prec:
 	forall n, (fun x => pow x n) \is_prec_function.
 Proof.
@@ -46,8 +47,6 @@ Qed.
 
 Definition I := (@rep_space_sub_space rep_space_R (fun x => -1 <= x <= 1)).
 
-Require Import example_polynomials.
-
 Definition ps_eval an (x: I) y:=
 	lim (fun m => eval (in_seg an m) (projT1 x)) y.
 
@@ -66,6 +65,19 @@ suffices ->: (Q2R (1 / inject_Z (two_power_nat n))) = (1/ Q2R (inject_Z (two_pow
 by rewrite /Q2R/= Rinv_1 Rmult_1_r/=.
 Defined.
 
+(*
+Lemma cont_rlzr_cont (f: R -> R):
+	(F2MF f) \has_continuous_realizer <-> continuity f.
+Proof.
+split.
+	move => [F [Frf Fcont]] x e eg0.
+have [phi phinx]:= rep_sur rep_space_R x.
+have [eps [epsg0 ineq]]: exists eps: Q, 0 < Q2R eps < e.
+	admit.
+have phifd: phi \from_dom F by apply/ rlzr_dom; [apply Frf |	apply phinx | apply F2MF_tot].
+have [L Lprop]:= Fcont phi eps phifd.
+Admitted.
+
 Lemma geo_series_sum x:
 	ps_eval geo_series x (1/(1-(projT1 x)/2)).
 Proof.
@@ -77,8 +89,8 @@ Proof.
 move => ez.
 rewrite /eff_zero in ez.
 Admitted.
-
-
+*)
+End REALFUNCTIONS.
 
 
 
