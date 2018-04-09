@@ -14,6 +14,159 @@ rewrite leqNgt; apply: contra.
 by rewrite ltnS => /leq_sizeP/(_ i)->.
 Qed.
 
+Definition rm0 :=
+ (mulr0, mul0r, subr0, sub0r, add0r, addr0, mul0rn, mulr0n, oppr0,
+  scale0r, scaler0).
+
+Definition rm1 := (mulr1, mul1r, mulr1n).
+
+Section Lpol.
+
+Variable R : ringType.
+Implicit Type p : {poly R}.
+
+Lemma last_poly p : last 1 p != 0.
+Proof. by case: p. Qed.
+
+(* c + X * l *)
+Definition lcons (c : R) l :=
+  if l is _ :: _ then c :: l
+  else if c == 0 then [::] else [:: c].
+
+Lemma lconsE a p : 
+  lcons a p = if (a == 0) && (p == 0) then [::] else a :: p.
+Proof.
+rewrite andbC.
+case: (p =P 0) => [->|/val_eqP]; rewrite /= polyseq0 //.
+by case: polyseq.
+Qed.
+
+Lemma lcons_neq0 c p : p != 0 -> lcons c p = c :: p.
+Proof.
+move/eqP/val_eqP => /=.
+by rewrite polyseq0; case: polyseq.
+Qed.
+
+Lemma lcons_spec c p : lcons c p = p * 'X + c%:P.
+Proof.
+apply: (@eq_from_nth _ 0) => [|i].
+  have [->|/eqP pN] := (p =P 0).
+    by rewrite mul0r add0r polyseq0 polyseqC /=; case: eqP.
+  rewrite size_addl size_mulX //.
+    by case: p pN; case => //= i /eqP/val_eqP; rewrite /= polyseq0.
+  rewrite polyseqC; case: eqP => //= _.
+  by rewrite ltnS size_poly_gt0.
+rewrite coef_add_poly coefMX polyseqC /= nth_nseq.
+case: p; case => //= [|a l].
+  case: (c =P 0) => //=.
+  by case: i => //=; rewrite add0r.
+case: i => //= [|i].
+  by rewrite add0r; case: (c =P 0) => [->|].
+rewrite !ltnNge // (leq_trans (leq_b1 _)) //=.
+by rewrite addr0.
+Qed.
+
+(* c + l *)
+Definition ladd_const (c : R) l :=
+ if l is a :: l1 then
+   lcons (c + a) l1
+ else
+   if c == 0 then [::] else [:: c].
+
+Lemma ladd_const_spec c p : ladd_const c p = c%:P + p.
+Proof.
+elim/poly_ind: p => [|p a IH].
+  by rewrite addr0 polyseq0 polyseqC /=; case: eqP.
+rewrite addrCA -polyC_add -!lcons_spec /=.
+case: (polyseq _) => //=.
+by case: eqP => [->|] //=; rewrite addr0.
+Qed.
+
+(* l1 + l2 *)
+Fixpoint ladd_poly (l1 l2 : seq R) :=
+ if l1 is a :: l3 then
+   if l2 is b :: l5 then
+     lcons (a + b) (ladd_poly l3 l5)
+   else l1
+ else l2.
+
+Lemma ladd_poly_spec p1 p2 : ladd_poly p1 p2 = p1 + p2.
+Proof.
+elim/poly_ind: p1 p2  => [p2|p1 a IH p2].
+  by rewrite polyseq0 add0r.
+elim/poly_ind: p2 => [|p2 b _].
+  rewrite addr0 -lcons_spec polyseq0.
+  by case: (polyseq _) => //=; case: eqP.
+rewrite addrAC addrA -mulrDl -addrA -polyC_add -!lcons_spec -IH.
+(case: (polyseq p1); case: (polyseq p2)) => //= => [|b1 l1|b1 l1|b1 l1 b2 l2].
+- case: eqP => [->|]; first by rewrite addr0.
+  case: eqP => [->|] /=; first by rewrite add0r=> /eqP/negPf ->.
+  by rewrite addrC.
+- case: eqP => [->|/=]; first by rewrite addr0.
+  by rewrite addrC.
+- case: eqP => [->|/=]; first by rewrite add0r.
+  by rewrite addrC.
+by rewrite addrC.
+Qed.
+
+(* -l *)
+Fixpoint lopp_poly (l : seq R) :=
+ if l is a :: l1 then -a :: (lopp_poly l1) else [::].
+
+Lemma lopp_poly_spec p : lopp_poly p = - p.
+Proof.
+elim/poly_ind: p  => [|p a IH]; first by rewrite oppr0 polyseq0.
+rewrite opprD -mulNr -polyC_opp -!lcons_spec -IH.
+by case: polyseq; rewrite //= oppr_eq0; case: eqP.
+Qed.
+
+(* a *: l *)
+Fixpoint lscal_poly (a : R) l :=
+ if l is b :: l1 then
+     lcons (a * b) (lscal_poly a l1)
+ else [::].
+
+Lemma lscal_poly_spec a p : lscal_poly a p = a *: p.
+Proof.
+elim/poly_ind: p  => [|p b IH].
+  by rewrite scaler0 polyseq0.
+rewrite scalerDr scalerAl -mul_polyC -polyC_mul -!lcons_spec -IH.
+case: polyseq => //=.
+by case: eqP => [->|] //; rewrite mulr0 eqxx.
+Qed.
+
+(* l1 - l2 *)
+Fixpoint lsub_poly (l1 l2 : seq R) :=
+ if l1 is a :: l3 then
+   if l2 is b :: l5 then
+     lcons (a - b) (lsub_poly l3 l5)
+   else l1
+ else lopp_poly l2.
+
+Lemma lsub_poly_spec p1 p2 : lsub_poly p1 p2 = p1 - p2.
+Proof.
+elim/poly_ind: p1 p2  => [p2|p1 a IH p2].
+  by rewrite polyseq0 sub0r /= lopp_poly_spec.
+elim/poly_ind: p2 => [|p2 b _].
+  rewrite subr0 -lcons_spec polyseq0.
+  by case: (polyseq _) => //=; case: eqP.
+rewrite opprD -mulNr.
+rewrite addrAC addrA -mulrDl -addrA -polyC_opp -polyC_add -!lcons_spec -IH.
+(case: (polyseq p1); case: (polyseq p2)) => //= => [|b1 l1|b1 l1|b1 l1 b2 l2].
+- case: eqP => [->|].
+    by rewrite addr0 oppr_eq0; case: eqP.
+  case: eqP => [->|/=].
+    by rewrite oppr0 add0r => /eqP/negPf->.
+  by rewrite addrC.
+- case: eqP => [->|/=]; first by rewrite addr0.
+  by rewrite addrC.
+- case: eqP => [->|/=]; first by rewrite oppr0 add0r.
+  by rewrite addrC.
+by rewrite addrC.
+Qed.
+
+End Lpol.
+
 Section Tcheby.
 
 Variable R : ringType.
@@ -311,7 +464,7 @@ suff F: (pU n.+1)^+ 2 + (pU n)^+2 = 'X *+ 2 * pU n.+1 * pU n + 1.
   rewrite mulrN mulrA commr_polyX !addrA !mulrDl addrK.
   rewrite -mulrA -commr_pU mulrA addrN sub0r.
   by rewrite mulrN opprK -mulrA -commr_pU exprS expr1 exprS expr1 !mulrA addrN.
-elim:n=> [| n IH].
+elim: n => [| n IH].
   by rewrite pU1 pU0 mulr1 expr1n exprS expr1.
 rewrite pUSS exprS !mulrBr !mulrBl -!addrA; congr (_ + _).
   rewrite !(mulrnAl,mulrnAr); do 2 congr (_ *+ _).
@@ -320,173 +473,102 @@ congr (_ + _); first by rewrite -commr_pU -!mulrA commr_pU.
 by rewrite opprB addrC addrA IH [_+1]addrC addrK.
 Qed.
 
-Fixpoint b q (x : R) :=
+Fixpoint Cb q (x : R) :=
  if q is a :: q' then
-   let t := b q' x in
-   let a1 := a + x *+ 2 * t.1 - t.2 in
+   let t := Cb q' x in
+   let a1 := a + t.1 * x *+ 2 - t.2 in
    (a1, t.1) else (0, 0).
 
-Definition Cshaw_rec q x := (b q x).1 - x * (b q x).2.
+Definition Cshaw p x := (Cb p x).1 - (Cb p x).2 * x.
 
-Definition Cshaw p := Cshaw_rec p.
-
-Definition CP2P p := \sum_(0 <= i < size p) p`_i *: 'T_i.
-
-Definition rm0 :=
- (mulr0, mul0r, subr0, sub0r, add0r, addr0, mul0rn, mulr0n, oppr0,
-  scale0r, scaler0).
-
-Definition rm1 := (mulr1, mul1r, mulr1n).
-
-Lemma Cshaw0 r : Cshaw 0 r = 0.
-Proof. by rewrite /Cshaw/Cshaw_rec polyseq0 /= !rm0. Qed.
-
-Lemma Cshawc c r : Cshaw c%:P r = c.
+Lemma Cshaw_spec (p : {poly R}) r :
+   Cshaw p r = \sum_(i < size p) p`_i  * ('T_i).[r].
 Proof.
-have [->|/eqP cNZ] := (c =P 0); first by exact: Cshaw0.
-by rewrite /Cshaw/Cshaw_rec polyseqC cNZ /= !rm0.
+case: p; rewrite /Cshaw => /= l _.
+elim: {l}S {-2}l (leqnn (size l).+1) => // n IH [|a [|b l]] H.
+- by rewrite big_ord0 !rm0.
+- by rewrite /= !rm0 big_ord_recr big_ord0 /= hornerC rm1 rm0.
+have /IH/eqP : (size (b :: l) < n)%N by rewrite -ltnS.
+  rewrite [size _]/= big_ord_recl. 
+  rewrite [_ * _ + _]addrC -subr_eq eq_sym.
+  pose f (i : 'I_(size l)) := l`_i * ('T_i.+1).[r].
+  rewrite (eq_bigr f) {}/f => [/eqP H1|i _] //.
+rewrite [size _]/= 2!big_ord_recl.
+pose f (i : 'I_(size l)) :=
+  (l`_i * ('T_i.+1).[r] * (r *+2)) - (l`_i * ('T_i).[r]).
+rewrite (eq_bigr f) {}/f => [|i _]; last first.
+  rewrite pTSS !hornerE !mulrnAl hornerMn -commr_polyX hornerMX.
+  by set x := 'T_i.+1; rewrite !lift0 /= {}/x mulrBr -mulrnAr mulrA.
+rewrite !lift0 sumrB ![_ `_ _]/= -mulr_suml H1 -IH; last first.
+  by rewrite -ltnS (ltn_trans _ H).
+rewrite !hornerE /=.
+(* This should be ring *)
+set u := Cb _ _.
+rewrite !mulr2n !(mulrDl, mulrDr, opprB, opprD, mulNr ) -!addrA.
+do 40 (congr (_ + _); [idtac] || rewrite [RHS]addrC -![in RHS]addrA).
+by rewrite addrA subrK.
 Qed.
 
-Lemma CshawX r : Cshaw 'X r = r.
+Lemma CshawC c r : Cshaw c%:P r = c.
 Proof.
-by rewrite /Cshaw /Cshaw_rec polyseqX/= !(rm0, rm1) (mulr2n r) addrK.
+rewrite Cshaw_spec /= size_polyC.
+case: eqP => [->|/eqP H] /=; first by rewrite big_ord0.
+by rewrite big_ord_recr big_ord0 polyseqC (negPf H) !hornerE.
 Qed.
+
+Lemma Cshaw0 x : Cshaw 0 x = 0.
+Proof. by rewrite CshawC. Qed.
+
+Lemma CshawZ a p x : Cshaw (a *: p) x = a * Cshaw p x.
+Proof.
+rewrite !Cshaw_spec mulr_sumr.
+rewrite -(big_mkord xpredT (fun i => a * (p`_i * ('T_i ).[x]))).
+rewrite (big_cat_nat _ _ _ _ (size_scale_leq a p)) //= big_mkord.
+rewrite [X in _ = _ + X]big_nat_cond [X in _ = _ + X]big1 ?addr0 => [|i].
+  by apply: eq_bigr => i _; rewrite coefZ mulrA.
+rewrite andbT => /andP[/(@leq_sizeP R) // H1 H2].
+by rewrite mulrA -coefZ H1 ?rm0.
+Qed.
+
+Lemma CshawN p x : Cshaw (- p) x = - Cshaw p x.
+Proof. by rewrite -scaleN1r CshawZ mulN1r. Qed.
+
+Lemma CshawD p q x : Cshaw (p + q) x = Cshaw p x + Cshaw q x.
+Proof.
+rewrite !Cshaw_spec.
+apply: etrans (_ : \sum_(i < maxn (size p) (size q)) (p + q)`_i * ('T_i ).[x] = _).
+  rewrite -[RHS](big_mkord xpredT (fun i => (p + q)`_i * ('T_i ).[x])).
+  rewrite (big_cat_nat _ _ _ _ (size_add p q)) //= big_mkord.
+  rewrite [X in _ = _ + X]big_nat_cond [X in _ = _ + X]big1 ?addr0 // => i.
+  rewrite andbT => /andP[/(@leq_sizeP R) // -> // _].
+  by rewrite rm0.
+pose f (i : 'I_ _) := p`_i * ('T_i ).[x] + q`_i * ('T_i ).[x].
+rewrite (eq_bigr (f _)) {}/f => [|i _]; last by rewrite coefD mulrDl.
+rewrite big_split /=; congr (_ + _).
+  rewrite -(big_mkord xpredT (fun i => p`_i * ('T_i ).[x])).
+  rewrite (big_cat_nat _ _ _ _ (leq_maxl _ _)) //= big_mkord.
+  rewrite [X in _ + X = _]big_nat_cond [X in _ + X = _]big1 ?addr0 // => i.
+  rewrite andbT => /andP[/(@leq_sizeP R) // -> // _].
+  by rewrite rm0.
+rewrite -(big_mkord xpredT (fun i => q`_i * ('T_i ).[x])).
+rewrite (big_cat_nat _ _ _ _ (leq_maxr _ _)) //= big_mkord.
+rewrite [X in _ + X = _]big_nat_cond [X in _ + X = _]big1 ?addr0 // => i.
+rewrite andbT => /andP[/(@leq_sizeP R) // -> // _].
+by rewrite rm0.
+Qed.
+
+Lemma CshawXn r n : Cshaw ('X^n) r = ('T_n).[r].
+Proof.
+rewrite Cshaw_spec size_polyXn.
+rewrite (bigD1 (Ordinal (leqnn _))) //=.
+rewrite coefXn eqxx rm1 big1 ?rm0 //= => i /eqP/val_eqP/= Hi.
+by rewrite coefXn (negPf Hi) rm0.
+Qed.
+
+Lemma CshawX r : Cshaw ('X) r = ('T_1).[r].
+Proof. by rewrite -CshawXn. Qed.
 
 Section PT2P.
-
-Lemma last_poly (p : {poly R}) : last 1 p != 0.
-Proof. by case: p. Qed.
-
-(* c + X * l *)
-Definition lcons {R : ringType} (c : R) l :=
-  if l is _ :: _ then c :: l
-  else if c == 0 then [::] else [:: c].
-
-Lemma lcons_neq0 c p : p != 0 -> lcons c p = c :: p.
-Proof.
-move/eqP/val_eqP => /=.
-by rewrite polyseq0; case: polyseq.
-Qed.
-
-Lemma lcons_spec c (p : {poly R}) : lcons c p = p * 'X + c%:P.
-Proof.
-apply: (@eq_from_nth _ 0) => [|i].
-  have [->|/eqP pN] := (p =P 0).
-    by rewrite mul0r add0r polyseq0 polyseqC /=; case: eqP.
-  rewrite size_addl size_mulX //.
-    by case: p pN; case => //= i /eqP/val_eqP; rewrite /= polyseq0.
-  rewrite polyseqC; case: eqP => //= _.
-  by rewrite ltnS size_poly_gt0.
-rewrite coef_add_poly coefMX polyseqC /= nth_nseq.
-case: p; case => //= [|a l].
-  case: (c =P 0) => //=.
-  by case: i => //=; rewrite add0r.
-case: i => //= [|i].
-  by rewrite add0r; case: (c =P 0) => [->|].
-rewrite !ltnNge // (leq_trans (leq_b1 _)) //=.
-by rewrite addr0.
-Qed.
-
-(* c + l *)
-Definition ladd_const {R: ringType} (c : R) l :=
- if l is a :: l1 then
-   lcons (c + a) l1
- else
-   if c == 0 then [::] else [:: c].
-
-Lemma ladd_const_spec c (p : {poly R}) : ladd_const c p = c%:P + p.
-Proof.
-elim/poly_ind: p => [|p a IH].
-  by rewrite addr0 polyseq0 polyseqC /=; case: eqP.
-rewrite addrCA -polyC_add -!lcons_spec /=.
-case: (polyseq _) => //=.
-by case: eqP => [->|] //=; rewrite addr0.
-Qed.
-
-(* l1 + l2 *)
-Fixpoint ladd_poly {R : ringType} (l1 l2 : seq R) :=
- if l1 is a :: l3 then
-   if l2 is b :: l5 then
-     lcons (a + b) (ladd_poly l3 l5)
-   else l1
- else l2.
-
-Lemma ladd_poly_spec (p1 p2 : {poly R}) : 
-  ladd_poly p1 p2 = p1 + p2.
-Proof.
-elim/poly_ind: p1 p2  => [p2|p1 a IH p2].
-  by rewrite polyseq0 add0r.
-elim/poly_ind: p2 => [|p2 b _].
-  rewrite addr0 -lcons_spec polyseq0.
-  by case: (polyseq _) => //=; case: eqP.
-rewrite addrAC addrA -mulrDl -addrA -polyC_add -!lcons_spec -IH.
-(case: (polyseq p1); case: (polyseq p2)) => //= => [|b1 l1|b1 l1|b1 l1 b2 l2].
-- case: eqP => [->|]; first by rewrite addr0.
-  case: eqP => [->|] /=; first by rewrite add0r=> /eqP/negPf ->.
-  by rewrite addrC.
-- case: eqP => [->|/=]; first by rewrite addr0.
-  by rewrite addrC.
-- case: eqP => [->|/=]; first by rewrite add0r.
-  by rewrite addrC.
-by rewrite addrC.
-Qed.
-
-(* -l *)
-Fixpoint lopp_poly {R : ringType} (l : seq R) :=
- if l is a :: l1 then -a :: (lopp_poly l1) else [::].
-
-Lemma lopp_poly_spec (p : {poly R}) : lopp_poly p = - p.
-Proof.
-elim/poly_ind: p  => [|p a IH]; first by rewrite oppr0 polyseq0.
-rewrite opprD -mulNr -polyC_opp -!lcons_spec -IH.
-by case: polyseq; rewrite //= oppr_eq0; case: eqP.
-Qed.
-
-(* a *: l *)
-Fixpoint lscal_poly {R : ringType} (a : R) l :=
- if l is b :: l1 then
-     lcons (a * b) (lscal_poly a l1)
- else [::].
-
-Lemma lscal_poly_spec a (p : {poly R}) : lscal_poly a p = a *: p.
-Proof.
-elim/poly_ind: p  => [|p b IH].
-  by rewrite scaler0 polyseq0.
-rewrite scalerDr scalerAl -mul_polyC -polyC_mul -!lcons_spec -IH.
-case: polyseq => //=.
-by case: eqP => [->|] //; rewrite mulr0 eqxx.
-Qed.
-
-(* l1 - l2 *)
-Fixpoint lsub_poly {R: ringType} (l1 l2 : seq R) :=
- if l1 is a :: l3 then
-   if l2 is b :: l5 then
-     lcons (a - b) (lsub_poly l3 l5)
-   else l1
- else lopp_poly l2.
-
-Lemma lsub_poly_spec (p1 p2 : {poly R}) : 
-  lsub_poly p1 p2 = p1 - p2.
-Proof.
-elim/poly_ind: p1 p2  => [p2|p1 a IH p2].
-  by rewrite polyseq0 sub0r /= lopp_poly_spec.
-elim/poly_ind: p2 => [|p2 b _].
-  rewrite subr0 -lcons_spec polyseq0.
-  by case: (polyseq _) => //=; case: eqP.
-rewrite opprD -mulNr.
-rewrite addrAC addrA -mulrDl -addrA -polyC_opp -polyC_add -!lcons_spec -IH.
-(case: (polyseq p1); case: (polyseq p2)) => //= => [|b1 l1|b1 l1|b1 l1 b2 l2].
-- case: eqP => [->|].
-    by rewrite addr0 oppr_eq0; case: eqP.
-  case: eqP => [->|/=].
-    by rewrite oppr0 add0r => /eqP/negPf->.
-  by rewrite addrC.
-- case: eqP => [->|/=]; first by rewrite addr0.
-  by rewrite addrC.
-- case: eqP => [->|/=]; first by rewrite oppr0 add0r.
-  by rewrite addrC.
-by rewrite addrC.
-Qed.
 
 Fixpoint lpT2p_rec {R: ringType} l (p1 p2 : seq R) :=
 match l with
@@ -583,6 +665,12 @@ Qed.
 
 Lemma pT2p0 : pT2p 0 = 0 :> {poly R}.
 Proof. by apply /val_eqP; rewrite /= polyseq0. Qed.
+
+Lemma Cshaw_horner p r : Cshaw p r = (pT2p p).[r].
+Proof.
+rewrite Cshaw_spec pT2p_spec horner_sum.
+by apply: eq_bigr => i _; rewrite hornerE.
+Qed.
 
 End PT2P.
 
@@ -955,7 +1043,7 @@ rewrite (eq_bigr f) {}/f => [|i _]; last by rewrite coefD scalerDl.
 by rewrite big_split/=.
 Qed.
 
-Lemma pT2p_lin :linear (@pT2p R).
+Lemma pT2p_lin : linear (@pT2p R).
 Proof. by move => a p q; rewrite pT2pD pT2pZ. Qed.
 
 Lemma size_p2pT (p : {poly R}) : size (p2pT p) = size p.
