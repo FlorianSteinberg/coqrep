@@ -16,7 +16,6 @@ Notation "B o~> B'" := (C -> B -> Q' -> option A') (at level 2).
 
 Definition oeval (M: B o~> B') phi Mphi :=
 	forall q', exists c, M c phi q' = some (Mphi q').
-Notation eval M := (oeval M).
 
 Notation "M '\computes' F" := ((oeval M) \tightens F) (at level 2).
 
@@ -67,7 +66,7 @@ by rewrite -val; apply/ (mon n' n).
 Qed.
 
 Definition mon_cmpt (M: B o~> B') (F: B ->> B'):=
-	forall phi Fphi, F phi Fphi -> (eval M) phi Fphi.
+	forall phi Fphi, F phi Fphi -> (oeval M) phi Fphi.
 Notation "M '\monotone_computes' F" := (mon_cmpt M F) (at level 2).
 
 Lemma cmpt_mon_sing_op (M: B o~> B') (F: B ->> B') :
@@ -85,7 +84,7 @@ by apply/ sing; [apply FphiFphi | apply prop].
 Qed.
 
 Lemma mon_cmpt_op M F:
-	M \is_monotone_oracle_machine -> M \computes (F2MF F) <-> forall phi, (eval M) phi (F phi).
+	M \is_monotone_oracle_machine -> M \computes (F2MF F) <-> forall phi, (oeval M) phi (F phi).
 Proof.
 split => [comp phi q' | prop].
 	have phifd: exists Fphi, F phi = Fphi by exists (F phi).
@@ -119,7 +118,7 @@ pose Nphi q a:= (q <> q' /\ Fphi q = a) \/ (q' = q /\ a' = a).
 have Nphitot: Nphi \is_total.
 	by move => q;	case: (classic (q = q')) => ass; [exists a'; right | exists (Fphi q); left].
 have [Mphi Mphiprop]:= choice Nphi Nphitot.
-have MphiMphi: (eval M) phi Mphi.
+have MphiMphi: (oeval M) phi Mphi.
 	by move => q; case: (Mphiprop q) => [[_ <-] | [<- <-]]; [apply MphiFphi | exists c].
 apply Some_inj.
 case: (Mphiprop q') => [[ctr] | [_ ->]] //.
@@ -238,7 +237,7 @@ Qed.
 
 End ORACLE_MACHINES.
 Notation eval M := (@oeval _ _ _ _ nat_countType M).
-Notation "M '\computes' F" := ((oeval M) \tightens F) (at level 2).
+Notation "M '\ocomputes' F" := ((oeval M) \tightens F) (at level 2).
 Notation "F '\is_computable_operator'" := (is_cmpt_op F) (at level 2).
 Notation "F '\is_primitive_recursive_operator'" := (is_prim_rec_op F) (at level 2).
 Notation "M '\is_monotone_oracle_machine'" := (is_mon_omac M) (at level 2).
