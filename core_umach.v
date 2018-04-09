@@ -308,7 +308,7 @@ by rewrite /U_rec in eq'; rewrite /U_rec le eq'/U_step/psiF length_flst_in_seg E
 Qed.
 
 Lemma U_is_universal (somea: A) (somephi : B') (sur: cnt \is_surjective) (Fcont : F \is_continuous) :
-  exists psiF, (U psiF) \computes F.
+  exists psiF, (U psiF) \ocomputes F.
 Proof.
 have [Ff Fprop] := (exists_choice F somephi).
 have [sec isminsec] := minimal_section sur.

@@ -195,6 +195,9 @@ End MACHINES.
 Notation "f '\is_computable'" := (is_comp nat_countType f) (at level 2).
 Notation "Q ~> A" := (nat -> Q -> option A) (at level 2).
 Notation "M '\is_monotone_machine'" := (is_mon_mac M) (at level 2).
+Notation eval N q a := (meval N q a).
+Notation "N '\computes' f" := ((meval N) \tightens f) (at level 2).
+
 
 Section COMPUTABILITY_LEMMAS.
 Context (A Q: Type) (C: countType).
