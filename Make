@@ -12,7 +12,6 @@ rs_base.v
 rs_base_prod.v
 rs_base_sub.v
 rs_base_fun.v
-rs_base_facts.v
 rs_base_iso.v
 all_rs_base.v
 
