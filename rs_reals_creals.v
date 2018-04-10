@@ -197,7 +197,7 @@ exists Rplus_frlzr.
 exact: Rplus_frlzr_crct.
 Defined.
 
-Lemma Rplus_comp:
+Lemma Rplus_cmpt:
 	(fun p => Rplus p.1 p.2) \is_computable_function.
 Proof.
 apply prec_fun_cmpt.
