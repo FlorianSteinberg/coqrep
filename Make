@@ -1,3 +1,5 @@
+-R . rs
+
 core_mf.v
 core_bs.v
 core_cont.v
@@ -29,5 +31,6 @@ all_rs.v
 rs_reals_creals.v
 
 examples_continuity.v
+Rstruct.v
 example_polynomials.v
 example_real_functions.v
