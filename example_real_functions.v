@@ -78,24 +78,15 @@ rewrite -Uncv_lim.
 done.
 Qed.
 
+(* And vice verca: *)
+Lemma lim_mult xn x yn y:
+	lim xn x -> lim yn y -> lim (ptw (fun p => p.1 * p.2) (xn, yn)) (x * y).
+Proof.
+move => limxnx limyny.
+rewrite -(Uncv_lim _).
+by apply CV_mult; rewrite (Uncv_lim _).
+Qed.
 
 (* It is easy to define subspaces *)
 Definition I := (@rep_space_sub_space rep_space_R (fun x => -1 <= x <= 1)).
 End REALFUNCTIONS.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
