@@ -60,7 +60,7 @@ rewrite feq /=; apply MSprop.
 split; rewrite lprj_pair rprj_pair => //=.
 specialize (ih (name_pair (lprj phi) (fun _ => n))).
 by rewrite lprj_pair rprj_pair feq/= in ih; apply ih.
-Qed.
+Defined.
 
 Lemma nat_rs_prec_ind (X: rep_space) (f0: X) (fS: X -> X) (f: nat -> X):
 	f0 \is_computable_element -> fS \is_prec_function ->
