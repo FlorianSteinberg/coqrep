@@ -1,12 +1,11 @@
 From mathcomp Require Import all_ssreflect.
 Require Import all_core.
-Require Import FunctionalExtensionality ClassicalFacts ClassicalChoice Psatz ProofIrrelevance.
+Require Import FunctionalExtensionality ClassicalFacts ClassicalChoice Psatz.
 Require Import Morphisms.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-Local Open Scope coq_nat_scope.
 Section REPRESENTED_SPACES.
 
 Definition is_rep S T (delta: S ->> T):=
@@ -283,6 +282,7 @@ Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
 Definition is_prec_fun (X Y: rep_space) (f: X -> Y) :=
 	{M | M \is_realizer_function_for f}.
 End DEFINITIONS.
+
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
 Notation "x '\is_computable_element'" := (is_comp_elt x) (at level 2).
 Notation "f '\is_computable'" := (is_comp f) (at level 2).
@@ -290,3 +290,140 @@ Notation "f '\is_monotone_computable'" := (is_mon_comp f) (at level 2).
 Notation "f '\is_prec'" := (is_prec f) (at level 2).
 Notation "f '\is_prec_function'" := (is_prec_fun f) (at level 2).
 Notation "f '\is_computable_function'" := (is_comp_fun f) (at level 2).
+
+Section BASIC_LEMMAS.
+Lemma prec_fun_prec (X Y: rep_space) (f: X -> Y):
+	f \is_prec_function -> (F2MF f) \is_prec.
+Proof. by move => [M Mprop]; by exists M; apply frlzr_rlzr. Defined.
+
+Lemma prec_cmpt (X Y:rep_space) (f: X ->> Y):
+	f \is_prec -> f \is_computable.
+Proof.
+move => [N Nir]; exists (fun n phi q' => Some (N phi q')).
+abstract by apply/ tight_trans; first by apply/ tight_comp_r; apply (prec_F2MF_op 0).
+Defined.
+
+Lemma prec_fun_cmpt_elt (X Y: rep_space) (f: X -> Y) (x: X):
+	x \is_computable_element -> f \is_prec_function -> (f x) \is_computable_element.
+Proof.
+move => [phi phinx] [M Mrf].
+by exists (M phi); apply Mrf.
+Defined.
+
+Lemma mon_cmpt_cmpt (X Y: rep_space) (f: X ->> Y):
+	f \is_monotone_computable -> f \is_computable.
+Proof. by move => [M [mon comp]]; exists M. Defined.
+
+Lemma prec_fun_comp (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
+	f \is_prec_function -> g \is_prec_function
+	-> forall h, (forall x, h x = g (f x)) -> h \is_prec_function.
+Proof.
+move => [M comp] [N comp'] h eq.
+exists (fun phi => N (M phi)).
+abstract by move => phi x phinx; rewrite eq; apply comp'; apply comp.
+Defined.
+
+Lemma prec_comp (X Y Z: rep_space) (f: X ->> Y) (g: Y ->> Z) h:
+	f \is_prec -> g \is_prec -> h =~= g o f -> h \is_prec.
+Proof.
+move => [M comp] [N comp'] eq.
+exists (fun phi => N (M phi)).
+abstract by rewrite eq;
+	have ->: F2MF (fun phi => N (M phi)) =~= (F2MF N) o (F2MF M); [rewrite F2MF_comp | apply rlzr_comp].
+Defined.
+
+Lemma prec_fun_prec_comp_tech (X Y Z: rep_space) (f: X ->> Y) (g: Y -> Z) M N:
+	f \is_total -> (F2MF M) \is_realizer_of f -> N \is_realizer_function_for g
+	-> forall h, (forall x y, f x y -> h x = g y) -> (fun phi => N (M phi)) \is_realizer_function_for h.
+Proof.
+move => ftot comp comp' h eq phi x phinx.
+have [y fxy]:= ftot x.
+have prop: phi \from_dom (f o (delta (r:=X))).
+	exists y; split; first by exists x.
+	by move => x' phinx'; rewrite (rep_sing X phi x' x).
+have [y' [[psi [<- name]] _]]:= (comp phi prop).1.
+rewrite (eq x y') => //; first by apply comp'.
+have cond: ((delta (r:=Y)) o (F2MF M) phi y').
+	split; first by exists (M phi).
+	by move => Mpsi <-; exists y'.
+have [[x' [phinx' fx'y']] _] := (comp phi prop).2 y' cond.
+by rewrite (rep_sing X phi x x').
+Qed.
+
+Lemma prec_fun_prec_comp (X Y Z: rep_space) (f: X ->> Y) (g: Y -> Z):
+	f \is_total -> f \is_prec -> g \is_prec_function
+	-> forall h, (forall x y, f x y -> h x = g y) -> h \is_prec_function.
+Proof.
+move => ftot [M comp] [N comp'] h eq.
+exists (fun phi => N (M phi)).
+exact: (prec_fun_prec_comp_tech ftot comp comp').
+Defined.
+
+Lemma prec_fun_cmpt_comp_tech (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z) M N:
+	M \is_realizer_function_for f -> (eval N) \is_realizer_of (F2MF g)
+	-> forall h, (forall x, h x = g (f x)) -> (eval (fun (n: nat) phi => N n (M phi))) \is_realizer_of (F2MF h).
+Proof.
+move => comp comp' h eq.
+have eq': (F2MF h) =~= ((F2MF g) o (F2MF f)) by rewrite F2MF_comp/ F2MF => r; rewrite -(eq r).
+rewrite eq'.
+apply/ tight_trans; last first.
+	by rewrite comp_assoc; apply tight_comp_r; apply ((frlzr_rlzr _ _).1 comp).
+apply/ tight_trans; last by rewrite -comp_assoc; apply tight_comp_l; apply comp'.
+by rewrite comp_assoc; apply/ tight_comp_r; rewrite F2MF_comp.
+Qed.
+
+Lemma prec_fun_cmpt_comp (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
+	f \is_prec_function -> g \is_computable_function
+	-> forall h, (forall x, h x = g (f x)) -> h \is_computable_function.
+Proof.
+move => [M comp] [N comp']; exists (fun n phi => N n (M phi)).
+exact: (prec_fun_cmpt_comp_tech comp comp').
+Defined.
+
+Lemma prec_fun_cmpt (X Y: rep_space) (f: X -> Y):
+	f \is_prec_function -> f \is_computable_function.
+Proof.
+move => [N Nir]; exists (fun n phi q' => Some (N phi q')).
+abstract by apply/ tight_trans; [apply tight_comp_r; apply: prec_F2MF_op 0 | apply frlzr_rlzr; apply/ Nir].
+Defined.
+
+Lemma cnst_prec_fun (X Y: rep_space) (fx: Y):
+	fx \is_computable_element -> (fun x: X => fx) \is_prec_function.
+Proof. by move => [psi psiny]; exists (fun _ => psi). Defined.
+
+Lemma cnst_prec (X Y: rep_space) (fx: Y):
+	fx \is_computable_element -> (F2MF (fun (x: X) => fx)) \is_prec.
+Proof. by move => fxcmpt; by apply prec_fun_prec; apply cnst_prec_fun. Defined.
+
+Lemma id_prec_fun X:
+	(@id (space X)) \is_prec_function.
+Proof. by exists id. Defined.
+
+Lemma id_prec X:
+	@is_prec X X (F2MF id).
+Proof. by exists id; apply frlzr_rlzr. Defined.
+
+Lemma id_cmpt X:
+	@is_comp X X (F2MF id).
+Proof. exact: (prec_cmpt (id_prec X)). Defined.
+
+Lemma id_hcr X:
+	@hcr X X (F2MF id).
+Proof.
+exists (F2MF id).
+split; first by apply frlzr_rlzr.
+move => phi q' _.
+exists [ ::q'].
+move => Fphi /= <- psi coin Fpsi <-.
+apply coin.1.
+Qed.
+
+(*Lemma cmpt_fun_comp (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
+	f \is_monotone_computable -> g \is_computable_function
+	-> forall h, (forall x, h x = g (f x)) -> h \is_computable_function.
+Proof.
+move => [M comp] [N comp'] h eq.
+exists (fun phi => N (M phi)).
+by move => phi x phinx; rewrite eq; apply comp'; apply comp.
+Defined.*)
+End BASIC_LEMMAS.
