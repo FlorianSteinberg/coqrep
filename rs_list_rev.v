@@ -14,15 +14,12 @@ Definition rep_list_rev (X: rep_space) := (F2MF (@NXN_lst_rev X)) o (@delta _).
 
 Lemma rep_list_rev_sing X:
 	(@rep_list_rev X) \is_single_valued.
-Proof.
-by apply comp_sing; [exact: F2MF_sing | exact (rep_sing _)].
-Qed.
+Proof. by apply comp_sing; [exact: F2MF_sing | exact (rep_sing _)]. Qed.
 
 Lemma map_nth_iota T (x:T) p:
 	[seq nth x p n0 | n0 <- iota 0 (size p)] = p.
 Proof.
-apply (@eq_from_nth T x); rewrite size_map size_iota => //.
-move => k E.
+apply (@eq_from_nth T x); rewrite size_map size_iota => // k E.
 rewrite (@nth_map nat 0%nat T x (fun n => nth x p n) k (iota 0 (size p))); last by rewrite size_iota.
 by rewrite seq.nth_iota => //.
 Qed.
@@ -108,9 +105,8 @@ Lemma size_rev_prec_fun X:
 	(fun K: rep_space_list_rev X => size K) \is_prec_function.
 Proof.
 exists (fun phi str => lnmr_size phi).
-move => phi K phinK.
-by rewrite (lnmr_size_crct phinK).
-Qed.
+abstract by move => phi K phinK; rewrite (lnmr_size_crct phinK).
+Defined.
 
 Definition lnmr_list X (phi: names (rep_space_list_rev X)):=
 	map (fun n => (fun q => (phi (inr (inr (n, q)))).2.2)) (iota 0 (lnmr_size phi)).
@@ -119,15 +115,17 @@ Lemma lnmr_list_size X phi:
 	@lnmr_size X phi = size (lnmr_list phi).
 Proof. by rewrite /lnmr_list size_map size_iota. Qed.
 
-Lemma nth_prec_rev (X: rep_space):
-	(fun aK => nth (aK.1: X) (aK.2: rep_space_list_rev X)) \is_prec_function.
+Definition nth_frlzr (X: rep_space) psiphi p := match lnmr_size (rprj psiphi) with
+		| 0 => lprj psiphi p.2: answers X
+		| S n => nth (lprj psiphi) (lnmr_list (rprj psiphi)) p.1 p.2
+	end.
+
+Lemma nth_rlzr_crct (X: rep_space):
+	(fun phipsi (p: questions (rep_space_usig_prod X)) => @nth_frlzr X phipsi p)
+		\is_realizer_function_for
+	(fun aK : space (rep_space_prod X (rep_space_list_rev X)) => nth aK.1 aK.2: rep_space_usig_prod X).
 Proof.
-exists (fun psiphi p => match lnmr_size (rprj psiphi) with
-	| 0 => lprj psiphi p.2: answers X
-	| S n => nth (lprj psiphi) (lnmr_list (rprj psiphi)) p.1 p.2
-end).
-move => phi [a K] [/=psina phinK].
-rewrite /delta/=/rep_usig_prod/= => n.
+move => phi [a K] [/=psina phinK] n; rewrite /nth_frlzr.
 rewrite (lnmr_size_crct phinK)/=.
 case: K phinK => /=; first by rewrite nth_default.
 move => b K phinK.
@@ -150,20 +148,28 @@ rewrite {1}/rprj in phinK.
 by rewrite nth_iota.
 Qed.
 
-Lemma cons_prec_fun_rev (X: rep_space):
-	(fun p => cons (p.1: X) (p.2: rep_space_list_rev X):rep_space_list_rev X) \is_prec_function.
+Lemma nth_prec_rev (X: rep_space):
+	(fun aK => nth (aK.1: X) (aK.2: rep_space_list_rev X)) \is_prec_function.
 Proof.
-have [/= nthM Mprop]:= nth_prec_rev X.
-exists (fun (phi: names (rep_space_prod X (rep_space_list_rev X))) q => match q with
+exists (@nth_frlzr X).
+exact: nth_rlzr_crct.
+Defined.
+
+Definition cons_frlzr (X: rep_space) :=
+(fun (phi: names (rep_space_prod X (rep_space_list_rev X))) (q: questions (rep_space_list_rev X)) => match q with
 	| inl str => (some star, (0, some_answer X))
 	| inr q' => match q' with
 		| inl str => (some star, (S (lnmr_size (rprj phi)), some_answer X))
 		| inr p => (some star, (some_answer rep_space_nat, match p.1 with
 			| 0 => lprj phi p.2
-			| S n => nthM phi (n, p.2)
+			| S n => nth_frlzr phi (n, p.2)
 		end))
 	end
 end).
+
+Lemma cons_frlzr_crct (X: rep_space):
+	(@cons_frlzr X) \is_realizer_function_for (fun p => cons (p.1: X) (p.2: rep_space_list_rev X)).
+Proof.
 move => phi [x K] [/=phinx phinK].
 have eq:= (lnmr_size_crct phinK).
 have phinxK: phi \is_name_of (x, K) by split.
@@ -179,33 +185,53 @@ move => k.
 case E: (k <= (size K)).
 	case E': k => [ | m]//=.
 	apply usig_base.
-	by apply/ rlzr_val_sing; [ apply F2MF_sing | apply frlzr_rlzr; apply Mprop | apply phinxK | | ].
+	by apply/ rlzr_val_sing; [ apply F2MF_sing | apply frlzr_rlzr; apply nth_rlzr_crct | apply phinxK | | ].
 case: k E => // m E /=.
 apply usig_base.
-by apply/ rlzr_val_sing; [ apply F2MF_sing | apply frlzr_rlzr; apply Mprop | apply phinxK | | ].
+by apply/ rlzr_val_sing; [ apply F2MF_sing | apply frlzr_rlzr; apply nth_rlzr_crct | apply phinxK | | ].
 Qed.
 
-Lemma list_rev_rs_prec_pind (X Y Z: rep_space) (g: Z -> Y) (h: (rep_space_prod Z (rep_space_prod X Y)) -> Y) f:
-	g \is_prec_function -> h \is_prec_function
-	-> (forall zK, f zK = (fix f z (K: rep_space_list_rev X) := match K with
-		| nil => g z
-		| cons a K => h (z, (a, f z K)) 
-	end) zK.1 zK.2) -> f \is_prec_function.
+Lemma cons_prec_fun_rev (X: rep_space):
+	(fun p => cons (p.1: X) (p.2: rep_space_list_rev X):rep_space_list_rev X) \is_prec_function.
 Proof.
-move => [gM gMcmpt] [hM hMcmpt] feq.
-pose psi (n:nat) (phi:names (rep_space_list_rev X)) (q: questions (rep_space_list_rev X)):= match n with
+exists (fun (phi: names (rep_space_prod X (rep_space_list_rev X))) q => match q with
+	| inl str => (some star, (0, some_answer X))
+	| inr q' => match q' with
+		| inl str => (some star, (S (lnmr_size (rprj phi)), some_answer X))
+		| inr p => (some star, (some_answer rep_space_nat, match p.1 with
+			| 0 => lprj phi p.2
+			| S n => nth_frlzr phi (n, p.2)
+		end))
+	end
+end).
+exact: cons_frlzr_crct.
+Defined.
+
+Let psi X (n:nat) (phi:names (rep_space_list_rev X)) (q: questions (rep_space_list_rev X)):= match n with
 	| 0 => (None, (0, some_answer X))
 	| S n => (Some star, (n, if q is (inr (inr p)) then (phi (inr (inr (S p.1,p.2)))).2.2 else some_answer X))
 end.
-pose fM' := fix fM' n (phi: names (rep_space_prod Z (rep_space_list_rev X))) := match n with
+
+Lemma list_rev_rs_prec_pind_tech (X Y Z: rep_space) (g: Z -> Y)
+	(h: (rep_space_prod Z (rep_space_prod X Y)) -> Y) f gM hM:
+	gM \is_realizer_function_for g -> hM \is_realizer_function_for h
+	-> (forall zK, f zK = (fix f z (K: rep_space_list_rev X) := match K with
+		| nil => g z
+		| cons a K => h (z, (a, f z K)) 
+	end) zK.1 zK.2) -> (fun psi' => (fix fM' n (phi: names (rep_space_prod Z (rep_space_list_rev X))) := match n with
 	| 0 => gM (lprj phi)
 	| S n' => hM (name_pair (lprj phi) (name_pair (fun q =>
 		((rprj phi) (inr (inr (0, q)))).2.2:answers X) (fM' n' (name_pair (lprj phi) (psi n (rprj phi))))))
-end.
-exists (fun phi q => fM' (lnmr_size (rprj phi): nat) phi q).
-move => phi [z K] [/=phinz phinK].
+end) (lnmr_size (rprj psi')) psi') \is_realizer_function_for f.
+Proof.
+move => gMcmpt hMcmpt feq phi [z K] [/=phinz phinK].
+set fM' := (fun psi' => (fix fM' n (phi: names (rep_space_prod Z (rep_space_list_rev X))) := match n with
+	| 0 => gM (lprj phi)
+	| S n' => hM (name_pair (lprj phi) (name_pair (fun q =>
+		((rprj phi) (inr (inr (0, q)))).2.2:answers X) (fM' n' (name_pair (lprj phi) (psi n (rprj phi))))))
+end) (lnmr_size (rprj psi')) psi').
 elim: K phi phinz phinK => [ | a K].
-	by rewrite feq => phi phinz phinK; rewrite /fM' (lnmr_size_crct phinK)/=; apply gMcmpt.
+	by rewrite feq => phi phinz phinK; rewrite (lnmr_size_crct phinK)/=; apply gMcmpt.
 move => ih phi phinz phinK.
 replace (f (z,(a :: K))) with (h (z, (a, f (z,K)))) by by rewrite (feq (z,a::K)) feq.
 rewrite (lnmr_size_crct phinK).
@@ -238,15 +264,31 @@ pose phia0 q := (rprj phi (inr (inr (0, q)))).2.2.
 have phia0na: phia0 \is_name_of a by rewrite eq;apply phinan.
 have np:
 	(name_pair (lprj phi)
-		(name_pair phia0 [eta fM' (lnmr_size (psi n (rprj phi))) (name_pair (lprj phi) (psi n (rprj phi)))]))
+		(name_pair phia0 [eta fM' (name_pair (lprj phi) (psi n (rprj phi)))]))
 			\is_name_of (z,(a,f (z, K))) by trivial.
 apply/ rlzr_val_sing; [ apply F2MF_sing | apply frlzr_rlzr; apply hMcmpt | | | ].
 		exact: np.
 	by rewrite feq.
-rewrite (lnmr_size_crct psinK)/F2MF.
+rewrite /=/fM'/=(lnmr_size_crct psinK)/F2MF.
 rewrite /name_pair/phia0.
 by have /= ->: n = size (a :: K) by rewrite -yaK size_map size_iota.
 Qed.
+
+Lemma list_rev_rs_prec_pind (X Y Z: rep_space) (g: Z -> Y) (h: (rep_space_prod Z (rep_space_prod X Y)) -> Y) f:
+	g \is_prec_function -> h \is_prec_function
+	-> (forall zK, f zK = (fix f z (K: rep_space_list_rev X) := match K with
+		| nil => g z
+		| cons a K => h (z, (a, f z K)) 
+	end) zK.1 zK.2) -> f \is_prec_function.
+Proof.
+move => [gM gMcmpt] [hM hMcmpt] feq.
+exists (fun psi' => (fix fM' n (phi: names (rep_space_prod Z (rep_space_list_rev X))) := match n with
+	| 0 => gM (lprj phi)
+	| S n' => hM (name_pair (lprj phi) (name_pair (fun q =>
+		((rprj phi) (inr (inr (0, q)))).2.2:answers X) (fM' n' (name_pair (lprj phi) (psi n (rprj phi))))))
+end) (lnmr_size (rprj psi')) psi').
+exact: (list_rev_rs_prec_pind_tech gMcmpt hMcmpt).
+Defined.
 
 Lemma list_rev_rs_prec_ind (X Y: rep_space) (g: Y) (h: (rep_space_prod X Y) -> Y) f:
 	g \is_computable_element -> h \is_prec_function
@@ -257,7 +299,7 @@ Lemma list_rev_rs_prec_ind (X Y: rep_space) (g: Y) (h: (rep_space_prod X Y) -> Y
 Proof.
 move => gcmpt hprec feq.
 set g' := (fun str: rep_space_one => g).
-have g'prec: g' \is_prec_function by apply cnst_fun_prec.
+have g'prec: g' \is_prec_function by apply cnst_prec_fun.
 set h' := (fun p:rep_space_prod rep_space_one (rep_space_prod X Y) => h p.2).
 have h'prec: h' \is_prec_function.
 	move: hprec => [hM hMprop].
@@ -270,16 +312,37 @@ suffices: (fun oK: rep_space_prod rep_space_one (rep_space_list_rev X) => f oK.2
 	by apply (fMprop (name_pair (fun _ => star) phi) (star, x)).
 apply/ (list_rev_rs_prec_pind g'prec h'prec) => /=.
 by move => [str K]; rewrite feq; elim:str => /=; elim: K => // a K ->.
-Qed.
+Defined.
+
+Lemma nil_cmpt_elt (X: rep_space):
+	(@nil X) \is_computable_element.
+Proof.
+exists (fun _ => (None, some_answer _)).
+abstract by split; [exists None | move => a b; exact: F2MF_tot].
+Defined.
+
+Lemma cmpt_elt_seq_rev (X: rep_space) K:
+	(forall x: X, List.In x K -> x \is_computable_element) -> K \is_computable_element.
+Proof.
+elim: K => [ prp | a K ih prp]; first exact: nil_cmpt_elt.
+apply/ prec_fun_cmpt_elt.
+	apply ih => x listin.
+	by apply prp; right.
+apply/ prec_fun_comp; [apply diag_prec_fun| | ].
+apply/ prec_fun_comp; [apply prod_prec_fun; [apply cnst_prec_fun | apply id_prec_fun] | | ].
+	by apply prp; left.
+apply cons_prec_fun_rev.
+done.
+done.
+Defined.
 
 Lemma map_prec_rev (X Y: rep_space) (f: X -> Y):
-	f \is_prec_function -> (fun (K:rep_space_list_rev X) => map f K) \is_prec_function.
+	f \is_prec_function -> (fun (K: rep_space_list_rev X) => map f K) \is_prec_function.
 Proof.
 move => fprec.
 have nc: (@nil Y) \is_computable_element.
 	exists (fun q => (None, (0, some_answer Y))).
-	split; last by move => a b; exact: F2MF_tot.
-	by exists None.
+	abstract by split; [exists None | move => a b; exact: F2MF_tot].
 suffices hprec: (fun p => (f p.1 :: p.2)) \is_prec_function by apply/ (list_rev_rs_prec_ind nc hprec).
 apply/ prec_fun_comp; first	apply diag_prec_fun.
 	apply/ prec_fun_comp; first apply prod_prec_fun.
@@ -292,7 +355,22 @@ apply/ prec_fun_comp; first	apply diag_prec_fun.
 done.
 done.
 done.
-Qed.
+Defined.
+
+Lemma map_prec_rev_par (X Y Z: rep_space) (f: Z*X -> Y):
+	f \is_prec_function -> (fun (zK:rep_space_prod Z (rep_space_list_rev X)) => map (fun K => f (zK.1,K)) zK.2) \is_prec_function.
+Proof.
+move => fprec.
+rewrite /map.
+suffices hprec: (fun zaT => (f (zaT.1, zaT.2.1) :: zaT.2.2)) \is_prec_function.
+	apply/ (list_rev_rs_prec_pind (@cnst_prec_fun Z (rep_space_list_rev Y) nil (@nil_cmpt_elt Y)) hprec).
+	move => [z K] /=; by elim: K => // a K <-.
+apply /prec_fun_comp; [apply prod_assoc_prec | | ].
+	apply/ prec_fun_comp; [apply prod_prec_fun; [apply fprec | apply id_prec_fun] | | ].
+	by apply cons_prec_fun_rev.
+done.
+done.
+Defined.
 
 Lemma iota0_prec_fun:
 	(iota 0) \is_prec_function.
@@ -305,11 +383,7 @@ exists (fun phi q => match (phi star) with
 		| inr (inr p) => (None, (0, p.1))
 	end
 end).
-move => phi n ->/=.
-case E: n => [ | m]; first by split; [exists None | move => a b; apply F2MF_tot].
-split; last by move => a b; apply F2MF_tot.
-exists (Some (n, fun i => i)).
-by split; last by rewrite /F2MF/NXN_lst_rev -E /= map_id.
-Qed.
-
+abstract by move => phi n ->/=; case E: n => [ | m]; [split; [exists None | move => a b; apply F2MF_tot]|
+split; [by exists (Some (n, fun i => i)); split; last by rewrite /F2MF/NXN_lst_rev -E /= map_id | move => a b; apply F2MF_tot]].
+Defined.
 End REVERSEDLISTS.
