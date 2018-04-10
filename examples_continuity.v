@@ -28,12 +28,12 @@ replace (init_seg (S n)) with (cons n (init_seg n)) by trivial.
 by replace (max_elt id (n :: init_seg n)) with (max n.+1 (max_elt id (init_seg n))) by trivial; lia.
 Qed.
 
-Definition is_cont1 (G: (nat -> nat) -> nat -> nat) :=
-  forall phi n, exists m, forall psi,
-    phi \and psi \coincide_on (init_seg m) -> (G phi) \and (G psi) \coincide_on (init_seg n).
 (* This is the more conventional continuity using intial segments.
 It is equivalent to the corresponding multifunction being continuous
 in the sense of "continuity.v" *)
+Definition is_cont1 (G: (nat -> nat) -> nat -> nat) :=
+  forall phi n, exists m, forall psi,
+    phi \and psi \coincide_on (init_seg m) -> (G phi) \and (G psi) \coincide_on (init_seg n).
 
 Lemma continuity1 (F: B -> B):
 	is_cont1 F <-> is_cont (F2MF F).
@@ -62,10 +62,8 @@ rewrite eq; apply/ (cond (F phi)) => //=.
 by apply (@list_melt nat (fun n:nat => n) (fun n:nat => n)).
 Qed.
 
-(*The above relied on specific properties of the involved functions. I am pretty sure that
-it can be recovered for arbitrary countable types. I mean: it is always possible to use a
-bijection with nat, right? Anyway, the following uses lists for regular functions and
-is easier to prove equal to the continuity from "continuity.v" *)
+(* The following uses lists for regular functions and is easier to prove equal to the
+continuity from "continuity.v" *)
 Definition is_cont2 (G: (Q-> A) -> Q' -> A') :=
   forall phi (q': Q'), exists (L : list Q), forall psi,
     phi \and psi \coincide_on L -> G phi q' = G psi q'.
@@ -83,7 +81,7 @@ Qed.
 
 (*To have function from baire space to natural numbers, we identify nat with one -> nat.*)
 Definition F phi n := phi (n star) = 0 /\ forall m, phi m = 0 -> n star <= m.
-(*This is a partial function: if phi is never zero, the right hand side is always false and
+(* F is a partial function: if phi is never zero, the right hand side is always false and
 phi is not assinged any value. On the other hand the function is single valued, as only
 the smalles number where phi is zero allowed as return value. More generally, the function
 is continuous:*)
@@ -135,8 +133,8 @@ suffices: G psi star = G psi' star by rewrite neq /m; lia.
 by apply/ Lprop => //.
 Qed.
 
-(* Since classically, any multi function can be extended to a total multi function,
-we get the following when using classical reasoning:
+(* Since classically, any multi function can be extended to a total multi function and
+we get the following:
 Lemma no_extension':
 	~ exists G, G extends F /\ G is_continuous /\ G is_total.
 But I don't feel like proving that now. *)
