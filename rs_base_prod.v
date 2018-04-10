@@ -47,33 +47,33 @@ Lemma fst_prec (X Y: rep_space):
 	(@fst X Y) \is_prec_function.
 Proof.
 by exists (@lprj X Y); move => phi x [phinx _].
-Qed.
+Defined.
 
 Lemma snd_prec (X Y: rep_space):
 	(@snd X Y) \is_prec_function.
 Proof.
 by exists (@rprj X Y); move => phi x [_ phinx].
-Qed.
+Defined.
 
-Lemma switch_prec (X Y: rep_space):
+Lemma switch_prec_fun (X Y: rep_space):
 	(fun x: X * Y => (x.2, x.1)) \is_prec_function.
 Proof. 
 by exists (fun phi => name_pair (rprj phi) (lprj phi)); move => phi [x y] [phinx phiny].
-Qed.
+Defined.
 
 Lemma prod_assoc_prec (X Y Z: rep_space):
 	(fun x: X * (Y * Z) => (x.1, x.2.1,x.2.2)) \is_prec_function.
 Proof.
 exists (fun phi => name_pair (name_pair (lprj phi) (lprj (rprj phi))) (rprj (rprj phi))).
 by move => phi [x [y z]] [phinx [phiny phinz]].
-Qed.
+Defined.
 
 Lemma prod_assoc_inv_prec (X Y Z: rep_space):
 	(fun x: X * Y * Z => (x.1.1, (x.1.2, x.2))) \is_prec_function.
 Proof.
 exists (fun phi => name_pair (lprj (lprj phi)) (name_pair (rprj (lprj phi)) (rprj phi))).
 by move => phi [[x y] z] [[phinx phiny] phinz].
-Qed.
+Defined.
 
 Lemma prod_cmpt_elt (X Y: rep_space) (x: X) (y: Y):
 	x \is_computable_element -> y \is_computable_element -> (x, y) \is_computable_element.
@@ -83,7 +83,7 @@ by exists (fun q => match q with
 	| inl qx => (phi qx, some_answer Y)
 	| inr qy => (some_answer X, psi qy)
 end).
-Qed.
+Defined.
 
 Lemma lprj_cont X Y:
 	(F2MF (@lprj X Y)) \is_continuous.
@@ -92,7 +92,7 @@ move => phi q; exists ([::inl q]).
 by move => Fphi/= <- psi [eq _] Fpsi <-; rewrite /lprj eq.
 Qed.
 
-Lemma fst_cont (X Y: rep_space):
+Lemma fst_hcr (X Y: rep_space):
 	(F2MF (@fst X Y)) \has_continuous_realizer.
 Proof.
 exists (F2MF (@lprj X Y)).
@@ -106,7 +106,7 @@ move => phi q; exists ([::inr q]).
 by move => Fphi/= <- psi [eq _] Fpsi <-; rewrite /rprj eq.
 Qed.
 
-Lemma snd_cont (X Y: rep_space):
+Lemma snd_hcr (X Y: rep_space):
 	(F2MF (@snd X Y)) \has_continuous_realizer.
 Proof.
 exists (F2MF (@rprj X Y)).
@@ -135,7 +135,7 @@ Lemma prod_prec_fun (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y'):
 Proof.
 move => [M Mrf] [N Nrg].
 exists (mfpp_frlzr M N).
-by move => phipsi [x x'] [phinx psinx']; split; [apply Mrf | apply Nrg].
+abstract by move => phipsi [x x'] [phinx psinx']; split; [apply Mrf | apply Nrg].
 Defined.
 
 Lemma mfpp_frlzr_rlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):
@@ -187,8 +187,7 @@ Lemma prod_prec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
 Proof.
 move => [M Mrf] [N Nrg].
 exists (mfpp_frlzr M N).
-rewrite mfpp_frlzr_rlzr.
-by apply prod_rlzr.
+abstract by rewrite mfpp_frlzr_rlzr; apply prod_rlzr.
 Defined.
 
 Lemma mfpp_cont (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):
@@ -238,7 +237,7 @@ Lemma prod_space_fun (X Y Z: rep_space) (f: Z -> X) (g: Z -> Y):
 		(forall z, (F z).2 = g z).
 Proof.
 by exists (fun z => (f z, g z)).
-Qed.
+Defined.
 
 Lemma prod_space_prec_fun (X Y Z: rep_space) (f: Z -> X) (g: Z -> Y):
 	f \is_prec_function -> g \is_prec_function ->
@@ -257,6 +256,51 @@ split => /=; [rewrite lprj_pair | rewrite rprj_pair].
 	by apply Frf; rewrite lprj_pair.
 by apply Grg; rewrite rprj_pair.
 Qed.
+
+Definition diag (X: rep_space):= (fun x => (x,x): rep_space_prod X X).
+
+Lemma diag_prec_fun (X: rep_space):
+	(@diag X) \is_prec_function.
+Proof. by exists (fun phi => name_pair phi phi). Defined.
+
+Lemma diag_prec (X: rep_space):
+	(F2MF (@diag X)) \is_prec.
+Proof. by exists (fun phi => name_pair phi phi); rewrite -frlzr_rlzr. Defined.
+
+Lemma diag_cmpt_fun (X: rep_space):
+	(@diag X) \is_computable_function.
+Proof. by apply prec_fun_cmpt; apply diag_prec_fun. Defined.
+
+Lemma diag_hcr (X: rep_space):
+	(F2MF (@diag X)) \has_continuous_realizer.
+Proof.
+exists (F2MF (fun phi => name_pair phi phi)).
+split; first by apply frlzr_rlzr.
+move => phi q.
+case: q => q; by exists [:: q] => Fphi/= <- psi [eq _] Fpsi <-; rewrite /name_pair eq.
+Qed.
+
+Lemma diag_cmpt (X: rep_space):
+	(F2MF (@diag X)) \is_computable.
+Proof. apply prec_cmpt; apply diag_prec. Defined.
+
+Lemma cmpt_elt_prod_prec (X Y Z: rep_space) (g: X * Y -> Z) (x: X) f:
+	g \is_prec_function -> x \is_computable_element -> f = (fun y => g (x,y)) -> f \is_prec_function.
+Proof.
+move => fprec xcmpt ->.
+apply /prec_fun_comp.
+	apply diag_prec_fun.
+	apply /prec_fun_comp.
+		apply /prod_prec_fun.
+			by apply id_prec_fun.
+		by apply/ cnst_prec_fun; apply xcmpt.
+	apply/ prec_fun_comp.
+		by apply switch_prec_fun.
+	by apply fprec.
+done.
+done.
+done.
+Defined.
 
 (*
 Class Uncurry T (f : T) src tgt := { prog : src -> tgt }.

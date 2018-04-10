@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import all_core rs_base rs_base_fun rs_base_facts.
+Require Import all_core rs_base rs_base_fun.
 Require Import FunctionalExtensionality ClassicalFacts ClassicalChoice Psatz ProofIrrelevance.
 Require Import Morphisms.
 
