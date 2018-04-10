@@ -186,7 +186,7 @@ Lemma list_rs_prec_ind (X Y: rep_space) (g: Y) (h: (rep_space_prod X Y) -> Y) f:
 Proof.
 move => gcmpt hprec feq.
 set g' := (fun str: rep_space_one => g).
-have g'prec: g' \is_prec_function by apply cnst_fun_prec.
+have g'prec: g' \is_prec_function by apply cnst_prec_fun.
 set h' := (fun p:rep_space_prod rep_space_one (rep_space_prod X Y) => h p.2).
 have h'prec: h' \is_prec_function.
 	move: hprec => [hM hMprop].

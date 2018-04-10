@@ -6,7 +6,7 @@ the approach in the present file is more appropriate. *)
 
 From mathcomp Require Import all_ssreflect.
 Require Import all_rs_base rs_dscrt rs_usig.
-Require Import Qreals Reals Psatz FunctionalExtensionality ClassicalChoice.
+Require Import Qreals Reals Psatz ClassicalChoice.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -148,15 +148,14 @@ Lemma Q_cmpt_elts:
 Proof.
 move => q.
 exists (fun eps => q).
-move => eps ineq.
-apply/ Rbasic_fun.Rabs_le; lra.
+abstract by move => eps ineq; apply/ Rbasic_fun.Rabs_le; lra.
 Defined.
 
 Lemma Ropp_prec:
 	Ropp \is_prec_function.
 Proof.
-exists (fun phi q => Qopp (phi q)) => phi x phinx eps epsg0.
-rewrite Q2R_opp; move: (phinx eps epsg0); split_Rabs; lra.
+exists (fun phi q => Qopp (phi q)).
+abstract by move => phi x phinx eps epsg0; rewrite Q2R_opp; move: (phinx eps epsg0); split_Rabs; lra.
 Defined.
 
 Lemma Ropp_cmpt:
@@ -164,16 +163,16 @@ Lemma Ropp_cmpt:
 Proof.
 apply prec_fun_cmpt.
 exact: Ropp_prec.
-Qed.
+Defined.
 
-Lemma Rplus_prec : (fun x => Rplus (x.1) (x.2)) \is_prec_function.
+Definition Rplus_frlzr (phi: names (rep_space_prod rep_space_R rep_space_R)) (eps: questions rep_space_R) :=
+  (Qplus (phi (inl (Qdiv eps (1+1)))).1 (phi (inr (Qdiv eps (1+1)))).2).
+
+Lemma Rplus_frlzr_crct:
+	Rplus_frlzr \is_realizer_function_for (fun x => Rplus x.1 x.2).
 Proof.
-set Rplus_realizer := (fun phi eps =>
-  (Qplus (phi (inl (Qdiv eps (1+1)))).1 (phi (inr (Qdiv eps (1+1)))).2)).
-exists Rplus_realizer.
 move => phi x phinx eps eg0.
-rewrite /Rplus_realizer.
-rewrite Q2R_plus.
+rewrite /Rplus_frlzr Q2R_plus.
 set phi0 := (fun q => (phi (inl q)).1).
 set phi1 := (fun q => (phi (inr q)).2).
 set r := Q2R (phi0 (Qdiv eps (1 + 1))).
@@ -190,6 +189,12 @@ apply: Rplus_le_compat; apply phinx.
 	by rewrite {2}/Q2R/=; lra.
 rewrite Q2R_div /=; last by lra.
 by rewrite {2}/Q2R/=; lra.
+Qed.
+
+Lemma Rplus_prec : (fun x => Rplus (x.1) (x.2)) \is_prec_function.
+Proof.
+exists Rplus_frlzr.
+exact: Rplus_frlzr_crct.
 Defined.
 
 Lemma Rplus_comp:
@@ -201,21 +206,23 @@ Qed.
 
 (* Multiplication is more involved as the precision of approximations that have to be used
 depends on the size of the inputs *)
-Lemma Rmult_prec : (fun x => Rmult x.1 x.2) \is_prec_function.
+Let trunc (eps: questions rep_space_R) := if Qlt_le_dec eps 1 then eps else (1%Q: questions rep_space_R).
+Let rab := (fun (phi : Q -> Q) => inject_Z(up(Rabs(Q2R(phi (1#2)))+1))).
+Definition Rmult_frlzr (phi: names (rep_space_prod rep_space_R rep_space_R)) (eps: questions rep_space_R) :=
+  ((phi (inl (trunc eps / (1 + 1)/(rab (fun q => (phi(inr q)).2))))).1
+  *
+  (phi (inr (eps / (1 + 1)/(rab (fun q => (phi(inl q) ).1))))).2)%Q.
+
+Lemma Rmult_frlzr_crct:
+	Rmult_frlzr \is_realizer_function_for (fun x => Rmult x.1 x.2).
 Proof.
-set rab := (fun (phi : Q -> Q) => inject_Z(up(Rabs(Q2R(phi (1#2)))+1))).
 have rab_pos: forall phi, Q2R (rab phi) >= 1.
 	move => phi; rewrite /Q2R/rab/=.
 	replace (/ 1) with 1 by field; rewrite Rmult_1_r; apply Rle_ge.
 	apply: Rle_trans; last by	apply Rlt_le; apply archimed.
 	by rewrite -{1}(Rplus_0_l 1); apply Rplus_le_compat_r; exact: Rabs_pos.
-pose trunc eps := if Qlt_le_dec eps 1 then eps else 1%Q.
 have ineq: forall eps, Q2R (trunc eps) <= (Q2R eps).
 	by move => eps; rewrite /trunc; case: (Qlt_le_dec eps 1) => ass /=; [lra | apply Qle_Rle].
-exists (fun phi eps =>
-  ((phi (inl (trunc eps / (1 + 1)/(rab (fun q => (phi(inr q)).2))))).1
-  *
-  (phi (inr (eps / (1 + 1)/(rab (fun q => (phi(inl q) ).1))))).2))%Q.
 move => phipsi [x y] [phinx psiny] eps eg0 /=.
 rewrite Q2R_mult.
 set phi := (fun q:Q => (phipsi (inl q)).1:Q).
@@ -290,6 +297,11 @@ rewrite -Rmult_assoc -Rmult_plus_distr_r.
 apply: Rmult_le_compat_r; first by apply Rlt_le; apply Rinv_0_lt_compat; lra.
 suffices: Q2R (trunc eps) / Q2R (1 + 1) <= Q2R (rab psi)/2 by lra.
 by rewrite !/Rdiv {2}/Q2R/=; apply Rmult_le_compat; try lra.
+Qed.
+
+Lemma Rmult_prec : (fun x => Rmult x.1 x.2) \is_prec_function.
+Proof.
+exists Rmult_frlzr; exact: Rmult_frlzr_crct.
 Defined.
 
 Lemma Rmult_cmpt:
@@ -585,7 +597,7 @@ split.
 	split.
 
 Admitted.
-*)
+
 
 Definition ps_eval an (x: I) y:=
 	lim (fun m => eval (in_seg an m) (projT1 x)) y.
@@ -605,7 +617,6 @@ suffices ->: (Q2R (1 / inject_Z (two_power_nat n))) = (1/ Q2R (inject_Z (two_pow
 by rewrite /Q2R/= Rinv_1 Rmult_1_r/=.
 Defined.
 
-(*
 Lemma geo_series_sum x:
 	ps_eval geo_series x (1/(1-(projT1 x)/2)).
 Proof.
