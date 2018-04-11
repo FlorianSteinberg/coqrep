@@ -61,45 +61,32 @@ Compute (projT1 lst_cmpt_seq) (inr (inr (15%nat, -1#2))).
 (* However, usually a list representing a polynomial is required to have a non-zero leading coefficient.
 For the reals this is equivalent to identifying a polynomial with the function it produces. This means
 taking a quotient. Since quotient types are kind of problematic, the library does not provide a quotient type,
-so the construction must be done by hand. Here is the type of polynomial functions: *)
-Definition poly_R :=
-	{f: R -> R | exists p: {poly R}, forall x, p.[x] = f x}.
-
-(* Constructing elements of a subtype is done using the exist constructor. The following is for ease of use of
-this constructor. *)
-Definition exist_poly:= @exist (R -> R) (fun f => (exists p:{poly R}, forall x, p.[x] = f x)).
-
-(* Each sequence can be turned into a polynomial by removing leading zeros. *)
-Lemma poly_exist (p: seq R):
-	exists q: {poly R}, forall x, q.[x] = horner_rec p x.
-Proof. exists (Poly p) => x; exact: horner_Poly. Qed.
-
-(* So far seq_R is a represented space but poly_R is only a type. To turn poly_R into a represented space, we
-interpret the mapping that takes a list to the funciton it evaluates to as a quotient mapping. *)
-Definition quot (p: seq R) := @exist_poly (fun x => horner_rec p x) (poly_exist p).
+so the construction must be done by hand. The quotient map is defined in the library for polynomials and called
+Poly *)
+Check Poly.
 
 (* The inverse of the quotient mapping still makes sense as a multivalued function. *)
-Definition quot_inv (f: poly_R) (p: seq R):= forall x, horner_rec p x = projT1 f x.
+Definition Poly_inv p (L: seq R):= Poly L = p.
 
 (* It is not single valued though, as lists that start in zeros are identified. *)
-Lemma quot_inv_not_sing:
-	~ quot_inv \is_single_valued.
+Lemma Poly_inv_not_sing:
+	~ Poly_inv \is_single_valued.
 Proof.
 move => sing.
-have val: quot_inv (exist_poly (poly_exist [::])) [::0%R] by move => x /=; rewrite GRing.mul0r GRing.add0r.
-have evl: (quot_inv (exist_poly (poly_exist [::])) [::]) by trivial.
-by have/=:= sing (exist_poly (poly_exist [::])) [::0%R] [::] val evl.
+have val: Poly_inv (Poly [::]) [::0%R] by rewrite /Poly_inv/=cons_poly_def GRing.mul0r GRing.add0r.
+have evl: (Poly_inv (Poly [::]) [::]) by trivial.
+by have/=:= sing (Poly [::]) [::0%R] [::] val evl.
 Qed.
 
 (* It is total though, which translates to quot being surjective and is neccessary but not sufficient for
 it to be possible to interpret quot as quotient map. *)
-Lemma quot_inv_tot:
-	quot_inv \is_total.
-Proof. by move => [pf [p val]]; exists p. Qed.
+Lemma Poly_inv_tot:
+	Poly_inv \is_total.
+Proof. by move => p; exists p; rewrite /Poly_inv polyseqK. Qed.
 
 (* We want to interpret quot as a quotient map, i.e. use the composition of quot and the representation
 of lists as a representation. *)
-Definition rep_poly_R := (F2MF quot) o (@delta seq_R).
+Definition rep_poly_R := (F2MF Poly) o (@delta seq_R).
 
 (* That this indeed defines a representation of the space of polynomial, I.e. that this mapping is
 single valued and surjective, needs to be proven. *)
@@ -114,18 +101,17 @@ Lemma rep_poly_R_rep:
 	rep_poly_R \is_representation.
 Proof.
 split; first exact rep_poly_R_sing.
-move => [f [p evlpf]].
+move => p.
 have [phi phinp]:= rep_sur _ (polyseq p).
 exists phi.
 rewrite /rep_poly_R.
 split; last by move => a b; exact: F2MF_tot.
-exists p; split => //.
-by rewrite /F2MF/quot; apply eq_sub; apply functional_extensionality.
+by exists p; split; last rewrite /F2MF polyseqK.
 Qed.
 
 (* We can now construct the represented space of polynomials. *)
 Canonical rep_space_poly_R := @make_rep_space
-	poly_R
+	{poly R}
 	_
 	_
 	_
@@ -136,37 +122,27 @@ Canonical rep_space_poly_R := @make_rep_space
 	.
 
 (* The following two are basically saying that we indeed use the quotient space *)
-Lemma quot_prec:
-	(fun p => quot p:poly_R) \is_prec_function.
+Lemma Poly_prec:
+	(fun L: seq R => Poly L) \is_prec_function.
 Proof.
 exists (fun phi => phi) => phi p phinp.
-split; last by move => a b; apply: F2MF_tot.
-by exists p.
+abstract by split; [exists p | by move => a b; apply: F2MF_tot].
 Defined.
 
-Lemma quot_inv_prec:
-	quot_inv \is_prec.
+Lemma Poly_inv_prec:
+	Poly_inv \is_prec.
 Proof.
-exists (fun phi => phi) => phi stuff.
-split.
-	move: stuff => [p [[pf [[[q  [phinq _]] _] eq]]] _].
-	exists q; split; first by exists phi.
-	by move => psi <-; exists q.
-move: stuff => [q[[pf [phinpf _]] eq]] r [[psi [<- phinr]] prop].
-split; last by move => [pf' [p peqpf']] _; exists (polyseq p).
-exists (exist_poly (poly_exist r)); split => //.
-split; last by move => a b; exact: F2MF_tot.
-by exists r.
+exists (fun phi => phi).
+abstract by move => phi /= p [[L [phinL PLp]] _] _; exists L.
 Defined.
 
 (* The example list from above is also computable as a polynoimal. *)
 Lemma lst_cmpt_poly:
-	(exist_poly (poly_exist lst) : poly_R) \is_computable_element.
+	(Poly lst) \is_computable_element.
 Proof.
-replace (exist_poly (poly_exist lst)) with (quot lst) by trivial.
 apply/ prec_fun_cmpt_elt.
 	exact lst_cmpt_seq.
-exact quot_prec.
+exact Poly_prec.
 Defined.
 
 (* Its coefficients can still be computed as before. Lets make this a little more readable using Notations:*)
@@ -206,13 +182,13 @@ Defined.
 
 (* To prove that evaluation is computable we translate to lists by using quot and quot_inv. *)
 Lemma eval_prec:
-	(fun px: poly_R * R => projT1 px.1 px.2) \is_prec_function.
+	(fun px: {poly R} * R => px.1.[px.2]) \is_prec_function.
 Proof.
 apply/ prec_fun_prec_comp; [ | apply prod_prec | apply horner_rec_prec | ] => /=.
-			by apply mfpp_tot; split; [apply quot_inv_tot | apply F2MF_tot].
-		by apply quot_inv_prec.
+			by apply mfpp_tot; split; [apply Poly_inv_tot | apply F2MF_tot].
+		by apply Poly_inv_prec.
 	by apply id_prec.
-by move => [f x] [p y] [/=qfp <-]/=; rewrite qfp.
+by move => [p x] [L u] [/= PLp <-]; rewrite -PLp horner_Poly.
 Defined.
 
 (* This allows us to evaluate in any real number we have a name for. For instance the rational 4#3. *)
@@ -225,26 +201,30 @@ possible but also more work, to specify the algorithm directly and prove it corr
 Definition ladd (L K: seq R):=
 	map (fun n => nth 0 L n + nth 0 K n) (iota 0 (maxn (size L) (size K))).
 
-Lemma ladd_crct p q x:
-	horner_rec p x + horner_rec q x = horner_rec (ladd p q) x.
+Lemma ladd_crct L K:
+	Poly L + Poly K = Poly (ladd L K).
 Proof.
-rewrite -!horner_Poly -hornerD.
-congr horner.
-rewrite -polyP/= => i.
+rewrite /ladd.
+Search _ Poly map.
+rewrite -polyP => i.
 rewrite coef_Poly.
-case: (lt_dec i (maxn (size p) (size q)))%nat => ineq.
-	have ->/=:= (@nth_map nat 0%nat R 0 (fun n => p`_n + q`_n) i); last by rewrite size_iota; apply /leP.
-	rewrite nth_iota/=; last by apply /leP.
-	by rewrite coefD !coef_Poly.
-rewrite coefD !coef_Poly.
-rewrite nth_default; last first.
-	apply/ leq_trans; first apply leq_maxl.
-	by apply /leP/ Nat.nlt_ge /ineq.
-rewrite nth_default; last first.
-	apply/ leq_trans; first apply leq_maxr.
-	by apply /leP/ Nat.nlt_ge /ineq.
-rewrite nth_default; first by rewrite GRing.addr0.
-by rewrite size_map size_iota; last by apply /leP/ Nat.nlt_ge.
+have ->: [seq L`_n + K`_n | n <- iota 0 (maxn (size L) (size K))] = [seq (Poly L + Poly K)`_n | n <- iota 0 (maxn (size L) (size K))].
+	by rewrite (@eq_map _ _ _ (fun n => (Poly L + Poly K)`_n)) => // n; rewrite coefD !coef_Poly.
+case: (lt_dec i (maxn (size L) (size K)))%nat => ineq.
+	rewrite (nth_map 0%nat); last by rewrite size_iota; apply /leP.
+	by replace (nth 0%nat (iota 0%nat (maxn (size L) (size K))) i) with i by
+		by rewrite (nth_iota); last apply /leP.
+rewrite !nth_default; [ | rewrite size_map size_iota | apply/leq_trans; first exact: size_add ] => //.
+	apply /leP/ Nat.nlt_ge /ineq.
+rewrite geq_max.
+apply/andP.
+split.
+	apply/ leq_trans;first by apply size_Poly.
+	apply/ leq_trans; first by apply/ (leq_maxl _ (size K)).
+	apply /leP /Nat.nlt_ge /ineq.
+apply/ leq_trans; first by apply size_Poly.
+apply/ leq_trans; first by apply/ (leq_maxr (size L)).
+apply /leP /Nat.nlt_ge /ineq.
 Qed.
 
 (* Since the standard operations on lists are proven computable, this can be used to get an algorithm for
@@ -294,30 +274,16 @@ by apply (Mprop (lprj phi) LK phinLK n).
 done.
 Defined.
 
-Definition poly_add (fg: poly_R * poly_R) (h: poly_R):=
-	forall x, projT1 fg.1 x + projT1 fg.2 x = projT1 h x.
+Definition poly_add (pq: {poly R} * {poly R}) := pq.1 + pq.2.
 
 Lemma poly_add_prec:
-	poly_add \is_prec.
+	poly_add \is_prec_function.
 Proof.
-apply /prec_comp; [apply /prod_prec; [apply quot_inv_prec | apply quot_inv_prec] | | ] => /=.
-	apply /prec_comp; [apply prec_fun_prec; apply ladd_prec | apply prec_fun_prec; apply quot_prec | ].
-	rewrite F2MF_comp/=/F2MF.
-	by trivial.
-move => [[pf [p pfp]] [qf [q qfq]]] M.
-rewrite /poly_add/=.
-split => prp.
-	split; last by move => [L K] [/=a b]; exists (quot (ladd L K)).
-	rewrite /rel_comp.
-	exists (polyseq p, polyseq q) => /=.
-	rewrite /mf_prod_prod/=/quot_inv/=.
-	split => //.
-	rewrite eq_sub/=; apply functional_extensionality => x.
-	by rewrite -prp -pfp -qfq ladd_crct.
-move:prp => [[[L K]] [[/=qinv qinv']] prp _] x.
-rewrite /quot_inv/= in qinv.
-rewrite /quot_inv/= in qinv'.
-by rewrite -qinv -qinv' prp/= ladd_crct.
+apply /prec_fun_prec_comp => /=.
+		by apply mfpp_tot; split; apply Poly_inv_tot.
+	by apply /prod_prec; [apply Poly_inv_prec | apply Poly_inv_prec].
+by apply /prec_fun_comp; [apply ladd_prec | apply Poly_prec | ].
+by move => [p q] [L K] [/=PpL PqK]; rewrite -ladd_crct -PpL PqK.
 Defined.
 
 (* This allows us to evaluate in any real number we have a name for. For instance the rational 4#3. *)
@@ -325,6 +291,5 @@ Compute Qred (ith ((projT1 poly_add_prec) (name_pair lst_name lst_name)) 1%nat (
 Compute Qred (ith ((projT1 poly_add_prec) (name_pair lst_name lst_name)) 4%nat (1#2)).
 Compute Qred (ith ((projT1 poly_add_prec) (name_pair lst_name lst_name)) 15%nat (1#2)).
 
-Definition poly_mult (fg: poly_R * poly_R) (h: poly_R):=
-	forall x, (projT1 fg.1 x * projT1 fg.2 x = projT1 h x)%R.
+Definition poly_mult (pq: {poly R} * {poly R}) := pq.1 * pq.2.
 End POLYNOMIALS.
