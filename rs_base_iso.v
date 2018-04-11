@@ -9,11 +9,11 @@ Unset Printing Implicit Defensive.
 
 Section ISOMORPHISMS.
 Definition isomorphism (X Y: rep_space) (f: X c-> Y) :=
-	exists (g: Y c-> X) (P: is_comp_elt f) (Q: is_comp_elt g),
+	exists (g: Y c-> X) (P: f \is_computable_element) (Q:g \is_computable_element),
 		((projT1 f) o (projT1 g) =~= F2MF id /\ (projT1 g) o (projT1 f) =~= F2MF id).
 
 Definition wisomorphism (X Y: rep_space) (f: X ->> Y) :=
-	exists (g: Y ->> X) (P: is_comp f) (Q: is_comp g),
+	exists (g: Y ->> X) (P: f \is_computable) (Q: g \is_computable),
 	(f o g =~= F2MF id /\ g o f =~= F2MF id).
 
 Definition isomorphic (X Y: rep_space):=
