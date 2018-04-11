@@ -187,7 +187,7 @@ Lemma prod_prec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
 Proof.
 move => [M Mrf] [N Nrg].
 exists (mfpp_frlzr M N).
-abstract by rewrite mfpp_frlzr_rlzr; apply prod_rlzr.
+abstract by rewrite prlzr_rlzr mfpp_frlzr_rlzr; apply prod_rlzr; rewrite -prlzr_rlzr.
 Defined.
 
 Lemma mfpp_cont (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):
@@ -265,7 +265,7 @@ Proof. by exists (fun phi => name_pair phi phi). Defined.
 
 Lemma diag_prec (X: rep_space):
 	(F2MF (@diag X)) \is_prec.
-Proof. by exists (fun phi => name_pair phi phi); rewrite -frlzr_rlzr. Defined.
+Proof. by exists (fun phi => name_pair phi phi); rewrite prlzr_rlzr -frlzr_rlzr. Defined.
 
 Lemma diag_cmpt_fun (X: rep_space):
 	(@diag X) \is_computable_function.

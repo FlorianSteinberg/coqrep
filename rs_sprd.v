@@ -49,7 +49,7 @@ Lemma sprd_cmpt_prec (X Y: rep_space) (f: X ->> Y):
 Proof.
 move => sprd [M [Mmon Mprop]].
 exists (fun phi => projT1 (sprd (fun n:nat => M n phi))).
-apply F2MF_rlzr => phi x phinx /= [y fxy].
+move => phi x phinx [y fxy].
 have phifd: phi \from_dom (f o (rep X)).
 	exists y;	split; first by exists x.
 	by move => x' phinx'; rewrite (rep_sing X phi x' x); first by exists y.
@@ -84,7 +84,7 @@ move => sprd mon sing [phi phinx] fxy.
 have xfd: x \from_dom f by exists y.
 have [M Mprop]:= sprd_cmpt_prec sprd mon.
 exists (M phi).
-have [y' [Mphiny' fxy']]:= (F2MF_rlzr f M).1 Mprop phi x phinx xfd.
+have [y' [Mphiny' fxy']]:= Mprop phi x phinx xfd.
 by rewrite (sing x y y').
 Qed.
 

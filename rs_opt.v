@@ -54,8 +54,9 @@ Definition Some_inv (X: rep_space) ox (x: X) := ox = some x.
 Definition Some_inv_frlzr (X: rep_space) := fun (phi: names (rep_space_opt X)) (q: questions X) => unsm phi q.
 
 Lemma Some_inv_frlzr_crct (X: rep_space):
-	(F2MF (@Some_inv_frlzr X)) \is_realizer_of (@Some_inv X).
+	(@Some_inv_frlzr X) \is_prec_realizer_of (@Some_inv X).
 Proof.
+rewrite prlzr_rlzr.
 move => phi [x [[ox [phinox eq]] _]].
 rewrite eq in phinox. move: phinox => [/= stuff name].
 split.
