@@ -67,6 +67,16 @@ have [Fphi [eq Fphifx]]:= (exte phi (f x) Fphinfx).1.
 by rewrite eq.
 Qed.
 
+Global Instance frlzr_prpr (X Y: rep_space):
+	Proper (@eqfun (names Y) (names X) ==> @eqfun (space Y) (space X) ==> iff) (@frlzr X Y).
+Proof.
+move => F G FeG f g feg.
+have eq: (F2MF F) =~= (F2MF G) by move => s; rewrite /F2MF (FeG s).
+have eq': (F2MF f) =~= (F2MF g) by move => s; rewrite /F2MF (feg s).
+by rewrite !frlzr_rlzr eq eq'.
+Qed.
+
+
 Lemma mfrlzr_rlzr (X Y: rep_space) F (f: X ->> Y) (somey: Y): f \is_single_valued -> f \is_total
 	-> (exists g, g \is_choice_for f /\ F \is_realizer_function_for g) <-> (F2MF F) \is_realizer_of f.
 Proof.
@@ -169,12 +179,17 @@ move => x' phinx'.
 by exists y; rewrite (rep_sing X phi x' x).
 Qed.
 
-Lemma F2MF_rlzr (X Y: rep_space) (f: X ->> Y) F:
-	(F2MF F) \is_realizer_of f
+Definition prlzr (X Y: rep_space) (F: (names X) -> (names Y)) (f: X ->> Y) :=
+	(forall phi x, phi \is_name_of x -> x \from_dom f ->
+		exists y, (F phi) \is_name_of y /\ f x y).
+Notation "F '\is_prec_realizer_of' f":= (prlzr F f) (at level 2).
+
+Lemma prlzr_rlzr (X Y: rep_space) (f: X ->> Y) F:
+	F \is_prec_realizer_of f
 	<->
-	(forall phi x, phi \is_name_of x -> x \from_dom f -> exists y, (F phi) \is_name_of y /\ f x y).
+	(F2MF F) \is_realizer_of f.
 Proof.
-split.
+split; last first.
 	move => Frf phi x phinx [y fxy].
 	have phifd: phi \from_dom (f o (delta (r:=X))).
 		exists y; split; first by exists x.
@@ -195,6 +210,14 @@ split.
 move => y'' [[Fphi [<- Fphiny'']]cnd].
 split; first by exists x; rewrite (rep_sing Y (F phi) y'' y').
 by move => x' phinx'; rewrite (rep_sing X phi x' x).
+Qed.
+
+Global Instance prlzr_prpr (X Y: rep_space):
+	Proper (@eqfun (names Y) (names X) ==> @equiv (space X) (space Y) ==> iff) (@prlzr X Y).
+Proof.
+move => F G FeG f g feg.
+have eq: (F2MF F) =~= (F2MF G) by move => s; rewrite /F2MF (FeG s).
+by rewrite !prlzr_rlzr eq feg.
 Qed.
 
 Lemma rlzr_F2MF (X Y: rep_space) (f: X -> Y) F:
@@ -261,22 +284,53 @@ Notation "f '\has_continuous_realizer'":= (hcr f) (at level 2).
 Notation "f '\is_realized_by' F" := (rlzr F f) (at level 2).
 Notation "F '\is_realizer_of' f" := (rlzr F f) (at level 2).
 Notation "F '\is_realizer_function_for' f" := (frlzr F f) (at level 2).
+Notation "F '\is_prec_realizer_of' f":= (prlzr F f) (at level 2).
 
 Section DEFINITIONS.
 
-Definition is_comp_elt (X: rep_space) (x: X) :=
+Definition is_cmpt_elt (X: rep_space) (x: X) :=
 	{phi| phi \is_name_of x}.
 
-Definition is_comp (X Y: rep_space) (f: X ->> Y) :=
+Definition is_cmpt (X Y: rep_space) (f: X ->> Y) :=
 	{M | (eval M) \is_realizer_of f}.
 
-Definition is_mon_comp (X Y: rep_space) (f: X ->> Y) :=
+Definition is_mon_cmpt (X Y: rep_space) (f: X ->> Y) :=
 	{M | M \is_monotone_oracle_machine /\ (eval M) \is_realizer_of f}.
 
 Definition is_prec (X Y: rep_space) (f: X ->> Y) :=
-	{F | (F2MF F) \is_realizer_of f}.
+	{F | F \is_prec_realizer_of f}.
 
-Definition is_comp_fun (X Y: rep_space) (f: X -> Y) :=
+(*
+Definition iffT (S T: Type) :=
+exists (f: S -> T) (g:T -> S), (forall s, f (g s) = s) /\ forall t, g (f t) = t.
+
+Global Instance eq_iffT:
+	Equivalence iffT.
+Proof.
+split.
+		by move => T; do 2 exists (fun t => t).
+	by move => S T [TS [ST [fsg gsf]]]; exists ST; exists TS.
+move => S T R [f [g [fsg gsf]]] [f' [g' [f'sg' g'sf']]].
+	exists (fun s => f' (f s)).
+exists (fun r => g (g' r)).
+by split => [s | t]; [rewrite (fsg (g' s)) | rewrite (g'sf' (f t))].
+Qed.
+
+Global Instance prec_prpr (X Y: rep_space):
+	Proper (@equiv X Y ==> iffT) (@prec X Y).
+Proof.
+move => f g feg.
+have imp1: prec f -> prec g.
+	by move => [M Mprop]; exists M; rewrite -prlzr_rlzr -feg prlzr_rlzr; apply Mprop.
+exists imp1.
+have imp2: prec g -> prec f.
+	by move => [M Mprop];	exists M; rewrite -prlzr_rlzr feg prlzr_rlzr; apply Mprop.
+exists imp2.
+split => s.
+
+Qed.*)
+
+Definition is_cmpt_fun (X Y: rep_space) (f: X -> Y) :=
 	{M | (eval M) \is_realizer_of (F2MF f)}.
 
 Definition is_prec_fun (X Y: rep_space) (f: X -> Y) :=
@@ -284,24 +338,26 @@ Definition is_prec_fun (X Y: rep_space) (f: X -> Y) :=
 End DEFINITIONS.
 
 Notation opU psi:=(eval (fun n phi q' => U n psi phi q')).
-Notation "x '\is_computable_element'" := (is_comp_elt x) (at level 2).
-Notation "f '\is_computable'" := (is_comp f) (at level 2).
-Notation "f '\is_monotone_computable'" := (is_mon_comp f) (at level 2).
+Notation "x '\is_computable_element'" := (is_cmpt_elt x) (at level 2).
+Notation "f '\is_computable'" := (is_cmpt f) (at level 2).
+Notation "f '\is_monotone_computable'" := (is_mon_cmpt f) (at level 2).
 Notation "f '\is_prec'" := (is_prec f) (at level 2).
 Notation "f '\is_prec_function'" := (is_prec_fun f) (at level 2).
-Notation "f '\is_computable_function'" := (is_comp_fun f) (at level 2).
+Notation "f '\is_computable_function'" := (is_cmpt_fun f) (at level 2).
 
 Section BASIC_LEMMAS.
 Lemma prec_fun_prec (X Y: rep_space) (f: X -> Y):
 	f \is_prec_function -> (F2MF f) \is_prec.
-Proof. by move => [M Mprop]; by exists M; apply frlzr_rlzr. Defined.
+Proof.
+by move => [M Mprop]; exists M; apply/ prlzr_rlzr/ frlzr_rlzr.
+Qed.
 
 Lemma prec_cmpt (X Y:rep_space) (f: X ->> Y):
 	f \is_prec -> f \is_computable.
 Proof.
 move => [N Nir]; exists (fun n phi q' => Some (N phi q')).
-abstract by apply/ tight_trans; first by apply/ tight_comp_r; apply (prec_F2MF_op 0).
-Defined.
+abstract by move: Nir; rewrite prlzr_rlzr => Nir; apply/ tight_trans; first apply/ tight_comp_r/(prec_F2MF_op 0).
+Qed.
 
 Lemma prec_fun_cmpt_elt (X Y: rep_space) (f: X -> Y) (x: X):
 	x \is_computable_element -> f \is_prec_function -> (f x) \is_computable_element.
@@ -328,15 +384,16 @@ Lemma prec_comp (X Y Z: rep_space) (f: X ->> Y) (g: Y ->> Z) h:
 Proof.
 move => [M comp] [N comp'] eq.
 exists (fun phi => N (M phi)).
-abstract by rewrite eq;
-	have ->: F2MF (fun phi => N (M phi)) =~= (F2MF N) o (F2MF M); [rewrite F2MF_comp | apply rlzr_comp].
+abstract by rewrite prlzr_rlzr eq; have ->: F2MF (fun phi => N (M phi)) =~= (F2MF N) o (F2MF M);
+	[rewrite F2MF_comp | apply rlzr_comp; rewrite -prlzr_rlzr].
 Defined.
 
 Lemma prec_fun_prec_comp_tech (X Y Z: rep_space) (f: X ->> Y) (g: Y -> Z) M N:
-	f \is_total -> (F2MF M) \is_realizer_of f -> N \is_realizer_function_for g
+	f \is_total -> M \is_prec_realizer_of f -> N \is_realizer_function_for g
 	-> forall h, (forall x y, f x y -> h x = g y) -> (fun phi => N (M phi)) \is_realizer_function_for h.
 Proof.
 move => ftot comp comp' h eq phi x phinx.
+move: comp; rewrite prlzr_rlzr => comp.
 have [y fxy]:= ftot x.
 have prop: phi \from_dom (f o (delta (r:=X))).
 	exists y; split; first by exists x.
@@ -401,10 +458,10 @@ Proof. by exists id. Defined.
 
 Lemma id_prec X:
 	@is_prec X X (F2MF id).
-Proof. by exists id; apply frlzr_rlzr. Defined.
+Proof. exists id; abstract by rewrite prlzr_rlzr -frlzr_rlzr. Defined.
 
 Lemma id_cmpt X:
-	@is_comp X X (F2MF id).
+	@is_cmpt X X (F2MF id).
 Proof. exact: (prec_cmpt (id_prec X)). Defined.
 
 Lemma id_hcr X:

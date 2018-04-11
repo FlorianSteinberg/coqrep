@@ -508,7 +508,7 @@ Lemma lim_eff_prec:
 	lim_eff \is_prec.
 Proof.
 exists (fun phin eps => phin (S (Pos_size (Qden eps))%nat, (Qmult eps (1#2)))).
-rewrite /rlzr F2MF_comp.
+rewrite prlzr_rlzr /rlzr F2MF_comp.
 move => phin [x [[xn [phinxn [[y eff] limxnx]]] prop]].
 have limxny: lim xn y.
 	move => eps epsg0.
