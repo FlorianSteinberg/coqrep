@@ -37,4 +37,19 @@ Canonical rep_space_sub_space (X: rep_space) (P: X -> Prop) := @make_rep_space
   (countable_questions X)
   (countable_answers X)
   (@rep_sub_space X P).
+
+Lemma sub_space_prec_fun (X Y: rep_space) (P: X -> Prop) (f: X -> Y):
+	f \is_prec_function -> (fun x: {x' | P x'} => f (projT1 x)) \is_prec_function.
+Proof. by move => [M Mprop]; exists M => phi x; apply Mprop. Qed.
+
+Lemma sub_space_prec (X Y: rep_space) (P: X -> Prop) (f: X ->> Y):
+	f \is_prec -> (fun x: {x' | P x'} => f (projT1 x)) \is_prec.
+Proof.
+move => [M Mprop'].
+exists M.
+move => phi x phinx [y /=fxy].
+have xfd': (projT1 x) \from_dom f by exists y.
+have phinx': (phi: names X) \is_name_of (projT1 x) by trivial.
+by apply: Mprop' phi (projT1 x) phinx' xfd'.
+Qed.
 End SUBSPACES.
