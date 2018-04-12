@@ -114,10 +114,11 @@ Defined.
 (* Both of these are directly executable again. *)
 Compute (projT1 pow_prec (name_pair (projT1 (Q_cmpt_elts (1#2))) (fun _ => 5%nat))) (1#100)%Q.
 Compute (projT1 pow_prec' (name_pair (projT1 (Q_cmpt_elts (1#2))) (fun _ => 5%nat))) (1#100)%Q.
-(* The later is the better practice as it keeps part of the proof opaque. Note that if some essential
-part of the proof is opaque, the computation will usually take for ever. But in case it comes to an
-end form the output it is usually apparent what needs to be done to restor executability.
-Unfortunately, executability is somewhat fragile it can also be broken by the use of lra in some cases. *)
+(* The later is the better practice as it keeps the non algorithmic part of the proof opaque.
+Note that if some essential part of the proof is opaque, the computation will usually take
+forever. But in case it comes to an end form the output it is usually apparent what needs to
+be done to restore executability. Unfortunately, executability is somewhat fragile it can
+also be broken by the use of lra in some cases. *)
 
 (* The library also provides an algorithm for taking efficient limits *)
 Check lim_eff_prec.
@@ -134,18 +135,19 @@ Check lim_not_cont.
 Print Un_cv.
 (* Note, that there is a slight difference, as the limit operator used in the standard library makes
 eps a real number and uses strict inequality. By contrast, lim uses a rational epsilons and <=.
-The former has the advantage that it not tight to any representation or arbitrary choice of a dense
-subsequence. The later has the advantage that it makes computation possible. In particular the
+The former has the advantage that it is not tied to any representation or arbitrary choice of a dense
+subsequence. The later has the advantage that it makes computation easier. In particular the
 discontinuous and therefore also uncomputable up function that is integral part of the type of reals
 due to the archemidean Axiom *)
 Print archimed.
 (* is often used to translate an error bound eps into a discrete quantity like the index of a sequence.
 It's restriction to the rationals is computable. *)
 Print upQ.
+Print Int_partQ.
 Check archimedQ.
 (* Some ineffient proofs can be made efficient by replacing real epsilons by rational epsilons and uses of
-up function by uses of the upQ function. Of course, one has to prove that this does not change the statement.
-Here is the corresponding proof for the limit operator, where "=~=" is a notation for the equality of
+up function by uses of the upQ function. Of course, one has to prove that this does not change the
+statement. As example consider the limit operator, not that "=~=" is a notation for the equality of
 multivalued functions and translates to forall s t, f s t <-> g s t *)
 Lemma Uncv_lim:
 	Un_cv =~= lim.

@@ -3,7 +3,7 @@ Require Import Qreals QArith Psatz Reals Field.
 (* rs_list_rev provides a type for lists that saves the lists reversed, which is more appropriate
 for saving polynomials. Rstruct makes the real numbers a ring in the sense of mathcomp. *)
 Require Import rs_list_rev all_rs rs_reals_creals Rstruct.
-Require Import FunctionalExtensionality ClassicalChoice.
+Import GRing.Theory.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
