@@ -34,3 +34,4 @@ examples_continuity.v
 Rstruct.v
 example_polynomials.v
 example_real_functions.v
+example_tchebychevpol.v
