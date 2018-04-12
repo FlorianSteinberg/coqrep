@@ -19,6 +19,7 @@ Definition seq_R := rep_space_list_rev rep_space_R.
 (* Here is an example: *)
 Definition lst := [::Q2R 0; Q2R(5#1); Q2R(1#2); Q2R 0; Q2R(4#3)].
 
+Print horner_rec.
 (* First we have to get a name for lst as polynomial. To do so we first prove that lst
 is computable as list. *)
 Lemma lst_cmpt_seq:

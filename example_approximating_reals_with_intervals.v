@@ -231,7 +231,16 @@ split.
 	by rewrite Rmult_1_r; apply/ Rle_trans; last exact/ Rlt_le/ (archimed _).1; lra.
 move => eps epsnum epsg0.
 case: eps epsg0 epsnum => // m e epsg0 _.
-case: e epsg0 => e epsg0.
+exists (Pos.succ (SFBI2.prec e)) => n ineq; split => //.
+rewrite !Float_to_R.
+rewrite -Rcomplements.Rmult_minus_distr_r.
+apply (Rmult_le_reg_r (2 ^ Pos.to_nat n)); first by apply pow_lt; lra.
+rewrite Rmult_assoc Rinv_l; last by apply/ Interval_missing.Rlt_neq_sym/ pow_lt; lra.
+rewrite Rmult_1_r.
+have []:= (archimed (x * powerRZ 2 (Z.pos n))).
+have []:= (base_Int_part (x * powerRZ 2 (Z.pos n))).
+suffices: (2 <= (D2R (Float m e)) * 2^ Pos.to_nat n) by lra.
+case: m epsg0 => // m epsg0.
 Admitted.
 (*
 split => /=.
