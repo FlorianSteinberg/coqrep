@@ -1,4 +1,6 @@
-Require Import Reals ssreflect ssrbool Psatz.
+From mathcomp Require Import all_ssreflect.
+Require Import Reals Coquelicot.Coquelicot Psatz.
+
 
 Set Bullet Behavior "None". 
 
@@ -146,7 +148,7 @@ have sinANZ : sin A <> 0.
   case: (IZR_case k) => H; try nra.
 have H3 := sin2_cos2 A.
 rewrite /Rsqr in H3.
-have := (eq_refl ((tan A)^2)).
+have := (Logic.eq_refl ((tan A)^2)).
 rewrite {1}atan_right_inv /tan !Rpow_mult_distr -!Rinv_pow; try lra.
 move=> H4.
 have : sqrt (1 - y * y) ^ 2 * cos A ^ 2 - y ^ 2 * sin A ^ 2 = 0.
@@ -207,7 +209,7 @@ have HP := PI2_1;
 have [k [r [-> Hr]]] : exists k, exists r, v = r + INR k * PI /\ (0 <= r <= PI).
   pose k := Z.to_nat (up (v / PI) - 1).
   exists k; exists (v - INR k * PI); split; try lra.
-  rewrite INR_IZR_INZ Z2Nat.id.
+  rewrite INR_IZR_INZ Z2Nat.id; last first.
     suff : (0 < up (v / PI))%Z by lia.
     apply: lt_0_IZR.
     suff : 0 <= v / PI by case: (archimed (v / PI)); lra.
@@ -216,7 +218,7 @@ have [k [r [-> Hr]]] : exists k, exists r, v = r + INR k * PI /\ (0 <= r <= PI).
       by apply: pos_INR.
     by apply/Rlt_le/Rinv_0_lt_compat; lra.
   rewrite minus_IZR. 
-  rewrite {1 3}(_ : v = (v / PI) * PI); first by field; lra.
+  rewrite {1 3}(_ : v = (v / PI) * PI); last by field; lra.
   case: (archimed (v / PI)); nra.
 rewrite Rmult_plus_distr_l -Rmult_assoc -mult_INR [RHS]cos_add_INR.
 rewrite Nat.even_mul orbC.
@@ -226,4 +228,85 @@ have [kE|kO] := boolP (Nat.even k).
 rewrite /= acos_opp acos_left_inv //.
 rewrite (_ : INR n * (PI - r) = - (INR n * r) + INR n * PI); try ring.
 by rewrite cos_add_INR cos_neg.
+Qed.
+
+Lemma RInt_cos_0_PI (m : nat) : 
+  m <> 0%nat ->
+   is_RInt (fun y : R => cos (INR m * y)) 0 PI 0.
+Proof.
+move=> mNZ.
+apply: (is_RInt_ext  (fun y : R => /(INR m) * (INR m * cos (INR m * y + 0)))) => [x _|].
+  by rewrite Rplus_0_r /=; field; apply: not_0_INR.
+rewrite {3}(_ : 0 = /(INR m) * 0); try lra.
+apply: is_RInt_scal.
+apply: is_RInt_comp_lin.
+rewrite Rmult_0_r !Rplus_0_r.
+rewrite {2}(_ : 0 = sin (INR m * PI) - sin 0); last first.
+  rewrite sin_0.
+  elim: (m) => [|n IH]; first by rewrite Rmult_0_l sin_0; lra.
+  rewrite S_INR Rmult_plus_distr_r Rmult_1_l.
+  by rewrite neg_sin; lra.
+apply: is_RInt_derive => [x _|x _].
+  by apply/is_derive_Reals/derivable_pt_lim_sin.
+apply: ex_derive_continuous.
+apply: ex_derive_Reals_1.
+exists (- sin x).
+by apply/derivable_pt_lim_cos.
+Qed.
+
+Lemma RInt_cos_cos_0_PI (n m : nat) :
+  RInt (fun y => cos (INR n * y) * cos (INR m * y)) 0 PI = 
+           if (n == m) then if (n == 0%N) then PI else PI/2 else 0.
+Proof.
+apply is_RInt_unique.
+case: eqP=> [->|/= nDm].
+  case: eqP => [->|/= mZ].
+    apply: (is_RInt_ext (fun y => 1)) => [x _|].
+      by rewrite !Rmult_0_l cos_0; lra.
+    rewrite {2}(_ : PI = ((PI - 0) * 1)); try lra.
+    by apply: is_RInt_const.
+  pose f y := (/2) * (cos (INR (m + m) * y) + cos (INR (m - m) * y)).
+  apply: (is_RInt_ext f) => [x _|].
+    rewrite /f form1 -Rmult_minus_distr_r -minus_INR; last first.
+      by rewrite -plusE -minusE; lia.
+    rewrite -Rmult_plus_distr_r -plus_INR.
+    rewrite (_ : (m + m - (m - m) = 2 * m)%coq_nat); last first.
+      by rewrite -plusE -minusE; lia.
+    rewrite (_ : (m + m + (m - m) = 2 * m)%coq_nat); last first.
+      by rewrite -plusE -minusE; lia.
+    rewrite !mult_INR (_ : INR 2 = 2); last by rewrite /=; lra.
+    rewrite  [_ * _ * x]Rmult_assoc [_/2]Rinv_r_simpl_m /=; last by lra.
+    by field.
+  rewrite (_ : PI/2 = /2 * PI); try lra.
+  apply: is_RInt_scal.
+  rewrite {2}(_ : PI = 0 + PI); try lra.
+  apply: is_RInt_plus.
+    by apply: RInt_cos_0_PI; rewrite -!plusE; lia.
+  apply: (is_RInt_ext (fun y => 1)) => [x _|].
+    by rewrite subnn Rmult_0_l cos_0.
+  rewrite {2}(_ : PI = (PI - 0) * 1); try lra.
+  by apply: is_RInt_const.
+wlog /leP nLm : m n nDm / (n <= m)%nat => [H|].
+  case: (leqP n m) => [/H//|/ltnW/H H1]; first by apply.
+  apply: (is_RInt_ext (fun y =>  cos (INR m * y) * cos (INR n * y))) => [x _|].
+    by lra.
+  by apply: H1; lia.
+pose f y := (/2) * (cos (INR (m + n) * y) + cos (INR (m - n) * y)).
+apply: (is_RInt_ext f) => [x Hx|].
+  rewrite /f form1 -Rmult_minus_distr_r -minus_INR; last first.
+    by rewrite -plusE -minusE; lia.
+  rewrite (_ : (m + n - (m - n) = 2 * n)%coq_nat); last first.
+    by rewrite -plusE -minusE; lia.
+  rewrite -Rmult_plus_distr_r -plus_INR.
+  rewrite (_ : (m + n + (m - n) = 2 * m)%coq_nat); last first.
+    by rewrite -plusE -minusE; lia.
+  rewrite !mult_INR (_ : INR 2 = 2); last by rewrite /=; lra.
+  rewrite  [_ * _ * x]Rmult_assoc [_/2]Rinv_r_simpl_m; last by lra.
+  rewrite  [_ * _ * x]Rmult_assoc [_/2]Rinv_r_simpl_m /=; last by lra.
+  by field.
+rewrite {2}(_ : 0 = /2 * 0); try lra.
+apply: is_RInt_scal.
+rewrite {2}(_ : 0 = 0 + 0); try lra.
+apply: is_RInt_plus; apply: RInt_cos_0_PI; first by rewrite -plusE; lia.
+rewrite -minusE; lia.
 Qed.
