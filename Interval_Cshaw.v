@@ -33,7 +33,7 @@ Notation ID := (Interval_interval_float.f_interval F.type).
 Notation XR := Interval_xreal.ExtendedR.
 Notation Xreal := Interval_xreal.Xreal.
 Notation cntd x I := (contains (I.convert I) x).
-Notation "x '\contained_in' I" := (cntd x I) (at level 2).
+Notation "x '\contained_in' I" := (cntd (Xreal x) I) (at level 20).
 Notation D2R := I.T.toR.
 Notation lower := I.lower.
 Notation upper := I.upper.
@@ -59,47 +59,90 @@ Fixpoint CbIA q (x : ID) : ID * ID :=
 Definition CshawIA p x := sub (CbIA p x).1 (mul (CbIA p x).2 x).
 
 Lemma cntd_I0:
- forall x, x \contained_in I0 -> x = Xreal 0.
+	forall x, x \contained_in I0 -> x = 0%R.
 Proof.
-case => //= r/=.
-rewrite  F.fromZ_correct => /= Hr.
-congr Xreal; lra.
+move => x.
+rewrite /contains/I.convert/=.
+rewrite  F.fromZ_correct => /= [[]].
+rewrite !/IZR.
+lra.
 Qed.
 
-Lemma mul_I0:
-	forall x, x \contained_in I0 -> x \contained_in (mul I0 I0).
+Lemma mul_correct_R x y I J:
+	x \contained_in I -> y \contained_in J -> (x * y) \contained_in (mul I J).
 Proof.
-move => x cntd.
-have eq:= cntd_I0 cntd.
-rewrite eq; rewrite eq in cntd.
-replace (Xreal 0) with (Xmul (Xreal 0) (Xreal 0)) by by rewrite xreal_ssr_compat.Xmul_Xreal Rmult_0_r.
-by apply (I.mul_correct prec I0 I0).
+intros.
+replace (Xreal (x * y)) with (Xmul (Xreal x) (Xreal y)) by trivial.
+by apply I.mul_correct.
+Qed.
+
+Lemma sub_correct_R x y I J:
+	x \contained_in I -> y \contained_in J -> (x - y) \contained_in (sub I J).
+Proof.
+intros.
+replace (Xreal (x - y)) with (Xsub (Xreal x) (Xreal y)) by trivial.
+by apply I.sub_correct.
 Qed.
 
 Lemma CshawIA0 x I:
-	x \contained_in (CshawIA [::] I) -> x \contained_in I0.
+	x \contained_in (CshawIA [::] I) <-> x \contained_in I0.
 Proof.
+rewrite /CshawIA /CbIA.
+split.
 Admitted.
 
-Lemma CshawIA_crct (p: {poly R}) (pI: seq ID) (x: R) (J: ID):
-	(forall i, (Xreal p`_i) \contained_in (nth (I0) pI i)) -> (Xreal x) \contained_in J ->
-		(Xreal (Cshaw p x)) \contained_in (CshawIA pI J).
+Lemma CbIA_crct (p: {poly R}) (pI: seq ID) (x: R) (I: ID):
+	(forall i, (p`_i) \contained_in (nth I0 pI i)) -> x \contained_in I ->
+		(Cb p x).1 \contained_in (CbIA pI I).1 /\ (Cb p x).2 \contained_in (CbIA pI I).2.
 Proof.
 move => prp xJ.
-elim: pI prp => prp.
+elim: pI p prp => [p prp | J pI ih p prp].
 	have ->: p = 0.
 		apply polyP => i.
 		rewrite [nth 0 (polyseq 0) _]nth_default; last by rewrite size_poly0.
 		specialize (prp i).
-		suffices: Xreal p`_i = Xreal 0 by case.
 		move: prp; rewrite [nth I0 _ _]nth_default => // prp.
 		by apply cntd_I0.
-	rewrite /Cshaw/CshawIA.
+	have ->: Cb (0%:P) x = (0%R, 0%R) by by rewrite polyseq0/=.
+	replace (CbIA [::] I) with (I0,I0) by by rewrite /CbIA.
+	by rewrite /= F.fromZ_correct/Z2R; lra.
+Admitted.
+
+Lemma CshawIA_crct (p: {poly R}) (pI: seq ID) (x: R) (J: ID):
+	(forall i, p`_i \contained_in (nth (I0) pI i)) -> x \contained_in J ->
+		(Cshaw p x) \contained_in (CshawIA pI J).
+Proof.
+move => prp xJ.
+elim: pI p prp => [p prp | I pI ih p prp].
+	have ->: p = 0.
+		apply polyP => i.
+		rewrite [nth 0 (polyseq 0) _]nth_default; last by rewrite size_poly0.
+		specialize (prp i).
+		move: prp; rewrite [nth I0 _ _]nth_default => // prp.
+		by apply cntd_I0.
+	replace (Cshaw 0 x) with 0%R by by rewrite Cshaw0.
+	rewrite /CshawIA/CbIA.
+	Opaque I.sub I.mul contains.
+	rewrite /=.
+	replace (Xreal 0) with (Xsub (Xreal 0) (Xreal 0)) by
+		by rewrite Xsub_split/Xadd/Xneg Ropp_0 Rplus_0_r.
+	apply I.sub_correct.
+	specialize (prp 0%nat); rewrite nth_default in prp => //.
+	by have <-:= cntd_I0 prp.
+	replace 0%R with (Rmult 0 x) by by rewrite Rmult_0_l.
+	apply mul_correct_R => //.
+	rewrite /= F.fromZ_correct/Z2R.
+	admit.
+rewrite /CshawIA/Cshaw.
+apply sub_correct_R; first by apply CbIA_crct.
+by apply mul_correct_R; first by apply CbIA_crct.
 Admitted.
 
 Definition I1 := I.fromZ (-1)%Z.
 
 End MyClenshawStuff.
+
+Print Interval.
 
 Module V := MyClenshawStuff  SFBI2.
 
