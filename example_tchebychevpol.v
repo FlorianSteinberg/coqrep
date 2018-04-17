@@ -454,6 +454,28 @@ Fixpoint Cb q (x : R) :=
    let a1 := a + t.1 * x *+ 2 - t.2 in
    (a1, t.1) else (0, 0).
 
+Lemma Cb_eq0 q x : Poly q  = 0 -> Cb q x = 0.
+Proof.
+elim: q => //= a q IH.
+rewrite cons_poly_def => H.
+have := size_MXaddC (Poly q) a.
+rewrite {}H size_poly0; case: eqP => // qZ.
+case: eqP => // -> _.
+by rewrite IH //= !rm0.
+Qed.
+
+Lemma Cb_eq q1 q2 x :
+  Poly q1 = Poly q2 -> Cb q1 x = Cb q2 x.
+Proof.
+elim: q1 q2 => [/= q2 H|a q1 IH [/Cb_eq0->//|b q2]]; first by rewrite Cb_eq0.
+rewrite /= !cons_poly_def => H.
+have H1 : (Poly q1 - Poly q2) * 'X + (a - b)%:P = 0.
+  by rewrite polyC_sub mulrBl addrAC addrA H addrK subrr.
+have := size_MXaddC (Poly q1 - Poly q2) (a - b).
+rewrite {}H1 size_poly0; case: eqP => // /subr0_eq/IH<-.
+by case: eqP => // /subr0_eq <-.
+Qed.
+
 Definition Cshaw p x := (Cb p x).1 - (Cb p x).2 * x.
 
 Lemma Cshaw_spec (p : {poly R}) r :
