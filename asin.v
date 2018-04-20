@@ -475,13 +475,28 @@ by rewrite (is_RInt_unique f x a fxa).
 Qed.
 
 Lemma ortho2 n m :
-  RInt_gen (fun y => -cos (INR n * acos y) * cos (INR m * acos y) /
+  RInt_gen (fun y => cos (INR n * acos y) * cos (INR m * acos y) /
                    (sqrt (1 - y ^ 2)))
-              (at_left 1) (at_right (-1)) =
+              (at_right (-1)) (at_left 1) =
     if n =? m then if n =? 0 then PI else PI/2 else 0.
 Proof.
-rewrite -RInt_cos_cos_0_PI.
-apply: is_RInt_gen_unique.
+rewrite -RInt_cos_cos_0_PI -[RHS]Ropp_involutive.
+apply/is_RInt_gen_unique/is_RInt_gen_swap.
+pose f x := - (- cos (INR n * acos x) * cos (INR m * acos x)
+                / sqrt (1 - x ^ 2)).
+apply: (is_RInt_gen_ext f); rewrite {}/f /=.
+  exists (ball 0 (mkposreal _ Rlt_0_1)) (ball 0 (mkposreal _ Rlt_0_1))
+       => [||x y Hx Hy z].
+  - exists (mkposreal _ Rlt_0_1).
+    rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /= 
+      => y /Rabs_def2 [y1 y2] y3.
+    by apply: Rabs_def1; lra.
+  - exists (mkposreal _ Rlt_0_1).
+    rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /= 
+      => y /Rabs_def2 [y1 y2] y3.
+    by apply: Rabs_def1; lra.
+  - by rewrite /f -Ropp_mult_distr_l -[_/_]Ropp_mult_distr_l Ropp_involutive.
+apply: is_RInt_gen_opp.
 pose f x := cos (INR n * x) * cos (INR m * x).
 apply: ortho1.
 have cmp0PI1 : filter_Rlt (at_point 0) (at_left PI).
