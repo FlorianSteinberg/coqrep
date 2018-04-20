@@ -584,6 +584,9 @@ apply: leq_trans (size_scale_leq _ _) _.
 by apply: leq_trans (size_pT_leq _) _.
 Qed.
 
+Lemma pT2p0 : pT2p 0 = 0 :> {poly R}.
+Proof. by rewrite /pT2p size_poly0 big_ord0. Qed.
+
 Fixpoint lpT2p_rec {R: ringType} l (p1 p2 : seq R) :=
 match l with
 |  a :: l =>
@@ -621,18 +624,23 @@ Definition lpT2p {R : ringType} (l : seq R) :=
   | _ => [::]
   end.
 
-Lemma lpT2p_spec' (l : seq R) :
-   Poly (lpT2p l) = \sum_(i < size l) l`_i *: 'T_i.
+Lemma lpT2p_eq (q1 q2 : seq R) :
+  Poly q1 = Poly q2 -> lpT2p q1 = lpT2p q2.
 Proof.
-case: l => [|a l]; first by rewrite /= big_ord0.
+Admitted.
+
+Lemma lpT2p_spec (l : seq R) :
+   Poly (lpT2p l) = pT2p (Poly l).
+Proof.
+rewrite /pT2p.
+rewrite (@lpT2p_eq l (Poly l)); last by rewrite polyseqK.
+case: (Poly l) => k kp.
+case: k kp => [kp |a k kp]; first by rewrite /= big_ord0.
 rewrite /lpT2p ladd_poly_spec /= cons_poly_def !rm0.
 rewrite big_ord_recl; congr (_ + _).
   by rewrite alg_polyC.
 by rewrite (@lpT2p_rec_spec 0) //= !cons_poly_def ?rm0 ?rm1.
 Qed.
-
-Lemma pT2p0 : pT2p 0 = 0 :> {poly R}.
-Proof. by rewrite /pT2p size_poly0 big_ord0. Qed.
 
 End PT2P.
 
