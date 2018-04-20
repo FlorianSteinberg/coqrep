@@ -448,6 +448,66 @@ congr (_ + _); first by rewrite -commr_pU -!mulrA commr_pU.
 by rewrite opprB addrC addrA IH [_+1]addrC addrK.
 Qed.
 
+Definition Cshaw p r := \sum_(i < size p) p`_i  * ('T_i).[r].
+
+Lemma CshawC c r : Cshaw c%:P r = c.
+Proof.
+rewrite /Cshaw size_polyC.
+case: eqP => [->|/eqP H] /=; first by rewrite big_ord0.
+by rewrite big_ord_recr big_ord0 polyseqC (negPf H) !hornerE.
+Qed.
+
+Lemma Cshaw0 x : Cshaw 0 x = 0.
+Proof. by rewrite CshawC. Qed.
+
+Lemma CshawZ a p x : Cshaw (a *: p) x = a * Cshaw p x.
+Proof.
+rewrite mulr_sumr.
+rewrite -(big_mkord xpredT (fun i => a * (p`_i * ('T_i ).[x]))).
+rewrite (big_cat_nat _ _ _ _ (size_scale_leq a p)) //= big_mkord.
+rewrite [X in _ = _ + X]big_nat_cond [X in _ = _ + X]big1 ?addr0 => [|i].
+  by apply: eq_bigr => i _; rewrite coefZ mulrA.
+rewrite andbT => /andP[/(@leq_sizeP R) // H1 H2].
+by rewrite mulrA -coefZ H1 ?rm0.
+Qed.
+
+Lemma CshawN p x : Cshaw (- p) x = - Cshaw p x.
+Proof. by rewrite -scaleN1r CshawZ mulN1r. Qed.
+
+Lemma CshawD p q x : Cshaw (p + q) x = Cshaw p x + Cshaw q x.
+Proof.
+apply: etrans (_ : \sum_(i < maxn (size p) (size q)) (p + q)`_i * ('T_i ).[x] = _).
+  rewrite -[RHS](big_mkord xpredT (fun i => (p + q)`_i * ('T_i ).[x])).
+  rewrite (big_cat_nat _ _ _ _ (size_add p q)) //= big_mkord.
+  rewrite [X in _ = _ + X]big_nat_cond [X in _ = _ + X]big1 ?addr0 // => i.
+  rewrite andbT => /andP[/(@leq_sizeP R) // -> // _].
+  by rewrite rm0.
+pose f (i : 'I_ _) := p`_i * ('T_i ).[x] + q`_i * ('T_i ).[x].
+rewrite (eq_bigr (f _)) {}/f => [|i _]; last by rewrite coefD mulrDl.
+rewrite big_split /=; congr (_ + _).
+  rewrite -(big_mkord xpredT (fun i => p`_i * ('T_i ).[x])).
+  rewrite (big_cat_nat _ _ _ _ (leq_maxl _ _)) //= big_mkord.
+  rewrite [X in _ + X = _]big_nat_cond [X in _ + X = _]big1 ?addr0 // => i.
+  rewrite andbT => /andP[/(@leq_sizeP R) // -> // _].
+  by rewrite rm0.
+rewrite -(big_mkord xpredT (fun i => q`_i * ('T_i ).[x])).
+rewrite (big_cat_nat _ _ _ _ (leq_maxr _ _)) //= big_mkord.
+rewrite [X in _ + X = _]big_nat_cond [X in _ + X = _]big1 ?addr0 // => i.
+rewrite andbT => /andP[/(@leq_sizeP R) // -> // _].
+by rewrite rm0.
+Qed.
+
+Lemma CshawXn r n : Cshaw ('X^n) r = ('T_n).[r].
+Proof.
+rewrite /Cshaw size_polyXn.
+rewrite (bigD1 (Ordinal (leqnn _))) //=.
+rewrite coefXn eqxx rm1 big1 ?rm0 //= => i /eqP/val_eqP/= Hi.
+by rewrite coefXn (negPf Hi) rm0.
+Qed.
+
+Lemma CshawX r : Cshaw ('X) r = ('T_1).[r].
+Proof. by rewrite -CshawXn. Qed.
+
 Fixpoint Cb q (x : R) :=
  if q is a :: q' then
    let t := Cb q' x in
@@ -476,12 +536,13 @@ rewrite {}H1 size_poly0; case: eqP => // /subr0_eq/IH<-.
 by case: eqP => // /subr0_eq <-.
 Qed.
 
-Definition Cshaw p x := (Cb p x).1 - (Cb p x).2 * x.
+Definition lCshaw (L: seq R) x := (Cb L x).1 - (Cb L x).2 * x.
 
-Lemma Cshaw_spec (p : {poly R}) r :
-   Cshaw p r = \sum_(i < size p) p`_i  * ('T_i).[r].
+Lemma lCshaw_spec (k : seq R) r :
+   lCshaw k r = Cshaw (Poly k) r.
 Proof.
-case: p; rewrite /Cshaw => /= l _.
+rewrite /lCshaw (@Cb_eq k (Poly k)) /Cshaw; last by rewrite polyseqK.
+case: (Poly k) => /= l _.
 elim: {l}S {-2}l (leqnn (size l).+1) => // n IH [|a [|b l]] H.
 - by rewrite big_ord0 !rm0.
 - by rewrite /= !rm0 big_ord_recr big_ord0 /= hornerC rm1 rm0.
@@ -506,66 +567,22 @@ do 40 (congr (_ + _); [idtac] || rewrite [RHS]addrC -![in RHS]addrA).
 by rewrite addrA subrK.
 Qed.
 
-Lemma CshawC c r : Cshaw c%:P r = c.
-Proof.
-rewrite Cshaw_spec /= size_polyC.
-case: eqP => [->|/eqP H] /=; first by rewrite big_ord0.
-by rewrite big_ord_recr big_ord0 polyseqC (negPf H) !hornerE.
-Qed.
-
-Lemma Cshaw0 x : Cshaw 0 x = 0.
-Proof. by rewrite CshawC. Qed.
-
-Lemma CshawZ a p x : Cshaw (a *: p) x = a * Cshaw p x.
-Proof.
-rewrite !Cshaw_spec mulr_sumr.
-rewrite -(big_mkord xpredT (fun i => a * (p`_i * ('T_i ).[x]))).
-rewrite (big_cat_nat _ _ _ _ (size_scale_leq a p)) //= big_mkord.
-rewrite [X in _ = _ + X]big_nat_cond [X in _ = _ + X]big1 ?addr0 => [|i].
-  by apply: eq_bigr => i _; rewrite coefZ mulrA.
-rewrite andbT => /andP[/(@leq_sizeP R) // H1 H2].
-by rewrite mulrA -coefZ H1 ?rm0.
-Qed.
-
-Lemma CshawN p x : Cshaw (- p) x = - Cshaw p x.
-Proof. by rewrite -scaleN1r CshawZ mulN1r. Qed.
-
-Lemma CshawD p q x : Cshaw (p + q) x = Cshaw p x + Cshaw q x.
-Proof.
-rewrite !Cshaw_spec.
-apply: etrans (_ : \sum_(i < maxn (size p) (size q)) (p + q)`_i * ('T_i ).[x] = _).
-  rewrite -[RHS](big_mkord xpredT (fun i => (p + q)`_i * ('T_i ).[x])).
-  rewrite (big_cat_nat _ _ _ _ (size_add p q)) //= big_mkord.
-  rewrite [X in _ = _ + X]big_nat_cond [X in _ = _ + X]big1 ?addr0 // => i.
-  rewrite andbT => /andP[/(@leq_sizeP R) // -> // _].
-  by rewrite rm0.
-pose f (i : 'I_ _) := p`_i * ('T_i ).[x] + q`_i * ('T_i ).[x].
-rewrite (eq_bigr (f _)) {}/f => [|i _]; last by rewrite coefD mulrDl.
-rewrite big_split /=; congr (_ + _).
-  rewrite -(big_mkord xpredT (fun i => p`_i * ('T_i ).[x])).
-  rewrite (big_cat_nat _ _ _ _ (leq_maxl _ _)) //= big_mkord.
-  rewrite [X in _ + X = _]big_nat_cond [X in _ + X = _]big1 ?addr0 // => i.
-  rewrite andbT => /andP[/(@leq_sizeP R) // -> // _].
-  by rewrite rm0.
-rewrite -(big_mkord xpredT (fun i => q`_i * ('T_i ).[x])).
-rewrite (big_cat_nat _ _ _ _ (leq_maxr _ _)) //= big_mkord.
-rewrite [X in _ + X = _]big_nat_cond [X in _ + X = _]big1 ?addr0 // => i.
-rewrite andbT => /andP[/(@leq_sizeP R) // -> // _].
-by rewrite rm0.
-Qed.
-
-Lemma CshawXn r n : Cshaw ('X^n) r = ('T_n).[r].
-Proof.
-rewrite Cshaw_spec size_polyXn.
-rewrite (bigD1 (Ordinal (leqnn _))) //=.
-rewrite coefXn eqxx rm1 big1 ?rm0 //= => i /eqP/val_eqP/= Hi.
-by rewrite coefXn (negPf Hi) rm0.
-Qed.
-
-Lemma CshawX r : Cshaw ('X) r = ('T_1).[r].
-Proof. by rewrite -CshawXn. Qed.
-
 Section PT2P.
+
+Definition pT2p p : {poly R} := \sum_(i < size p) p`_i *: 'T_i.
+
+Lemma pT2p_spec p r : Cshaw p r = (pT2p p).[r].
+Proof.
+by rewrite horner_sum; apply: eq_bigr => i _; rewrite hornerE.
+Qed.
+
+Lemma size_pT2p_leq p : (size (pT2p p) <= size p)%N.
+Proof.
+apply: (leq_trans (size_sum _ _ _)).
+apply/bigmax_leqP => i _.
+apply: leq_trans (size_scale_leq _ _) _.
+by apply: leq_trans (size_pT_leq _) _.
+Qed.
 
 Fixpoint lpT2p_rec {R: ringType} l (p1 p2 : seq R) :=
 match l with
@@ -604,7 +621,7 @@ Definition lpT2p {R : ringType} (l : seq R) :=
   | _ => [::]
   end.
 
-Lemma lpT2p_spec (l : seq R) :
+Lemma lpT2p_spec' (l : seq R) :
    Poly (lpT2p l) = \sum_(i < size l) l`_i *: 'T_i.
 Proof.
 case: l => [|a l]; first by rewrite /= big_ord0.
@@ -614,28 +631,8 @@ rewrite big_ord_recl; congr (_ + _).
 by rewrite (@lpT2p_rec_spec 0) //= !cons_poly_def ?rm0 ?rm1.
 Qed.
 
-Definition pT2p (p : {poly R}) : {poly R} := Poly (lpT2p p).
-
-Lemma pT2p_spec p : pT2p p = \sum_(i < size p) p`_i *: 'T_i.
-Proof. by exact: lpT2p_spec. Qed. 
-
-Lemma size_pT2p_leq p : (size (pT2p p) <= size p)%N.
-Proof.
-rewrite pT2p_spec.
-apply: (leq_trans (size_sum _ _ _)).
-apply/bigmax_leqP => i _.
-apply: leq_trans (size_scale_leq _ _) _.
-by apply: leq_trans (size_pT_leq _) _.
-Qed.
-
 Lemma pT2p0 : pT2p 0 = 0 :> {poly R}.
-Proof. by rewrite /pT2p polyseq0. Qed.
-
-Lemma Cshaw_horner p r : Cshaw p r = (pT2p p).[r].
-Proof.
-rewrite Cshaw_spec pT2p_spec horner_sum.
-by apply: eq_bigr => i _; rewrite hornerE.
-Qed.
+Proof. by rewrite /pT2p size_poly0 big_ord0. Qed.
 
 End PT2P.
 
@@ -845,7 +842,7 @@ Proof. by move=> I2 p; apply/pT_eq; rewrite -p2pT_spec // pT2p_spec. Qed.
 Lemma size_pT2p (p : {poly R}) : size (pT2p p) = size p.
 Proof.
 have [/eqP->|pNZ] := boolP (p == 0); first by rewrite pT2p0.
-rewrite pT2p_spec size_polybase => [|i]; last by apply: size_pT.
+rewrite /pT2p size_polybase => [|i]; last by apply: size_pT.
 rewrite {-7}(polySpred pNZ).
 rewrite big_mkcond big_ord_recr /= -big_mkcond /=.
 rewrite -lead_coefE lead_coef_eq0 pNZ /= -(polySpred pNZ).
@@ -857,7 +854,7 @@ Qed.
 Lemma pT2pZ a (p : {poly R}) : pT2p (a *: p) = a *: pT2p p.
 Proof.
 have [->|/eqP aNZ] := (a =P 0); first by rewrite !rm0 pT2p0.
-rewrite !pT2p_spec.
+rewrite !/pT2p.
 pose f (i : 'I_(size (a*: p))) := a *: (p`_ i *: 'T_i).
 rewrite (eq_bigr f) {}/f => [|i _]; last by rewrite scalerA coefZ.
 have ->: size (a *: p) =  size p by rewrite size_scale.
@@ -866,7 +863,7 @@ Qed.
 
 Lemma pT2pD (p q : {poly R}) : pT2p (p + q) = pT2p p + pT2p q.
 Proof.
-rewrite !pT2p_spec.
+rewrite !/pT2p.
 rewrite -(polybase_widen _ (leq_maxl (size p) (size q))).
 rewrite -(polybase_widen _ (leq_maxr (size p) (size q))).
 rewrite -(polybase_widen _ (size_add p q)).

@@ -68,7 +68,7 @@ Check Poly.
 (* The inverse of the quotient mapping still makes sense as a multivalued function. *)
 Definition Poly_inv p (L: seq R):= Poly L = p.
 
-(* It is not single valued though, as lists that start in zeros are identified. *)
+(* It is not single valued, as lists that start in zeros are identified. *)
 Lemma Poly_inv_not_sing:
 	~ Poly_inv \is_single_valued.
 Proof.
@@ -103,8 +103,7 @@ Proof.
 split; first exact rep_poly_R_sing.
 move => p.
 have [phi phinp]:= rep_sur _ (polyseq p).
-exists phi.
-rewrite /rep_poly_R.
+exists phi; rewrite /rep_poly_R.
 split; last by move => a b; exact: F2MF_tot.
 by exists p; split; last rewrite /F2MF polyseqK.
 Qed.
@@ -152,10 +151,9 @@ Compute ith lst_name 0%nat (1#2).
 Compute ith lst_name 3%nat (1#2).
 Compute ith lst_name 15%nat (1#2).
 
-(* While a polynomial is a function, it is an abstract function on the type of reals which does not help
-for computations. However, evaluation is computable. Polynomials are evaluated by using the horner scheme.
-In the mathcomp library for polynomials, the horner scheme is defined by calling a the function horner_rec
-that evaluates a list that need not have a vanishing leading coefficient. So we first prove that mapping to
+(* Evaluation is computable. Polynomials are evaluated by using the horner scheme. In the mathcomp
+library for polynomials, the horner scheme is defined by calling a the function horner_rec that
+evaluates a list that need not have a vanishing leading coefficient. So we first prove that mapping to
 be computable by using the induction principle for the list_rev type. *)
 
 Lemma horner_rec_prec:
@@ -198,15 +196,13 @@ inefficient especially if these approximations are more difficult to get than in
 possible but also more work, to specify the algorithm directly and prove it correct. *)
 
 (* Addition of polynomials can be expressed via operations on list: *)
-Definition ladd (L K: seq R):=
+Definition add_rec (L K: seq R):=
 	map (fun n => nth 0 L n + nth 0 K n) (iota 0 (maxn (size L) (size K))).
 
-Lemma ladd_crct L K:
-	Poly L + Poly K = Poly (ladd L K).
+Lemma add_rec_crct L K:
+	Poly L + Poly K = Poly (add_rec L K).
 Proof.
-rewrite /ladd.
-Search _ Poly map.
-rewrite -polyP => i.
+rewrite /add_rec -polyP => i.
 rewrite coef_Poly.
 have ->: [seq L`_n + K`_n | n <- iota 0 (maxn (size L) (size K))] = [seq (Poly L + Poly K)`_n | n <- iota 0 (maxn (size L) (size K))].
 	by rewrite (@eq_map _ _ _ (fun n => (Poly L + Poly K)`_n)) => // n; rewrite coefD !coef_Poly.
@@ -230,10 +226,10 @@ Qed.
 (* Since the standard operations on lists are proven computable, this can be used to get an algorithm for
 computing sums of polynomials *)
 
-Lemma ladd_prec:
-	(fun LK => ladd LK.1 LK.2) \is_prec_function.
+Lemma add_rec_prec:
+	(fun LK => add_rec LK.1 LK.2) \is_prec_function.
 Proof.
-rewrite /ladd/=.
+rewrite /add_rec/=.
 have nth0_prec: (fun (K:seq R) => nth 0 K) \is_prec_function.
 	apply /prec_fun_comp; [ | apply nth_prec_rev | ] => /=.
 		apply /prec_fun_comp; [apply diag_prec_fun | | ] => /=.
@@ -281,9 +277,10 @@ Lemma poly_add_prec:
 Proof.
 apply /prec_fun_prec_comp => /=.
 		by apply mfpp_tot; split; apply Poly_inv_tot.
-	by apply /prod_prec; [apply Poly_inv_prec | apply Poly_inv_prec].
-by apply /prec_fun_comp; [apply ladd_prec | apply Poly_prec | ].
-by move => [p q] [L K] [/=PpL PqK]; rewrite -ladd_crct -PpL PqK.
+	by apply /prod_prec; apply Poly_inv_prec.
+by apply /prec_fun_comp; [apply add_rec_prec | apply Poly_prec | ].
+move => [p q] [L K] [/=PpL PqK].
+by rewrite -add_rec_crct -PpL PqK.
 Defined.
 
 (* This allows us to evaluate in any real number we have a name for. For instance the rational 4#3. *)
@@ -292,4 +289,108 @@ Compute Qred (ith ((projT1 poly_add_prec) (name_pair lst_name lst_name)) 4%nat (
 Compute Qred (ith ((projT1 poly_add_prec) (name_pair lst_name lst_name)) 15%nat (1#2)).
 
 Definition poly_mult (pq: {poly R} * {poly R}) := pq.1 * pq.2.
+
+Section CHEBYPOL.
+Require Import example_tchebychevpol Rstruct.
+
+Definition cpoly_R:= {poly R}.
+(* Here I repeat the above with a different quotient map to get polynomials in chebychev basis *)
+Definition cPoly L : cpoly_R:= Poly (lpT2p L).
+
+Definition cPoly_inv p L := p = cPoly L.
+
+Lemma unit2:
+	2%:R \is a @GRing.unit R_unitRing.
+Proof.
+rewrite /in_mem/mem/=/unit_R/GRing.natmul/=.
+rewrite /GRing.one/=/IZR/=/IPR/=/GRing.add/=.
+apply /eqP; lra.
+Qed.
+
+Lemma cPoly_inv_tot:
+	cPoly_inv \is_total.
+Proof.
+move => p.
+exists (lp2pT p).
+rewrite /cPoly_inv/cPoly lpT2p_spec' -lp2pT_spec.
+	by rewrite polyseqK.
+exact: unit2.
+Qed.
+
+Definition rep_cpoly_R := (F2MF cPoly) o (@delta seq_R).
+
+Lemma rep_cpoly_R_sing:
+	rep_cpoly_R \is_single_valued.
+Proof.
+apply comp_sing; last exact: (rep_sing _).
+exact: F2MF_sing.
+Qed.
+
+Lemma rep_cpoly_R_rep:
+	rep_cpoly_R \is_representation.
+Proof.
+split; first exact rep_cpoly_R_sing.
+move => p.
+have [phi phinp]:= rep_sur _ (polyseq (p2pT p)).
+exists phi.
+rewrite /rep_poly_R.
+split; last by move => a b; exact: F2MF_tot.
+exists (p2pT p); split => //.
+by rewrite /cPoly/F2MF lpT2p_spec' -p2pT_spec; last exact: unit2.
+Qed.
+
+Canonical rep_space_cpoly_R := @make_rep_space
+	(cpoly_R)
+	_
+	_
+	_
+	(some_answer (rep_space_list rep_space_R))
+	(countable_questions (rep_space_list rep_space_R))
+	(countable_answers (rep_space_list rep_space_R))
+	rep_cpoly_R_rep
+	.
+
+Lemma cPoly_prec:
+	(fun L: seq_R => cPoly L) \is_prec_function.
+Proof.
+exists (fun phi => phi) => phi L phinL.
+abstract by split; [exists L | move => a b; apply: F2MF_tot].
+Defined.
+
+Lemma cPoly_inv_prec:
+	cPoly_inv \is_prec.
+Proof.
+exists (fun phi => phi).
+abstract by move => phi /= p [[L [phinL PLp]] _] _; exists L.
+Defined.
+
+Lemma Cb_prec:
+	(fun Lx => Cb (Lx.1: seq_R) Lx.2) \is_prec_function.
+Proof.
+Admitted.
+
+Lemma Cshaw_rec_prec:
+	(fun px => lCshaw (px.1: seq R) px.2) \is_prec_function.
+Proof.
+rewrite /lCshaw.
+suffices Cbprod_prec: (fun px => (Cb (px.1: seq R) px.2).2 * px.2) \is_prec_function.
+apply/ prec_fun_comp; [ | apply Rsub_prec | ] => /=.
+apply/ prec_fun_comp; first apply diag_prec_fun => /=.
+apply/ prec_fun_comp => /=.
+	apply prod_prec_fun; [apply/ prec_fun_comp; [apply Cb_prec | apply fst_prec | ] | apply Cbprod_prec] => /=.
+		done.
+	apply/ prec_fun_comp; first apply Rsub_prec.
+Admitted.
+
+(* To prove that evaluation is computable we translate to lists by using quot and quot_inv. *)
+Lemma ceval_prec:
+	(fun px: cpoly_R * R => px.1.[px.2]) \is_prec_function.
+Proof.
+apply/ prec_fun_prec_comp; [ | apply prod_prec | apply Cshaw_rec_prec | ] => /=.
+			by apply mfpp_tot; split; [apply cPoly_inv_tot | apply F2MF_tot].
+		by apply cPoly_inv_prec.
+	by apply id_prec.
+move => [p x] [L u] [/= PLp <-].
+Admitted.
+End CHEBYPOL.
 End POLYNOMIALS.
