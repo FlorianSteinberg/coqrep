@@ -42,6 +42,7 @@ Canonical rep_space_opt (X: rep_space) := @make_rep_space
 	(one + questions X)
 	(option one * answers X)
 	(@rep_opt X)
+	(inl star)
 	((None, some_answer X))
 	(sum_count one_count (countable_questions X))
 	(prod_count (option_count one_count) (countable_answers X))

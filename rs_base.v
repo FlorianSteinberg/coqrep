@@ -20,6 +20,7 @@ Structure rep_space := make_rep_space {
   questions: Type;
   answers: Type;
   delta: (questions -> answers) ->> space;
+  some_question: questions;
 	some_answer: answers;
   countable_questions: questions \is_countable;
   countable_answers: answers \is_countable;

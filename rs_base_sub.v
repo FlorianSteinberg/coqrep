@@ -33,6 +33,7 @@ Canonical rep_space_sub_space (X: rep_space) (P: X -> Prop) := @make_rep_space
 	(questions X)
 	(answers X)
 	(@range_restriction (names X) (space X) (rep X) P)
+	(some_question X)
 	(some_answer X)
   (countable_questions X)
   (countable_answers X)

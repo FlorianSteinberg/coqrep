@@ -13,6 +13,7 @@ Canonical rep_space_nat := @make_rep_space
 	one
 	nat
 	(@id_rep nat)
+	star
 	0%nat
 	one_count
 	nat_count

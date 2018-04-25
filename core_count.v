@@ -79,5 +79,26 @@ move=> /count_countClass [cQ _]; set QC : Type := Countable.Pack cQ Q.
 by rewrite -[Q]/QC; apply: countType_count.
 Qed.
 
+Lemma count_sur Q: (exists cnt: nat -> Q, cnt \is_surjective) <-> inhabited Q /\ Q \is_countable.
+Proof.
+split => [ [cnt sur] | [[someq [cnt sur]]]].
+	split; first exact (inhabits (cnt 0)).
+	exists (fun n => match n with
+		| 0 => None
+		| S n' => Some (cnt n')
+	end).
+	move => q.
+	case: q; last by exists 0.
+	move => q.
+	have [n val] := sur (q).
+	by exists (S n); rewrite val.
+exists (fun n => match cnt n with
+	| None => someq
+	| Some q => q
+end) => q.
+have [n val] := sur (some q).
+by exists n; rewrite val.
+Qed.
+
 End COUNTABILITY.
 Notation "T '\is_countable'" := (is_count T) (at level 2).

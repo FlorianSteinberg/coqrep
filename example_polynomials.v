@@ -116,6 +116,7 @@ Canonical rep_space_poly_R := @make_rep_space
 	_
 	_
 	_
+	(some_question _)
 	(some_answer (rep_space_list rep_space_R))
 	(countable_questions (rep_space_list rep_space_R))
 	(countable_answers (rep_space_list rep_space_R))

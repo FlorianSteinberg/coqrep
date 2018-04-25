@@ -60,7 +60,9 @@ split => [psi f g psinf psing | f].
 		apply/ icf_F2MF_tight.
 		by apply icf.
 	by rewrite /rlzr eqg.
-have [cnt sur]:= (countable_questions X).
+have []:= (count_sur (questions X)).2.
+	by split; [apply: inhabits (some_question X) | apply (countable_questions X)].
+move => cnt sur.
 have [[ftot fsing] [F [Frf Fcont]]]:= (projT2 f).
 have [psiF psinF]:= (U_is_universal (some_answer X) (fun q => (some_answer Y)) sur Fcont).
 exists psiF.
@@ -74,6 +76,7 @@ Canonical rep_space_cont_fun X Y := @make_rep_space
 	(seq (questions X * answers X) * questions Y)
 	(questions X + answers Y)
 	(@is_fun_name X Y)
+	((nil, some_question Y))
 	(inr (some_answer Y))
   (prod_count
   	(list_count (prod_count

@@ -127,6 +127,7 @@ Canonical rep_space_R := @make_rep_space
 	Q
 	rep_R
 	1%Q
+	1%Q
 	rationals_countable
 	rationals_countable
 	rep_R_is_rep.

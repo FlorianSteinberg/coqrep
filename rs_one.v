@@ -19,13 +19,17 @@ Qed.
 
 Lemma one_count:
 	one \is_countable.
-Proof. by exists (fun n => star) => star; exists 0%nat; elim star. Qed.
+Proof.
+exists (fun n => match n with 0 => None | S n => Some star end) => q.
+by case q => [str | ]; [exists 1; elim: str | exists 0].
+Qed.
 
 Canonical rep_space_one := @make_rep_space
 	one
 	one
 	one
 	(@id_rep one)
+	star
 	star
 	one_count
 	one_count

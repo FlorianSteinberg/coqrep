@@ -38,6 +38,7 @@ Canonical rep_space_prod X Y := @make_rep_space
   (@questions X + @questions Y)
   (@answers X * @answers Y)
   (@prod_rep X Y)
+  (inl (some_question X))
   ((some_answer X, some_answer Y))
   (sum_count (countable_questions X) (countable_questions Y))
   (prod_count (countable_answers X) (countable_answers Y))

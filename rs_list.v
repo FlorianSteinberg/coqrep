@@ -64,6 +64,7 @@ Canonical rep_space_list (X: rep_space) := @make_rep_space
 	_
 	_
 	(@rep_list X)
+	(some_question _)
 	(Some star, (some_answer rep_space_nat, some_answer X))
 	(countable_questions (rep_space_opt (rep_space_prod rep_space_nat (rep_space_usig_prod X))))
 	(countable_answers (rep_space_opt (rep_space_prod rep_space_nat (rep_space_usig_prod X))))

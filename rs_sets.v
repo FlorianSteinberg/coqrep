@@ -30,6 +30,7 @@ Canonical rep_space_S := @make_rep_space
 	(nat)
 	(option one)
 	(rep_S)
+	(0%nat)
 	(None)
   (nat_count)
   (option_count one_count)

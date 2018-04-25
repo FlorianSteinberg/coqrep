@@ -27,6 +27,7 @@ Canonical rep_space_usig_prod (X: rep_space) := @make_rep_space
 	(nat * questions X)
 	(answers X)
 	(@rep_usig_prod X)
+	((0%nat, some_question X))
 	(some_answer X)
   (prod_count nat_count (countable_questions X))
   (countable_answers X)
