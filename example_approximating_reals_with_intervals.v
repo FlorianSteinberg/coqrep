@@ -1,4 +1,4 @@
-(* This is example shows how to use a representation of the real numbers by means of rational
+(* This is example shows how to use a representation of the real numbers by means of intervals
 approximations to compute on the reals. Usually integers are prefered to avoid to many problems
 that arise due to the possibility to use unnecessary high precission approximations. I tried
 that approach but it lead to extensive additional work so I gave up at some point. I feel that
@@ -13,6 +13,7 @@ Require Import Interval.Interval_interval_float_full.
 Require Import Interval.Interval_interval.
 Require Import Interval.Interval_xreal.
 Import BigN BigZ.
+Import Fcore_Raux Fcore_Zaux.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -67,10 +68,8 @@ Print mant.
 Print BigIntRadix2.smantissa_type.
 Search _ (_ -> BigZ.BigZ.t).
 Notation ID := (Interval_interval_float.f_interval SFBI2.type).
-Notation XR := Interval_xreal.ExtendedR.
-Notation Xreal := Interval_xreal.Xreal.
-Notation cntd x I := (Interval_interval.contains (I.convert I) x).
-Notation "x '\contained_in' I" := (cntd x I) (at level 2).
+Notation "x '\contained_in' I" :=
+(Interval_interval.contains (I.convert I) (Xreal x)) (at level 2).
 Coercion I.convert: ID >-> Interval_interval.interval.
 Notation D2R := I.T.toR.
 Coercion I.T.toR: D >-> R.
@@ -78,84 +77,74 @@ Notation lower := I.lower.
 Notation upper := I.upper.
 Notation diam I := (I.upper I - I.lower I).
 Notation bounded := I.bounded.
+Notation I0 := (I.fromZ 0).
+Definition l := @Fnan mant xpnt.
+Definition u := Float 1%bigZ 0%bigZ.
+Definition I: ID := Interval_interval_float.Ibnd l u.
+Definition J: ID := Interval_interval_float.Inan.
+Print xpnt.
+Compute I.mul (2)%bigZ I0 J.
+
+Lemma add_correct_R prec x y I J:
+	x \contained_in I -> y \contained_in J -> (x + y) \contained_in (I.add prec I J).
+Proof.
+intros.
+replace (Xreal (x + y)) with (Xadd (Xreal x) (Xreal y)) by trivial.
+by apply I.add_correct.
+Qed.
+
+Lemma mul_correct_R prec x y I J:
+	x \contained_in I -> y \contained_in J -> (x * y) \contained_in (I.mul prec I J).
+Proof.
+intros.
+replace (Xreal (x * y)) with (Xmul (Xreal x) (Xreal y)) by trivial.
+by apply I.mul_correct.
+Qed.
 
 Definition rep_R : (positive -> ID) -> R -> Prop :=
-  fun I x => (forall n,  bounded (I n) -> lower (I n) <= x <= upper (I n))
+  fun I x => (forall n,  x \contained_in (I n))
   /\
-	forall eps, ~ eps = Fnan -> D2R eps > 0 -> exists N, forall n, (N <= n)%positive
+	forall eps, D2R eps > 0 -> exists N, forall n, (N <= n)%positive
 		-> bounded (I n) /\ diam (I n) <= D2R eps.
+
+Lemma D2R_SFBI2toX m e:
+	SFBI2.toX (Float m e) = Xreal (D2R (Float m e)).
+Proof.
+rewrite /D2R/proj_val/=/SFBI2.toX/=/Interval_definitions.FtoX/=.
+by case: BigIntRadix2.mantissa_sign (Float m e) => //.
+Qed.
+
+Lemma D2R_Float (m e: bigZ):
+  I.T.toR (Float m e) = IZR [m]%bigZ * powerRZ 2 [e]%bigZ.
+Proof.
+rewrite /I.T.toR /SFBI2.toX /SFBI2.toF/=.
+case: (BigIntRadix2.mantissa_sign m) (BigIntRadix2.mantissa_sign_correct m);
+  rewrite /BigIntRadix2.MtoZ /=.
+	by move => ->; lra.
+move => s p' [-> [p]].
+rewrite /BigIntRadix2.EtoZ /BigIntRadix2.MtoP => -> {p'}.
+move: [e]%bigZ => {e} [ | e | e ] /=;
+  rewrite !Z2R_IZR ?Z.pow_pos_fold ?mult_IZR ?pow_IZR ?positive_nat_Z;
+  case: s => //;
+  lra.
+Qed.
 
 Lemma Float_to_R m e:
 	D2R (Float (BigZ.of_Z m) (BigZ.of_Z e)) = IZR m * powerRZ 2 e.
-Proof.
-rewrite /D2R/SFBI2.toX /SFBI2.toF/Interval_definitions.FtoX/=/BigIntRadix2.MtoP/=.
-rewrite /BigIntRadix2.mantissa_sign BigZ.spec_eqb BigZ.spec_of_Z/=.
-case m => /=.
-		by rewrite Rmult_0_l.
-	move => p.
-	rewrite BigN.spec_of_pos.
-	rewrite /Interval_definitions.FtoR/=.
-	rewrite /BigIntRadix2.EtoZ BigZ.spec_of_Z.
-	case: e.
-			rewrite Fcore_Raux.P2R_INR -Z2Nat.inj_pos INR_IZR_INZ Z2Nat.id.
-				by rewrite powerRZ_O Rmult_1_r.
-			exact: Pos2Z.is_nonneg.
-		move => p'.
-		rewrite -two_power_pos_correct/=.
-		rewrite Fcore_Raux.P2R_INR -Z2Nat.inj_pos INR_IZR_INZ Z2Nat.id; last exact: Pos2Z.is_nonneg.
-		rewrite shift_pos_nat.
-		rewrite Pos2Z.inj_mul mult_IZR.
-		suffices ->: IZR (Z.pos (shift_nat (Pos.to_nat p') 1)) = 2^(Pos.to_nat p') by trivial.
-		have /=:= (two_power_nat_equiv (Pos.to_nat p')); rewrite /two_power_nat => ->.
-		by rewrite -pow_IZR.
-	rewrite Fcore_Raux.P2R_INR -Z2Nat.inj_pos INR_IZR_INZ Z2Nat.id; last exact: Pos2Z.is_nonneg.
-	move => p'.
-	rewrite -two_power_pos_correct/=.
-	rewrite Fcore_Raux.P2R_INR -Z2Nat.inj_pos INR_IZR_INZ Z2Nat.id; last exact: Pos2Z.is_nonneg.
-	rewrite shift_pos_nat.
-	suffices ->: IZR (Z.pos (shift_nat (Pos.to_nat p') 1)) = 2^(Pos.to_nat p') by trivial.
-	have /=:= (two_power_nat_equiv (Pos.to_nat p')); rewrite /two_power_nat => ->.
-	by rewrite -pow_IZR.
-move => p.
-rewrite BigN.spec_of_pos.
-rewrite /Interval_definitions.FtoR/=.
-rewrite /BigIntRadix2.EtoZ BigZ.spec_of_Z.
-case: e.
-		rewrite Fcore_Raux.P2R_INR -Z2Nat.inj_pos INR_IZR_INZ Z2Nat.id.
-			by rewrite powerRZ_O Rmult_1_r.
-		exact: Pos2Z.is_nonneg.
-	move => p'.
-	rewrite -two_power_pos_correct/=.
-	rewrite Fcore_Raux.P2R_INR -Z2Nat.inj_pos INR_IZR_INZ Z2Nat.id; last exact: Pos2Z.is_nonneg.
-	rewrite shift_pos_nat.
-	rewrite Pos2Z.inj_mul mult_IZR.
-	rewrite {1 3}/IZR Ropp_mult_distr_l.
-	suffices ->: IZR (Z.pos (shift_nat (Pos.to_nat p') 1)) = 2^(Pos.to_nat p') by trivial.
-	have /=:= (two_power_nat_equiv (Pos.to_nat p')); rewrite /two_power_nat => ->.
-	by rewrite -pow_IZR.
-rewrite Fcore_Raux.P2R_INR -Z2Nat.inj_pos INR_IZR_INZ Z2Nat.id; last exact: Pos2Z.is_nonneg.
-move => p'.
-rewrite -two_power_pos_correct/=.
-rewrite Fcore_Raux.P2R_INR -Z2Nat.inj_pos INR_IZR_INZ Z2Nat.id; last exact: Pos2Z.is_nonneg.
-rewrite shift_pos_nat.
-suffices ->: IZR (Z.pos (shift_nat (Pos.to_nat p') 1)) = 2^(Pos.to_nat p') by trivial.
-have /=:= (two_power_nat_equiv (Pos.to_nat p')); rewrite /two_power_nat => ->.
-by rewrite -pow_IZR.
-Qed.
+Proof. by rewrite D2R_Float !BigZ.spec_of_Z. Qed.
 
-
-Lemma D_accumulates_to_zero r : 0 < r -> exists q : D, 0 < D2R q < r /\ ~ q = Fnan.
+Lemma D_accumulates_to_zero r : 0 < r -> exists q : D, 0 < D2R q < r.
 Proof.
 move: r.
-suffices: forall r, 0 < r < 1 -> exists q: D, 0 < D2R q < r /\ ~q = Fnan.
+suffices: forall r, 0 < r < 1 -> exists q: D, 0 < D2R q < r.
 	move => ass r rPos.
 	set r' := Rmin r (1/2).
 	have ineq: 0 < r' < 1.
 		split; first by apply Rmin_pos; lra.
 		by apply/ Rle_lt_trans; first apply Rmin_r; lra.
-	have [q [[qup qdwn] qr]]:= ass r' ineq.
+	have [q [qup qdwn]]:= ass r' ineq.
 	exists q.
-	by split => //; split; last by apply/ Rlt_le_trans; last apply (Rmin_l _ (1/2)).
+	by split => //; last by apply/ Rlt_le_trans; last apply (Rmin_l _ (1/2)).
 move => r [rPos rl1].
 have zln2: 0 < ln 2 by rewrite -ln_1; apply ln_increasing; lra.
 have ilr_Pos : 0 < ln (/r).
@@ -168,16 +157,14 @@ have zPos : 0 < IZR z by apply/ Rlt_trans; last exact irLz; apply Rdiv_lt_0_comp
 pose p := Z.to_pos z.
 have pE : (' p)%Z = z by rewrite Z2Pos.id //; apply: lt_0_IZR.
 exists (Float (BigZ.of_Z 1) (BigZ.of_Z (- z))).
-rewrite /D2R/=/BigIntRadix2.EtoZ BigZ.spec_of_Z/= -pE/= Fcore_Raux.Z2R_IZR.
-rewrite Zpower_pos_powerRZ -(positive_nat_Z p) -pow_powerRZ.
-replace (1 / 2 ^ Pos.to_nat p) with (/2 ^ Pos.to_nat p); last first.
-	field; apply pow_nonzero; lra.
-have z2: 0 < 2 by lra.
-have le2p:= pow_lt 2 (Pos.to_nat p) z2.
-split => //.
-split; first by apply/ Rinv_0_lt_compat/ pow_lt; lra.
-rewrite -(Rinv_involutive r); try lra.
-apply Rinv_lt_contravar; first by rewrite Rmult_comm; apply Rdiv_lt_0_compat.
+rewrite D2R_Float !BigZ.spec_of_Z Rmult_1_l.
+rewrite powerRZ_neg; try lra.
+rewrite -[z]Z2Nat.id; last by rewrite -pE.
+rewrite -pow_powerRZ -Rinv_pow; try lra.
+split => //; first by apply/ Rinv_0_lt_compat/ pow_lt; lra.
+rewrite -pE /= -(Rinv_involutive r); try lra.
+apply Rinv_lt_contravar.
+	by rewrite Rmult_comm; apply Rdiv_lt_0_compat; first apply pow_lt; lra.
 rewrite -(exp_ln (/r)) => //; last by apply Rinv_0_lt_compat.
 rewrite -(exp_ln (2 ^ Pos.to_nat p)) => //.
 rewrite Rcomplements.ln_pow; try lra; apply exp_increasing.
@@ -185,19 +172,27 @@ rewrite -Z2Nat.inj_pos pE INR_IZR_INZ Z2Nat.id; last by rewrite -pE; apply Zle_0
 replace (ln (/r)) with (ln (/r) / ln 2 * ln 2); last first.
 	by field; rewrite -ln_1; apply/ Rgt_not_eq/ Rlt_gt/ ln_increasing; lra.
 by apply Rmult_lt_compat_r; first by rewrite -ln_1; apply/ ln_increasing; lra.
+by apply pow_lt; lra.
 Qed.
+
+Lemma nFnan eps:
+	0 < D2R eps -> ~ eps = Fnan.
+Proof. by case: eps; first by rewrite /D2R/=; lra. Qed.
 
 Lemma rep_R_sing: rep_R \is_single_valued.
 Proof.
 move => In x x' [xeIn convIn] [x'eIn _].
 apply cond_eq => e eg0.
-have [eps [[epsg0 epsle] epsnum]]:= D_accumulates_to_zero eg0.
-have [N prop]:= convIn eps epsnum epsg0.
+have [eps [epsg0 epsle]]:= D_accumulates_to_zero eg0.
+have [N prop]:= convIn eps epsg0.
 have ineq': (N <= N)%positive by lia.
 have [Ibnd dI]:= (prop N ineq').
-specialize (xeIn N Ibnd).
-specialize (x'eIn N Ibnd).
-split_Rabs; lra.
+move: xeIn (xeIn N) => _ xeIn.
+move: x'eIn (x'eIn N) => _ x'eIn.
+apply/ Rle_lt_trans; last by apply epsle.
+case: (In N) Ibnd dI xeIn x'eIn => // l u/=.
+case: u; first by case: l.
+by case: l => // um ue lm le; rewrite !D2R_SFBI2toX; split_Rabs; lra.
 Qed.
 
 Lemma powerRZ2_neg_pos p:
@@ -208,7 +203,6 @@ rewrite powerRZ_neg; try lra.
 by rewrite powerRZ_inv.
 Qed.
 
-(* The notation \is_representation is for being single_valued and surjective. *)
 Lemma rep_R_is_rep: rep_R \is_representation.
 Proof.
 split.
@@ -219,49 +213,61 @@ exists (fun n => I.bnd
 	(Float (BigZ.BigZ.of_Z (up (x * (powerRZ 2 (Z.pos n))))) (BigZ.BigZ.of_Z (Z.neg n)))).
 rewrite /rep_R.
 split.
-	move => n _.
+	move => n /=; rewrite !D2R_SFBI2toX.
+	replace (BigZ.Neg (BigN.of_pos n)) with (BigZ.of_Z (Z.neg n)) by trivial.
+	rewrite !Float_to_R powerRZ2_neg_pos.
 	split.
-		rewrite Float_to_R powerRZ2_neg_pos.
 		apply/ (Rmult_le_reg_r (powerRZ 2 (Z.pos n))); first by apply powerRZ_lt; lra.
-		rewrite Rmult_assoc Rinv_l; last by apply/ Interval_missing.Rlt_neq_sym /powerRZ_lt; lra.
-		by rewrite Rmult_1_r; apply: (base_Int_part _).1.
-	rewrite Float_to_R powerRZ2_neg_pos.
+		rewrite Rmult_assoc Rinv_l.
+			by rewrite Rmult_1_r; apply: (base_Int_part _).1.
+		by apply/ Interval_missing.Rlt_neq_sym /powerRZ_lt; lra.
 	apply/ (Rmult_le_reg_r (powerRZ 2 (Z.pos n))); first by apply powerRZ_lt; lra.
 	rewrite Rmult_assoc Rinv_l; last by apply/ Interval_missing.Rlt_neq_sym /powerRZ_lt; lra.
-	by rewrite Rmult_1_r; apply/ Rle_trans; last exact/ Rlt_le/ (archimed _).1; lra.
-move => eps epsnum epsg0.
-case: eps epsg0 epsnum => // m e epsg0 _.
-case: e epsg0 => e epsg0.
-Admitted.
-(*
-split => /=.
-	move => n _ .
-	rewrite /Q2R /=.
-	have eq: x = (x * (IPR n)* / (IPR n)).
-		field.
-		Search _ IPR.
-		apply IZR_nz.
-	split.
-		rewrite {2}eq.
-		apply Rmult_le_compat_r.
-			apply Rlt_le; apply Rinv_0_lt_compat.
-			admit.
-		rewrite Rmult_comm.
-		exact: (base_Int_part (x* (Z.pos n))).1.
-	rewrite {1}eq.
-	apply Rmult_le_compat_r.
-		apply Rlt_le; apply Rinv_0_lt_compat.
-		admit.
-	rewrite Rmult_comm;	apply Rlt_le; apply Rgt_lt.
-	exact: (archimed ((Z.pos n) * x)).1.
-move => eps ineq.
-exists (Z.to_pos (Int_part (x/eps))).
-move => n ineq'.
-	rewrite /Q2R /=.
+	by rewrite Rmult_1_r/powerRZ; apply/Rle_trans; last exact/Rlt_le/(archimed _).1; lra.
+move => eps epsg0.
+case: eps epsg0; first by rewrite /D2R/=; lra.
+move => m e epsg0 /=.
+exists (Pos.max xH (Z.to_pos (BigZ.to_Z (-e + 2)))) => n ineq; split => //.
+replace (BigZ.Neg (BigN.of_pos n)) with (BigZ.of_Z (Z.neg n)) by trivial.
+rewrite !D2R_Float !BigZ.spec_of_Z.
+set a := (x * 2 ^ Pos.to_nat n).
+set y := (powerRZ 2 (Z.neg n)).
+have pwps: 0 < y by apply powerRZ_lt; lra.
+have inv: / y * y = 1 by rewrite Rinv_l; lra.
+suffices stuff: IZR (up (a)) -
+IZR (Int_part (a)) <=
+IZR [m]%bigZ * powerRZ 2 [e]%bigZ * / y.
+rewrite -[IZR [m]%bigZ * powerRZ 2 [e]%bigZ]Rmult_1_r -inv -Rmult_assoc.
+rewrite /Rminus Ropp_mult_distr_l -Rmult_plus_distr_r.
+by apply /Rmult_le_compat_r; first by apply Rlt_le.
+rewrite /y Rmult_assoc -powerRZ_inv; try lra.
+rewrite -powerRZ_neg; try lra.
+rewrite -powerRZ_add; try lra.
+have sml: IZR (up a) - IZR (Int_part a) <= 2.
+	have:= (archimed a).2.
+	have:= (base_Int_part a).2.
+	lra.
+apply/ Rle_trans; first exact: sml.
+have mineq: (1 <= [m]%bigZ)%Z.
+	rewrite D2R_Float in epsg0.
+	have /Rgt_lt /lt_IZR gtr': IZR [m]%bigZ > IZR 0.
+		apply Rlt_gt.
+		apply (Rmult_lt_reg_r (powerRZ 2 [e]%bigZ)); first by apply powerRZ_lt; lra.
+		by rewrite Rmult_0_l; lra.
+	by lia.
+rewrite -{1}[2]Rmult_1_l.
+apply Rmult_le_compat; try lra.
+	by apply IZR_le.
+rewrite -{1}[2]powerRZ_1 !powerRZ_Rpower; try lra.
+apply /Rlt_le/ Rpower_lt; try lra; first by rewrite /IZR/IPR/=; lra.
+apply IZR_lt.
+replace (Z.opp (Z.neg n)) with (Z.pos n) by trivial.
+rewrite /Z.succ Zplus_0_l.
+move:ineq.
 admit.
 Admitted.
 
-Lemma rationals_countable: (Q * Q) \is_countable.
+Lemma Intervals_countable: ID \is_countable.
 Proof.
 Admitted.
 
@@ -272,18 +278,13 @@ Admitted.
 Canonical rep_space_R := @make_rep_space
 	R
 	positive
-	(Q * Q)
+	ID
 	rep_R
-	(0%Q,0%Q)
+	xH
+	I0
 	positive_countable
-	rationals_countable
+	Intervals_countable
 	rep_R_is_rep.
-
-Lemma id_is_computable : (id : R -> R) \is_computable_function.
-Proof.
-apply/ prec_cmpt_fun_cmpt.
-by exists (fun phi => phi).
-Qed.
 
 Lemma triang r x y: (Rabs x) + (Rabs y) <= r -> Rabs(x + y) <= r.
 Proof.
@@ -294,30 +295,12 @@ Qed.
 Lemma Rplus_prec : (fun x => Rplus (x.1) (x.2)) \is_prec_function.
 Proof.
 pose Rplus_realizer := (fun phi (n: positive) =>
-	(Qplus (phi (inl n)).1.1 (phi (inr n)).2.1,Qplus (phi (inl n)).1.2 (phi (inr n)).2.2)).
-exists Rplus_realizer => phipsi.
-set phi := (fun n => (phipsi (inl n)).1).
-set psi := (fun n => (phipsi (inr n)).2).
-rewrite /= in phi psi.
-move => [x y] [[/=xeI convI] [/=yeJ convJ]].
+	I.add (SFBI2.PtoP n) (lprj phi n) (rprj phi n)).
+exists Rplus_realizer => phi [x y] [/=[xephin convx] [yephin convy]].
 split.
-	move: convI convJ => _ _ n.
-	have:= (xeI n).
-	have:= (yeJ n).
-	rewrite /lprj/rprj/Rplus_realizer/= !Q2R_plus; lra.
-move: xeI yeJ => _ _ eps ineq.
-have ineq': eps/2 > 0 by lra.
-have [N Nprop] := convI (eps/2) ineq'.
-have [M Mprop] := convJ (eps/2) ineq'.
-move: convI convJ => _ _.
-exists (Pos.max N M).
-move => n ns.
-rewrite /Rplus_realizer !Q2R_plus.
-have Nln: (N <= n)%positive by lia.
-have Mln: (M <= n)%positive by lia.
-specialize (Nprop n Nln).
-specialize (Mprop n Mln).
-move: Nprop Mprop; rewrite /lprj/rprj/=; lra.
+	move => n; rewrite /Rplus_realizer.
+	apply/ add_correct_R; [apply xephin | apply yephin].
+move => eps epsg0.
 Defined.
 
 Lemma Rplus_comp:
