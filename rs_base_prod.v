@@ -44,46 +44,120 @@ Canonical rep_space_prod X Y := @make_rep_space
   (prod_count (countable_answers X) (countable_answers Y))
   (@prod_rep_is_rep X Y).
 
-Lemma fst_prec (X Y: rep_space):
-	(@fst X Y) \is_prec_function.
+Lemma fst_rec_fun (X Y: rep_space):
+	(@fst X Y) \is_recursive_function.
 Proof.
 by exists (@lprj X Y); move => phi x [phinx _].
 Defined.
 
-Lemma snd_prec (X Y: rep_space):
-	(@snd X Y) \is_prec_function.
+Lemma fst_rec (X Y: rep_space):
+	(F2MF (@fst X Y)) \is_recursive.
+Proof. exact/rec_fun_rec/fst_rec_fun. Defined.
+
+Lemma snd_rec_fun (X Y: rep_space):
+	(@snd X Y) \is_recursive_function.
 Proof.
 by exists (@rprj X Y); move => phi x [_ phinx].
 Defined.
 
-Lemma switch_prec_fun (X Y: rep_space):
-	(fun x: X * Y => (x.2, x.1)) \is_prec_function.
+Lemma snd_rec (X Y: rep_space):
+	(F2MF (@snd X Y)) \is_recursive.
+Proof. exact/rec_fun_rec/snd_rec_fun. Defined.
+
+Lemma switch_rec_fun (X Y: rep_space):
+	(fun x: X * Y => (x.2, x.1)) \is_recursive_function.
 Proof. 
 by exists (fun phi => name_pair (rprj phi) (lprj phi)); move => phi [x y] [phinx phiny].
 Defined.
 
-Lemma prod_assoc_prec (X Y Z: rep_space):
-	(fun x: X * (Y * Z) => (x.1, x.2.1,x.2.2)) \is_prec_function.
+Lemma switch_rec (X Y: rep_space):
+	(F2MF (fun x: X * Y => (x.2, x.1))) \is_recursive.
+Proof. exact/rec_fun_rec/switch_rec_fun. Defined.
+
+Lemma prod_assoc_rec_fun (X Y Z: rep_space):
+	(fun x: X * (Y * Z) => (x.1, x.2.1,x.2.2)) \is_recursive_function.
 Proof.
 exists (fun phi => name_pair (name_pair (lprj phi) (lprj (rprj phi))) (rprj (rprj phi))).
 by move => phi [x [y z]] [phinx [phiny phinz]].
 Defined.
 
-Lemma prod_assoc_inv_prec (X Y Z: rep_space):
-	(fun x: X * Y * Z => (x.1.1, (x.1.2, x.2))) \is_prec_function.
+Lemma prod_assoc_rec (X Y Z: rep_space):
+	(F2MF (fun x: X * (Y * Z) => (x.1, x.2.1,x.2.2))) \is_recursive.
+Proof.
+exact/rec_fun_rec/prod_assoc_rec_fun.
+Defined.
+
+Lemma prod_assoc_inv_rec_fun (X Y Z: rep_space):
+	(fun x: X * Y * Z => (x.1.1, (x.1.2, x.2))) \is_recursive_function.
 Proof.
 exists (fun phi => name_pair (lprj (lprj phi)) (name_pair (rprj (lprj phi)) (rprj phi))).
 by move => phi [[x y] z] [[phinx phiny] phinz].
 Defined.
 
-Lemma prod_cmpt_elt (X Y: rep_space) (x: X) (y: Y):
-	x \is_computable_element -> y \is_computable_element -> (x, y) \is_computable_element.
+Lemma prod_assoc_inv_rec (X Y Z: rep_space):
+	(F2MF (fun x: X * Y * Z => (x.1.1, (x.1.2, x.2)))) \is_recursive.
+Proof.
+exact/rec_fun_rec/prod_assoc_inv_rec_fun.
+Defined.
+
+Lemma prod_rec_elt (X Y: rep_space) (x: X) (y: Y):
+	x \is_recursive_element -> y \is_recursive_element -> (x, y) \is_recursive_element.
 Proof.
 move => [phi phinx] [psi psiny].
 by exists (fun q => match q with
 	| inl qx => (phi qx, some_answer Y)
 	| inr qy => (some_answer X, psi qy)
 end).
+Defined.
+
+Lemma lprj_pair (X Y: rep_space) (phi: names X) (psi: names Y):
+	lprj (name_pair phi psi) =  phi.
+Proof. by trivial. Qed.
+
+Lemma rprj_pair (X Y: rep_space) (phi: names X) (psi: names Y):
+	rprj (name_pair phi psi) =  psi.
+Proof. by trivial. Qed.
+
+Lemma prod_cmpt_elt (X Y: rep_space) (x: X) (y: Y):
+	x \is_computable_element -> y \is_computable_element -> (x, y) \is_computable_element.
+Proof.
+move => [phix phinx] [phiy phiny].
+exists (fun n q => match q with
+	| inl qx => match phix n qx with
+		| Some a => Some (a, some_answer Y)
+		| None => None
+	end
+	| inr qy => match phiy n qy with
+		| Some a => Some (some_answer X, a)
+		| None => None
+	end
+end).
+have [psix [evalx psixnx]]:= phinx.
+have [psiy [evaly psiyny]]:= phiny.
+exists (name_pair psix psiy).
+split.
+	move => q a.
+	split.
+		case => n evl.
+		case: q evl => [qx evl | qy evl]. 
+			case E: (phix n qx) evl => [a1 | ] //.
+			move => [<-].
+			rewrite -(evalx qx a1).1; first by trivial.
+			by exists n.
+		case E: (phiy n qy) evl => [a2 | ] //.
+		move => [<-].
+		rewrite -(evaly qy a2).1; first by trivial.
+		by exists n.
+	rewrite /F2MF; case: q => [qx /=eq| qy /=eq].
+		have []:= (evalx qx (psix qx)).2; first by trivial.
+		move => n eq'.
+		exists n.
+		by rewrite eq' eq.
+	have []:= (evaly qy (psiy qy)).2; first by trivial.
+	move => n eq'.
+	exists n.
+	by rewrite eq' eq.
+by split; [rewrite /lprj | rewrite /rprj].
 Defined.
 
 Lemma lprj_cont X Y:
@@ -114,14 +188,6 @@ exists (F2MF (@rprj X Y)).
 by split; [apply frlzr_rlzr => phi x [_ phinx] | exact: rprj_cont].
 Qed.
 
-Lemma lprj_pair (X Y: rep_space) (phi: names X) (psi: names Y):
-	lprj (name_pair phi psi) =  phi.
-Proof. by trivial. Qed.
-
-Lemma rprj_pair (X Y: rep_space) (phi: names X) (psi: names Y):
-	rprj (name_pair phi psi) =  psi.
-Proof. by trivial. Qed.
-
 Definition mfpp_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):=
 	(fun (phipsi: names (rep_space_prod X X')) FphiGpsi =>
 		FphiGpsi = name_pair (lprj FphiGpsi) (rprj FphiGpsi)
@@ -131,8 +197,8 @@ Definition mfpp_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (na
 Definition mfpp_frlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):=
 	(fun (phipsi: names (rep_space_prod X X')) => name_pair (F (lprj phipsi)) (G (rprj phipsi))).
 
-Lemma prod_prec_fun (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y'):
-	f \is_prec_function -> g \is_prec_function -> (fun p => (f p.1, g p.2)) \is_prec_function.
+Lemma prod_rec_fun (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y'):
+	f \is_recursive_function -> g \is_recursive_function -> (fun p => (f p.1, g p.2)) \is_recursive_function.
 Proof.
 move => [M Mrf] [N Nrg].
 exists (mfpp_frlzr M N).
@@ -183,12 +249,12 @@ have [this' stuff']:= prpr b psinb.
 by exists (this, this').
 Qed.
 
-Lemma prod_prec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
-	f \is_prec -> g \is_prec -> (f ** g) \is_prec.
+Lemma prod_rec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
+	f \is_recursive -> g \is_recursive -> (f ** g) \is_recursive.
 Proof.
 move => [M Mrf] [N Nrg].
 exists (mfpp_frlzr M N).
-abstract by rewrite prlzr_rlzr mfpp_frlzr_rlzr; apply prod_rlzr; rewrite -prlzr_rlzr.
+abstract by rewrite rrlzr_rlzr mfpp_frlzr_rlzr; apply prod_rlzr; rewrite -rrlzr_rlzr.
 Defined.
 
 Lemma mfpp_cont (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):
@@ -241,8 +307,8 @@ by exists (fun z => (f z, g z)).
 Defined.
 
 Lemma prod_space_prec_fun (X Y Z: rep_space) (f: Z -> X) (g: Z -> Y):
-	f \is_prec_function -> g \is_prec_function ->
-	exists (F: Z -> (rep_space_prod X Y)) (P:	F \is_prec_function),
+	f \is_recursive_function -> g \is_recursive_function ->
+	exists (F: Z -> (rep_space_prod X Y)) (P:	F \is_recursive_function),
 		((F2MF (@fst X Y)) o (F2MF F) =~= (F2MF f))
 		/\
 		((F2MF (@snd X Y)) o (F2MF F) =~= (F2MF g)).
@@ -260,17 +326,17 @@ Qed.
 
 Definition diag (X: rep_space):= (fun x => (x,x): rep_space_prod X X).
 
-Lemma diag_prec_fun (X: rep_space):
-	(@diag X) \is_prec_function.
+Lemma diag_rec_fun (X: rep_space):
+	(@diag X) \is_recursive_function.
 Proof. by exists (fun phi => name_pair phi phi). Defined.
 
-Lemma diag_prec (X: rep_space):
-	(F2MF (@diag X)) \is_prec.
-Proof. by exists (fun phi => name_pair phi phi); rewrite prlzr_rlzr -frlzr_rlzr. Defined.
+Lemma diag_rec (X: rep_space):
+	(F2MF (@diag X)) \is_recursive.
+Proof. by exists (fun phi => name_pair phi phi); rewrite rrlzr_rlzr -frlzr_rlzr. Defined.
 
 Lemma diag_cmpt_fun (X: rep_space):
 	(@diag X) \is_computable_function.
-Proof. by apply prec_fun_cmpt; apply diag_prec_fun. Defined.
+Proof. by apply rec_fun_cmpt; apply diag_rec_fun. Defined.
 
 Lemma diag_hcr (X: rep_space):
 	(F2MF (@diag X)) \has_continuous_realizer.
@@ -283,21 +349,21 @@ Qed.
 
 Lemma diag_cmpt (X: rep_space):
 	(F2MF (@diag X)) \is_computable.
-Proof. apply prec_cmpt; apply diag_prec. Defined.
+Proof. apply rec_cmpt; apply diag_rec. Defined.
 
-Lemma cmpt_elt_prod_prec (X Y Z: rep_space) (g: X * Y -> Z) (x: X) f:
-	g \is_prec_function -> x \is_computable_element -> f = (fun y => g (x,y)) -> f \is_prec_function.
+Lemma rec_elt_prod_rec (X Y Z: rep_space) (g: X * Y -> Z) (x: X) f:
+	g \is_recursive_function -> x \is_recursive_element -> f = (fun y => g (x,y)) -> f \is_recursive_function.
 Proof.
-move => fprec xcmpt ->.
-apply /prec_fun_comp.
-	apply diag_prec_fun.
-	apply /prec_fun_comp.
-		apply /prod_prec_fun.
-			by apply id_prec_fun.
-		by apply/ cnst_prec_fun; apply xcmpt.
-	apply/ prec_fun_comp.
-		by apply switch_prec_fun.
-	by apply fprec.
+move => frec xcmpt ->.
+apply /rec_fun_comp.
+	apply diag_rec_fun.
+	apply /rec_fun_comp.
+		apply /prod_rec_fun.
+			by apply id_rec_fun.
+		by apply/ cnst_rec_fun; apply xcmpt.
+	apply/ rec_fun_comp.
+		by apply switch_rec_fun.
+	by apply frec.
 done.
 done.
 done.
