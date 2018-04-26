@@ -25,9 +25,9 @@ Print rep_space_R.
 (* The tools provided by the library are that the arithmetic operations are computable, or more
 specifically recursive functions (being recursive is slightly stronger than computability) *)
 Check Rplus_rec_fun.
-Check Rplus_cmpt.
+Check Rplus_cmpt_fun.
 (* The proof of computability is just applying the general argument that a recursive function is computable *)
-Print Rplus_cmpt.
+Print Rplus_cmpt_fun.
 
 (* As an example, let's prove that the power function is computable. To do this, we first prove by 
 induction that for each n the function x => x^n is computable. *)

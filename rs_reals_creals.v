@@ -152,17 +152,17 @@ exists (fun eps => q).
 abstract by move => eps ineq; apply/ Rbasic_fun.Rabs_le; lra.
 Defined.
 
-Lemma Ropp_rec:
+Lemma Ropp_rec_fun:
 	Ropp \is_recursive_function.
 Proof.
 exists (fun phi q => Qopp (phi q)).
 abstract by move => phi x phinx eps epsg0 /=; rewrite Q2R_opp; move: (phinx eps epsg0); split_Rabs; lra.
 Defined.
 
-Lemma Ropp_cmpt:
+Lemma Ropp_cmpt_fun:
 	Ropp \is_computable_function.
 Proof.
-exact/rec_fun_cmpt/Ropp_rec.
+exact/rec_fun_cmpt/Ropp_rec_fun.
 Defined.
 
 Definition Rplus_frlzr (phi: names (rep_space_prod rep_space_R rep_space_R)) (eps: questions rep_space_R) :=
@@ -197,8 +197,8 @@ exists Rplus_frlzr.
 exact: Rplus_frlzr_crct.
 Defined.
 
-Lemma Rplus_cmpt:
-	(fun p => Rplus p.1 p.2) \is_computable_function.
+Lemma Rplus_cmpt_fun:
+	Rplus \is_computable_function.
 Proof.
 exact/rec_fun_cmpt/Rplus_rec_fun.
 Defined.
@@ -303,8 +303,8 @@ Proof.
 exists Rmult_frlzr; exact: Rmult_frlzr_crct.
 Defined.
 
-Lemma Rmult_cmpt:
-	(fun p => Rmult p.1 p.2) \is_computable_function.
+Lemma Rmult_cmpt_fun:
+	Rmult \is_computable_function.
 Proof. exact/rec_fun_cmpt/Rmult_rec_fun. Defined.
 
 Definition lim xn x :=

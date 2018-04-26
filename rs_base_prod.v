@@ -43,12 +43,6 @@ Canonical rep_space_prod X Y := @make_rep_space
   (sum_count (countable_questions X) (countable_questions Y))
   (prod_count (countable_answers X) (countable_answers Y))
   (@prod_rep_is_rep X Y).
-
-Lemma fst_rec_fun (X Y: rep_space):
-	(@fst X Y) \is_recursive_function.
-Proof.
-by exists (@lprj X Y); move => phi x [phinx _].
-Defined.
 End PRODUCTSPACES.
 Class Uncurry T (f : T) src tgt := { prog : src -> tgt }.
 Arguments prog {T} f {src tgt _}.
@@ -69,6 +63,18 @@ Lemma rec_fun_rec (X Y: rep_space) (f: X -> Y):
 Proof.
 by move => [M Mprop]; exists M; apply/ rrlzr_rlzr/ frlzr_rlzr.
 Qed.
+
+Lemma rec_rec_fun (X Y: rep_space) (f: X -> Y):
+	(F2MF f) \is_recursive -> f \is_recursive_function.
+Proof.
+by move => [M Mprop] /=; exists M; apply/frlzr_rlzr/rrlzr_rlzr.
+Qed.
+
+Lemma fst_rec_fun (X Y: rep_space):
+	(@fst X Y) \is_recursive_function.
+Proof.
+by exists (@lprj X Y); move => phi x [phinx _].
+Defined.
 
 Lemma fst_rec (X Y: rep_space):
 	(F2MF (@fst X Y)) \is_recursive.
