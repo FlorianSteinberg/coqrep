@@ -204,6 +204,19 @@ apply prec_fun_cmpt.
 exact Rplus_prec.
 Qed.
 
+Lemma Rsub_prec: (fun x => x.1 - x.2) \is_prec_function.
+Proof.
+apply/ prec_fun_comp.
+		apply prod_prec_fun.
+			by apply id_prec_fun.
+		by apply Ropp_prec.
+	by apply Rplus_prec.
+done.
+Qed.
+
+Lemma Rsub_cmpt: (fun x => x.1 - x.2) \is_computable_function.
+Proof. by apply/ prec_fun_cmpt/ Rsub_prec. Qed.
+
 (* Multiplication is more involved as the precision of approximations that have to be used
 depends on the size of the inputs *)
 Let trunc (eps: questions rep_space_R) := if Qlt_le_dec eps 1 then eps else (1%Q: questions rep_space_R).
