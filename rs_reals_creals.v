@@ -134,7 +134,7 @@ Canonical rep_space_R := @make_rep_space
 
 Lemma id_is_computable : (id : R -> R) \is_computable_function.
 Proof.
-apply/ prec_fun_cmpt.
+apply/ rec_fun_cmpt.
 by exists (fun phi => phi).
 Qed.
 
@@ -144,26 +144,25 @@ apply: Rle_trans.
 by apply: Rabs_triang.
 Qed.
 
-Lemma Q_cmpt_elts:
-	forall q: Q, (Q2R q) \is_computable_element.
+Lemma Q_rec_elts:
+	forall q: Q, (Q2R q) \is_recursive_element.
 Proof.
 move => q.
 exists (fun eps => q).
 abstract by move => eps ineq; apply/ Rbasic_fun.Rabs_le; lra.
 Defined.
 
-Lemma Ropp_prec:
-	Ropp \is_prec_function.
+Lemma Ropp_rec:
+	Ropp \is_recursive_function.
 Proof.
 exists (fun phi q => Qopp (phi q)).
-abstract by move => phi x phinx eps epsg0; rewrite Q2R_opp; move: (phinx eps epsg0); split_Rabs; lra.
+abstract by move => phi x phinx eps epsg0 /=; rewrite Q2R_opp; move: (phinx eps epsg0); split_Rabs; lra.
 Defined.
 
 Lemma Ropp_cmpt:
 	Ropp \is_computable_function.
 Proof.
-apply prec_fun_cmpt.
-exact: Ropp_prec.
+exact/rec_fun_cmpt/Ropp_rec.
 Defined.
 
 Definition Rplus_frlzr (phi: names (rep_space_prod rep_space_R rep_space_R)) (eps: questions rep_space_R) :=
@@ -192,7 +191,7 @@ rewrite Q2R_div /=; last by lra.
 by rewrite {2}/Q2R/=; lra.
 Qed.
 
-Lemma Rplus_prec : (fun x => Rplus (x.1) (x.2)) \is_prec_function.
+Lemma Rplus_rec_fun : Rplus \is_recursive_function.
 Proof.
 exists Rplus_frlzr.
 exact: Rplus_frlzr_crct.
@@ -201,9 +200,8 @@ Defined.
 Lemma Rplus_cmpt:
 	(fun p => Rplus p.1 p.2) \is_computable_function.
 Proof.
-apply prec_fun_cmpt.
-exact Rplus_prec.
-Qed.
+exact/rec_fun_cmpt/Rplus_rec_fun.
+Defined.
 
 (* Multiplication is more involved as the precision of approximations that have to be used
 depends on the size of the inputs *)
@@ -300,14 +298,14 @@ suffices: Q2R (trunc eps) / Q2R (1 + 1) <= Q2R (rab psi)/2 by lra.
 by rewrite !/Rdiv {2}/Q2R/=; apply Rmult_le_compat; try lra.
 Qed.
 
-Lemma Rmult_prec : (fun x => Rmult x.1 x.2) \is_prec_function.
+Lemma Rmult_rec_fun : Rmult \is_recursive_function.
 Proof.
 exists Rmult_frlzr; exact: Rmult_frlzr_crct.
 Defined.
 
 Lemma Rmult_cmpt:
 	(fun p => Rmult p.1 p.2) \is_computable_function.
-Proof. by apply prec_fun_cmpt; apply Rmult_prec. Qed.
+Proof. exact/rec_fun_cmpt/Rmult_rec_fun. Defined.
 
 Definition lim xn x :=
 	forall eps, Q2R eps > 0 -> exists N, forall n, (N <= n)%nat -> Rabs (x - xn n) <= Q2R eps.
@@ -320,8 +318,7 @@ apply/ cond_eq_rat => eps ineq.
 have ineq': Q2R (eps * (1#2)) > 0 by rewrite Q2R_mult {2}/Q2R/=; lra.
 move: (limxnx (Qmult eps (1#2)) ineq') => [N prop].
 move: (limxnx' (Qmult eps (1#2)) ineq') => [M prop'].
-rewrite -(Rplus_0_r x).
-rewrite -(Rplus_opp_r (xn (M + N)%nat)).
+rewrite -(Rplus_0_r x) -(Rplus_opp_r (xn (M + N)%nat)).
 replace (x + (xn (M + N)%nat + - xn (M + N)%nat) - x')
 	with ((x - xn (M + N)%nat) - (x' - xn (M + N)%nat)) by field.
 apply triang.
@@ -505,11 +502,11 @@ rewrite Q2R_mult /Q2R/= mult_IZR Pos.mul_1_r !Rmult_assoc Rinv_r; last exact: IZ
 by rewrite Rinv_1.
 Qed.
 
-Lemma lim_eff_prec:
-	lim_eff \is_prec.
+Lemma lim_eff_rec:
+	lim_eff \is_recursive.
 Proof.
 exists (fun phin eps => phin (S (Pos_size (Qden eps))%nat, (Qmult eps (1#2)))).
-rewrite prlzr_rlzr /rlzr F2MF_comp.
+rewrite rrlzr_rlzr /rlzr F2MF_comp.
 move => phin [x [[xn [phinxn [[y eff] limxnx]]] prop]].
 have limxny: lim xn y.
 	move => eps epsg0.

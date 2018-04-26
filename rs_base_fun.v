@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import all_core rs_base rs_base_sub rs_base_prod.
+Require Import all_core rs_base rs_base_sub rs_base_prod rs_base_facts.
 Require Import FunctionalExtensionality ClassicalFacts ClassicalChoice Psatz.
 
 Set Implicit Arguments.
@@ -154,7 +154,7 @@ End EVALUATION.
 
 Section COMPUTABLE_ELEMENTS.
 Lemma cmpt_elt_mon_cmpt (X Y: rep_space) (f: X c-> Y):
-	f \is_computable_element -> (projT1 f) \is_monotone_computable.
+	f \is_recursive_element -> (projT1 f) \is_monotone_computable.
 Proof. move => [psiF comp]; exists (U psiF); split => //; exact: U_mon. Defined.
 
 Lemma prod_space_cont (X Y Z: rep_space) (f: Z c-> X) (g: Z c-> Y):
@@ -203,8 +203,8 @@ Qed.
 
 Definition id_fun X := (exist_fun (id_hcr X)).
 
-Lemma id_comp_elt X:
-	(id_fun X : X c-> X) \is_computable_element.
+Lemma id_rec_elt X:
+	(id_fun X : X c-> X) \is_recursive_element.
 Proof.
 exists (fun p => match p.1: seq (questions X* answers X) with
 		| nil => inl (p.2:questions X)
@@ -265,7 +265,7 @@ by case: n val => // n val; lia.
 Qed.
 
 Lemma fst_cmpt (X Y: rep_space):
-	(exist_fun (@fst_hcr X Y): (rep_space_prod X Y) c-> X) \is_computable_element.
+	(exist_fun (@fst_hcr X Y): (rep_space_prod X Y) c-> X) \is_recursive_element.
 Proof.
 exists (fun Lq => match Lq.1  with
 	| nil => inl (inl Lq.2)
@@ -300,7 +300,7 @@ by case: n val => // n val; lia.
 Qed.
 
 Lemma snd_cmpt (X Y: rep_space):
-	(exist_fun (@snd_hcr X Y) :(rep_space_prod X Y) c-> Y) \is_computable_element.
+	(exist_fun (@snd_hcr X Y) :(rep_space_prod X Y) c-> Y) \is_recursive_element.
 Proof.
 exists (fun Lq => match Lq.1  with
 	| nil => inl (inr Lq.2)

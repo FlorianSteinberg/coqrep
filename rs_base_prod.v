@@ -49,6 +49,26 @@ Lemma fst_rec_fun (X Y: rep_space):
 Proof.
 by exists (@lprj X Y); move => phi x [phinx _].
 Defined.
+End PRODUCTSPACES.
+Class Uncurry T (f : T) src tgt := { prog : src -> tgt }.
+Arguments prog {T} f {src tgt _}.
+
+Instance Uncurry_base (A B : rep_space) f : @Uncurry (A -> B) f _ _ :=
+  {| prog := f |}.
+Instance Uncurry_step (A B : rep_space) C (f : A -> B -> C)
+                       T (g : forall a, @Uncurry (B -> C) (f a) B T) :
+                                          @Uncurry (A -> B -> C) f (rep_space_prod A B) T :=
+  {| prog := (fun x : A * B => @prog _ _ _ _ (g (fst x)) (snd x)) |}.
+
+Notation "f '\is_recursive_function'" := (@is_rec_fun _ _ (prog f)) (at level 2).
+Notation "f '\is_computable_function'" := (@is_cmpt_fun _ _ (prog f)) (at level 2).
+
+Section PRODUCTLEMMAS.
+Lemma rec_fun_rec (X Y: rep_space) (f: X -> Y):
+	f \is_recursive_function -> (F2MF f) \is_recursive.
+Proof.
+by move => [M Mprop]; exists M; apply/ rrlzr_rlzr/ frlzr_rlzr.
+Qed.
 
 Lemma fst_rec (X Y: rep_space):
 	(F2MF (@fst X Y)) \is_recursive.
@@ -306,7 +326,7 @@ Proof.
 by exists (fun z => (f z, g z)).
 Defined.
 
-Lemma prod_space_prec_fun (X Y Z: rep_space) (f: Z -> X) (g: Z -> Y):
+Lemma prod_space_rec_fun (X Y Z: rep_space) (f: Z -> X) (g: Z -> Y):
 	f \is_recursive_function -> g \is_recursive_function ->
 	exists (F: Z -> (rep_space_prod X Y)) (P:	F \is_recursive_function),
 		((F2MF (@fst X Y)) o (F2MF F) =~= (F2MF f))
@@ -333,52 +353,4 @@ Proof. by exists (fun phi => name_pair phi phi). Defined.
 Lemma diag_rec (X: rep_space):
 	(F2MF (@diag X)) \is_recursive.
 Proof. by exists (fun phi => name_pair phi phi); rewrite rrlzr_rlzr -frlzr_rlzr. Defined.
-
-Lemma diag_cmpt_fun (X: rep_space):
-	(@diag X) \is_computable_function.
-Proof. by apply rec_fun_cmpt; apply diag_rec_fun. Defined.
-
-Lemma diag_hcr (X: rep_space):
-	(F2MF (@diag X)) \has_continuous_realizer.
-Proof.
-exists (F2MF (fun phi => name_pair phi phi)).
-split; first by apply frlzr_rlzr.
-move => phi q.
-case: q => q; by exists [:: q] => Fphi/= <- psi [eq _] Fpsi <-; rewrite /name_pair eq.
-Qed.
-
-Lemma diag_cmpt (X: rep_space):
-	(F2MF (@diag X)) \is_computable.
-Proof. apply rec_cmpt; apply diag_rec. Defined.
-
-Lemma rec_elt_prod_rec (X Y Z: rep_space) (g: X * Y -> Z) (x: X) f:
-	g \is_recursive_function -> x \is_recursive_element -> f = (fun y => g (x,y)) -> f \is_recursive_function.
-Proof.
-move => frec xcmpt ->.
-apply /rec_fun_comp.
-	apply diag_rec_fun.
-	apply /rec_fun_comp.
-		apply /prod_rec_fun.
-			by apply id_rec_fun.
-		by apply/ cnst_rec_fun; apply xcmpt.
-	apply/ rec_fun_comp.
-		by apply switch_rec_fun.
-	by apply frec.
-done.
-done.
-done.
-Defined.
-
-(*
-Class Uncurry T (f : T) src tgt := { prog : src -> tgt }.
-Arguments prog {T} f {src tgt _}.
-
-Instance Uncurry_base (X Y : rep_space) f : @Uncurry (X -> Y) f _ _ :=
-  {| prog := f |}.
-Instance Uncurry_step (X Y : rep_space) Z (f : X -> Y -> Z)
-                       T (g : forall a, @Uncurry (Y -> Z) (f a) Y T) :
-                                          @Uncurry (X -> Y -> Z) f (X * Y) T :=
-  {| prog := (fun x : rep_space_prod X Y => @prog _ _ _ _ (g (fst x)) (snd x)) |}.
-Notation "f '\is_prec_function'" := (is_prec_fun (prog f)) (at level 2).
-*)
-End PRODUCTSPACES.
+End PRODUCTLEMMAS.

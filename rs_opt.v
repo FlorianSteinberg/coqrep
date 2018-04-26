@@ -55,9 +55,9 @@ Definition Some_inv (X: rep_space) ox (x: X) := ox = some x.
 Definition Some_inv_frlzr (X: rep_space) := fun (phi: names (rep_space_opt X)) (q: questions X) => unsm phi q.
 
 Lemma Some_inv_frlzr_crct (X: rep_space):
-	(@Some_inv_frlzr X) \is_prec_realizer_of (@Some_inv X).
+	(@Some_inv_frlzr X) \is_rec_realizer_of (@Some_inv X).
 Proof.
-rewrite prlzr_rlzr.
+rewrite rrlzr_rlzr.
 move => phi [x [[ox [phinox eq]] _]].
 rewrite eq in phinox. move: phinox => [/= stuff name].
 split.
@@ -72,17 +72,17 @@ rewrite (rep_sing _ phi s ox) => //.
 by rewrite eq.
 Qed.
 
-Lemma Some_inv_prec (X: rep_space):
-	(@Some_inv X) \is_prec.
+Lemma Some_inv_rec (X: rep_space):
+	(@Some_inv X) \is_recursive.
 Proof.
 exists (@Some_inv_frlzr X).
 exact: Some_inv_frlzr_crct.
 Defined.
 
-Lemma option_rs_prec_inv (X: rep_space) (Y: rep_space) (f: option X -> Y):
-	f \is_prec_function
+Lemma option_rs_rec_inv (X: rep_space) (Y: rep_space) (f: option X -> Y):
+	f \is_recursive_function
 	->
-	(fun a => f (some a)) \is_prec_function * (f None) \is_computable_element.
+	(fun a => f (some a)) \is_recursive_function * (f None) \is_recursive_element.
 Proof.
 move => [M Mcmpt].
 split.
@@ -94,9 +94,9 @@ split.
 by exists (M (fun _ => (None, some_answer X))); apply Mcmpt.
 Defined.
 
-Lemma option_rs_prec_ind (X: rep_space) (Y: rep_space) (f: option X -> Y):
-	(fun a => f (some a)) \is_prec_function -> (f None) \is_computable_element
-	-> f \is_prec_function.
+Lemma option_rs_rec_ind (X: rep_space) (Y: rep_space) (f: option X -> Y):
+	(fun a => f (some a)) \is_recursive_function -> (f None) \is_recursive_element
+	-> f \is_recursive_function.
 Proof.
 move => [M Mcmpt] [N Ncmpt].
 exists (fun phi => match (phi (inl star)).1 with
@@ -107,8 +107,8 @@ abstract by move => phi x phinx; case: x phinx => [/=a [eq phina] |/= Nope];
 	[rewrite eq; apply Mcmpt | rewrite Nope; apply Ncmpt].
 Defined.
 
-Lemma Some_prec (X: rep_space):
-	(@Some X) \is_prec_function.
+Lemma Some_rec (X: rep_space):
+	(@Some X) \is_recursive_function.
 Proof.
 by exists (fun phi q => if q is inr q' then (Some star, phi q') else (Some star, some_answer X)).
 Defined.

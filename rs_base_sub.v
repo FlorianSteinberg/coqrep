@@ -39,12 +39,12 @@ Canonical rep_space_sub_space (X: rep_space) (P: X -> Prop) := @make_rep_space
   (countable_answers X)
   (@rep_sub_space X P).
 
-Lemma sub_space_prec_fun (X Y: rep_space) (P: X -> Prop) (f: X -> Y):
-	f \is_prec_function -> (fun x: {x' | P x'} => f (projT1 x)) \is_prec_function.
+Lemma sub_space_rec_fun (X Y: rep_space) (P: X -> Prop) (f: X -> Y):
+	f \is_recursive_function -> (fun x: {x' | P x'} => f (projT1 x)) \is_recursive_function.
 Proof. by move => [M Mprop]; exists M => phi x; apply Mprop. Qed.
 
 Lemma sub_space_prec (X Y: rep_space) (P: X -> Prop) (f: X ->> Y):
-	f \is_prec -> (fun x: {x' | P x'} => f (projT1 x)) \is_prec.
+	f \is_recursive -> (fun x: {x' | P x'} => f (projT1 x)) \is_recursive.
 Proof.
 move => [M Mprop'].
 exists M.

@@ -40,8 +40,8 @@ Proof. done. Qed.
 Definition ptw (X: rep_space) (op: X * X -> X) (fg: (nat -> X) * (nat -> X)) :=
 	(fun n => op (fg.1 n, fg.2 n)).
 
-Lemma ptw_prec X (op: rep_space_prod X X -> X):
-	op \is_prec_function -> (ptw op) \is_prec_function.
+Lemma ptw_rec X (op: rep_space_prod X X -> X):
+	op \is_recursive_function -> (ptw op) \is_recursive_function.
 Proof.
 move => [Mop Mprop].
 exists (fun (phi: names (rep_space_prod (rep_space_usig_prod X)(rep_space_usig_prod X))) q =>

@@ -44,8 +44,8 @@ rewrite E in val; have ev: meval MN (inr q) a' by exists m.
 by rewrite /F2MF/rprj; have ->:= (prp a' ev); apply Some_inj.
 Qed.
 
-Lemma sprd_cmpt_prec (X Y: rep_space) (f: X ->> Y):
-	Y \is_spread -> f \is_monotone_computable -> f \is_prec.
+Lemma sprd_cmpt_rec (X Y: rep_space) (f: X ->> Y):
+	Y \is_spread -> f \is_monotone_computable -> f \is_recursive.
 Proof.
 move => sprd [M [Mmon Mprop]].
 exists (fun phi => projT1 (sprd (fun n:nat => M n phi))).
@@ -78,11 +78,11 @@ Qed.
 
 Lemma cmpt_fun_cmpt_elt (X Y: rep_space) (f: X ->> Y) (x: X) (y: Y):
 	Y \is_spread -> f \is_monotone_computable -> f \is_single_valued
-	-> x \is_computable_element -> f x y -> y \is_computable_element.
+	-> x \is_recursive_element -> f x y -> y \is_recursive_element.
 Proof.
 move => sprd mon sing [phi phinx] fxy.
 have xfd: x \from_dom f by exists y.
-have [M Mprop]:= sprd_cmpt_prec sprd mon.
+have [M Mprop]:= sprd_cmpt_rec sprd mon.
 exists (M phi).
 have [y' [Mphiny' fxy']]:= Mprop phi x phinx xfd.
 by rewrite (sing x y y').

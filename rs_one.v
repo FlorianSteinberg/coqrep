@@ -44,7 +44,7 @@ by move => f; apply functional_extensionality => x; elim (f x).
 Qed.
 
 Lemma one_fun_prec_fun (X: rep_space):
-	(@one_fun X) \is_prec_function.
+	(@one_fun X) \is_recursive_function.
 Proof.
 by exists (fun phi q => star).
 Qed.
@@ -61,7 +61,7 @@ Qed.
 Definition one_cfun X := exist_fun (@one_fun_hcr X) : (X c-> rep_space_one).
 
 Lemma one_cfun_cmpt_elt (X: rep_space):
-	(@one_cfun X) \is_computable_element.
+	(@one_cfun X) \is_recursive_element.
 Proof.
 exists (fun Lq => inr star).
 rewrite /delta/=/is_fun_name/=.

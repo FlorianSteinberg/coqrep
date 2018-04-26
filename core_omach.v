@@ -23,11 +23,11 @@ Definition is_cmpt_op (F: B ->> B') :=
 	{M| M \computes F}.
 Notation "F '\is_computable_operator'" := (is_cmpt_op F) (at level 2).
 
-Definition is_prim_rec_op (F: B ->> B') :=
+Definition is_rec_op (F: B ->> B') :=
 	{M | M \is_choice_for F}.
-Notation "F '\is_primitive_recursive_operator'" := (is_prim_rec_op F) (at level 2).
+Notation "F '\is_recursive_operator'" := (is_rec_op F) (at level 2).
 
-Lemma prec_F2MF_op (F: B -> B') (somec: C):
+Lemma rec_F2MF_op (F: B -> B') (somec: C):
 	(fun n phi q => Some(F phi q)) \computes (F2MF F).
 Proof.
 move => phi _.
@@ -39,12 +39,12 @@ by apply Some_inj.
 Qed.
 
 Lemma prec_cmpt_op (F: B ->> B') (somec: C):
-	F \is_primitive_recursive_operator -> F \is_computable_operator.
+	F \is_recursive_operator -> F \is_computable_operator.
 Proof.
 move => [M Mprop].
 exists (fun n phi q => Some (M phi q)).
 apply/ tight_trans.
-	apply prec_F2MF_op => //.
+	apply rec_F2MF_op => //.
 by apply icf_F2MF_tight.
 Qed.
 
@@ -239,7 +239,7 @@ End ORACLE_MACHINES.
 Notation eval M := (@oeval _ _ _ _ nat_countType M).
 Notation "M '\ocomputes' F" := ((oeval M) \tightens F) (at level 2).
 Notation "F '\is_computable_operator'" := (is_cmpt_op F) (at level 2).
-Notation "F '\is_primitive_recursive_operator'" := (is_prim_rec_op F) (at level 2).
+Notation "F '\is_recursive_operator'" := (is_rec_op F) (at level 2).
 Notation "M '\is_monotone_oracle_machine'" := (is_mon_omac M) (at level 2).
 Notation "M '\monotone_computes' F" := (mon_cmpt M F) (at level 2).
 Notation "F '\is_monotone_computable'" := (@is_mon_cmpt _ _ _ _ nat_countType F) (at level 2).

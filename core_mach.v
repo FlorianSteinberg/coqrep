@@ -23,12 +23,12 @@ Definition is_comp (f: Q ->> A) :=
 	{N | N \computes f}.
 Notation "f '\is_computable'" := (is_comp f) (at level 2).
 
-Definition is_prec (f: Q ->> A) :=
+Definition is_rec (f: Q ->> A) :=
 	{M | M \is_choice_for f}.
-Notation "f '\is_primitive_recursive'" := (is_prec f) (at level 2).
+Notation "f '\is_recursive'" := (is_rec f) (at level 2).
 
-Lemma prec_cmpt (f: Q ->> A) (c: C):
-	f \is_primitive_recursive -> f \is_computable.
+Lemma rec_cmpt (f: Q ->> A) (c: C):
+	f \is_recursive -> f \is_computable.
 Proof.
 move => [M Mprop].
 exists (fun n q => Some (M q)) => q ex.

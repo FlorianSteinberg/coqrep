@@ -83,8 +83,8 @@ move => [[[]]]; rewrite /F2MF/NXN_lst/=/lnm_size/=; last by move => [-> <-].
 by move => [n an] [[-> [/=name _]] eq] _; rewrite -eq /= -name /lprj size_inseg.
 Qed.
 
-Lemma size_prec_fun X:
-	(fun K: rep_space_list X => size K) \is_prec_function.
+Lemma size_rec_fun X:
+	(fun K: rep_space_list X => size K) \is_recursive_function.
 Proof.
 exists (fun phi str => lnm_size phi).
 move => phi K phinK.
@@ -98,8 +98,8 @@ Lemma lnm_list_size X phi:
 	@lnm_size X phi = size (lnm_list phi).
 Proof. by rewrite /lnm_list size_inseg. Qed.
 
-Lemma cons_prec_fun (X: rep_space):
-	(fun p => cons (p.1: X) p.2) \is_prec_function.
+Lemma cons_rec_fun (X: rep_space):
+	(fun p => cons (p.1: X) p.2) \is_recursive_function.
 Proof.
 exists (fun (phi: names (rep_space_prod X (rep_space_list X))) q => match q with
 	| inl str => (some star, (0, some_answer X))
@@ -126,12 +126,12 @@ replace (nan.1 < nan.1.+1) with true by by rewrite ltnSn.
 by rewrite inseg_trunc => //.
 Qed.
 
-Lemma list_rs_prec_pind (X Y Z: rep_space) (g: Z -> Y) (h: (rep_space_prod Z (rep_space_prod X Y)) -> Y) f:
-	g \is_prec_function -> h \is_prec_function
+Lemma list_rs_rec_pind (X Y Z: rep_space) (g: Z -> Y) (h: (rep_space_prod Z (rep_space_prod X Y)) -> Y) f:
+	g \is_recursive_function -> h \is_recursive_function
 	-> (forall zK, f zK = (fix f z K := match K with
 		| nil => g z
 		| cons a K => h (z, (a, f z K)) 
-	end) zK.1 zK.2) -> f \is_prec_function.
+	end) zK.1 zK.2) -> f \is_recursive_function.
 Proof.
 move => [gM gMcmpt] [hM hMcmpt] feq.
 pose psi (n:nat) (phi:names (rep_space_list X)) (q: questions (rep_space_list X)):= match n with
@@ -178,49 +178,43 @@ apply ih => //.
 by rewrite rprj_pair E.
 Qed.
 
-Lemma list_rs_prec_ind (X Y: rep_space) (g: Y) (h: (rep_space_prod X Y) -> Y) f:
-	g \is_computable_element -> h \is_prec_function
+Lemma list_rs_rec_ind (X Y: rep_space) (g: Y) (h: rep_space_prod X Y -> Y) f:
+	g \is_recursive_element -> h \is_recursive_function
 	-> (forall K, f K = (fix f K := match K with
 		| nil => g
-		| cons a K => h (a, f K)
-	end) K) -> f \is_prec_function.
+		| cons a K => h (a, (f K))
+	end) K) -> f \is_recursive_function.
 Proof.
 move => gcmpt hprec feq.
-set g' := (fun str: rep_space_one => g).
-have g'prec: g' \is_prec_function by apply cnst_prec_fun.
+set g' := (fun _: rep_space_one => g).
+have g'rec: g' \is_recursive_function by apply cnst_rec_fun.
 set h' := (fun p:rep_space_prod rep_space_one (rep_space_prod X Y) => h p.2).
-have h'prec: h' \is_prec_function.
+have h'rec: h' \is_recursive_function.
 	move: hprec => [hM hMprop].
 	exists (fun phi q => hM (rprj phi) q).
 	by move => phi [z p] [phinz phinp]; apply hMprop.
-suffices: (fun oK: rep_space_prod rep_space_one (rep_space_list X) => f oK.2)\is_prec_function.
-	move => [fM fMprop].
-	exists (fun phi q => fM (name_pair (fun _ => star) phi) q).
-	move => phi x phinx.
-	by apply (fMprop (name_pair (fun _ => star) phi) (star, x)).
-apply/ (list_rs_prec_pind g'prec h'prec) => /=.
-by move => [str K]; rewrite feq; elim:str => /=; elim: K => // a K ->.
+have: (fun (_: rep_space_one) (K: rep_space_list X) => f K)\is_recursive_function.
+	apply/ (list_rs_rec_pind g'rec h'rec) => /=.
+	by move => [str K]; rewrite feq; elim:str => /=; elim: K => // a K ->.
+move => [fM fMprop].
+exists (fun phi q => fM (name_pair (fun _ => star) phi) q) => phi x phinx.
+by apply (fMprop (name_pair (fun _ => star) phi) (star, x)).
 Qed.
 
 Lemma map_prec (X Y: rep_space) (f: X -> Y):
-	f \is_prec_function -> (fun K => map f K) \is_prec_function.
+	f \is_recursive_function -> (fun K => map f K) \is_recursive_function.
 Proof.
-move => fprec.
-have nc: (@nil Y) \is_computable_element.
+move => frec.
+have nc: (@nil Y) \is_recursive_element.
 	exists (fun q => (None, (0, some_answer Y))).
 	split; last by move => a b; exact: F2MF_tot.
 	by exists None.
-suffices hprec: (fun p => (f p.1 :: p.2)) \is_prec_function by apply/ (list_rs_prec_ind nc hprec).
-apply/ prec_fun_comp; first	apply diag_prec_fun.
-	apply/ prec_fun_comp; first apply prod_prec_fun.
-			apply/ fst_prec.
-		apply/ snd_prec.
-	apply/ prec_fun_comp; first apply prod_prec_fun.
-			apply fprec.
-		apply id_prec_fun.
-	by apply cons_prec_fun.
-done.
-done.
-done.
+have hrec: (fun p => (f p.1 :: p.2)) \is_recursive_function.
+	apply/rec_fun_comp; first	apply diag_rec_fun.
+	apply/ rec_fun_comp; first by apply prod_rec_fun; [apply/ fst_rec_fun | apply/ snd_rec_fun].
+	apply/ rec_fun_comp; first by apply prod_rec_fun; [apply frec | apply id_rec_fun].
+	by apply cons_rec_fun.
+	done. done. done.
+by apply/ (list_rs_rec_ind nc hrec).
 Qed.
 End LISTSPACES.
