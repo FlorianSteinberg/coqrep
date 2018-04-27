@@ -14,6 +14,7 @@ rs_base.v
 rs_base_prod.v
 rs_base_facts.v
 rs_base_sub.v
+rs_base_sum.v
 rs_base_fun.v
 rs_base_iso.v
 all_rs_base.v
@@ -29,6 +30,7 @@ rs_sets.v
 rs_sprd.v
 all_rs.v
 
+rs_ring.v
 rs_reals_creals.v
 
 examples_continuity.v
