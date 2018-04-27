@@ -6,14 +6,14 @@ Require Import Morphisms.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-Section REPRESENTED_SPACES.
+Section RS.
 
 Definition is_rep S T (delta: S ->> T):=
 	delta \is_surjective_partial_function.
 Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
 
 (* To construct a represented space it is necessary to provide a proof that the
-representation is actually a representation. The names have to be of the formulation
+representation is actually a representation. The names have to be of the form
 Q -> A where Q and A are countable and A is inhabited. This must also be proven. *)
 Structure rep_space := make_rep_space {
   space :> Type;
@@ -26,7 +26,7 @@ Structure rep_space := make_rep_space {
   countable_answers: answers \is_countable;
   representation_is_valid : delta \is_representation
 }.
-End REPRESENTED_SPACES.
+End RS.
 Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
 Notation names X := ((questions X) -> (answers X)).
 Notation rep := @delta.
@@ -61,8 +61,8 @@ split => [rlzr phi [fx [[x [phinx eq]] prop]] | mfrlzr phi x phinx].
 	by apply: (representation_is_valid Y).1; [apply rlzr | apply/ Fphiny ].
 have exte: ((delta (r:=Y)) o (F2MF F)) \extends ((F2MF f) o (delta (r:=X))).
 	apply/ exte_tight => //; apply: comp_sing; try exact: F2MF_sing.
-		exact: (representation_is_valid X).1.
-	exact: (representation_is_valid Y).1.
+		exact: (rep_sing X).
+	exact: (rep_sing Y).
 have Fphinfx: ((F2MF f) o (delta (r:=X))) phi (f x) by apply tot_comp; [exact: F2MF_tot | exists x].
 have [Fphi [eq Fphifx]]:= (exte phi (f x) Fphinfx).1.
 by rewrite eq.
@@ -303,36 +303,6 @@ Definition is_mon_cmpt (X Y: rep_space) (f: X ->> Y) :=
 
 Definition is_rec (X Y: rep_space) (f: X ->> Y) :=
 	{F | F \is_rec_realizer_of f}.
-
-(*
-Definition iffT (S T: Type) :=
-exists (f: S -> T) (g:T -> S), (forall s, f (g s) = s) /\ forall t, g (f t) = t.
-
-Global Instance eq_iffT:
-	Equivalence iffT.
-Proof.
-split.
-		by move => T; do 2 exists (fun t => t).
-	by move => S T [TS [ST [fsg gsf]]]; exists ST; exists TS.
-move => S T R [f [g [fsg gsf]]] [f' [g' [f'sg' g'sf']]].
-	exists (fun s => f' (f s)).
-exists (fun r => g (g' r)).
-by split => [s | t]; [rewrite (fsg (g' s)) | rewrite (g'sf' (f t))].
-Qed.
-
-Global Instance prec_prpr (X Y: rep_space):
-	Proper (@equiv X Y ==> iffT) (@prec X Y).
-Proof.
-move => f g feg.
-have imp1: prec f -> prec g.
-	by move => [M Mprop]; exists M; rewrite -prlzr_rlzr -feg prlzr_rlzr; apply Mprop.
-exists imp1.
-have imp2: prec g -> prec f.
-	by move => [M Mprop];	exists M; rewrite -prlzr_rlzr feg prlzr_rlzr; apply Mprop.
-exists imp2.
-split => s.
-
-Qed.*)
 
 Definition is_cmpt_fun (X Y: rep_space) (f: X -> Y) :=
 	{M | (eval M) \is_realizer_of (F2MF f)}.

@@ -150,7 +150,7 @@ by rewrite nth_iota.
 Qed.
 
 Lemma nth_rec_rev (X: rep_space):
-	(fun aK => nth (aK.1: X) (aK.2: rep_space_list_rev X)) \is_recursive_function.
+	(fun a K => nth (a: X) K) \is_recursive_function.
 Proof.
 exists (@nth_frlzr X).
 exact: nth_rlzr_crct.
@@ -349,7 +349,7 @@ have hrec: (fun p => (f p.1 :: p.2)) \is_recursive_function.
 by apply (list_rev_rs_rec_ind (nil_rec_elt Y) hrec).
 Defined.
 
-Lemma map_prec_rev_par (X Y Z: rep_space) (f: Z*X -> Y): f \is_recursive_function ->
+Lemma map_rec_rev_par (X Y Z: rep_space) (f: Z*X -> Y): f \is_recursive_function ->
 	(fun (zK:rep_space_prod Z (rep_space_list_rev X)) => map (fun K => f (zK.1,K)) zK.2) \is_recursive_function.
 Proof.
 move => frec.
@@ -362,7 +362,7 @@ apply/ (list_rev_rs_rec_pind (@cnst_rec_fun Z (rep_space_list_rev Y) nil (@nil_r
 move => [z K] /=; by elim: K => // a K <-.
 Defined.
 
-Lemma iota0_prec_fun:
+Lemma iota0_rec_fun:
 	(iota 0) \is_recursive_function.
 Proof.
 exists (fun phi q => match (phi star) with

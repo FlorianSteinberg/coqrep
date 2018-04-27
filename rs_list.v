@@ -209,12 +209,12 @@ have nc: (@nil Y) \is_recursive_element.
 	exists (fun q => (None, (0, some_answer Y))).
 	split; last by move => a b; exact: F2MF_tot.
 	by exists None.
-have hrec: (fun p => (f p.1 :: p.2)) \is_recursive_function.
-	apply/rec_fun_comp; first	apply diag_rec_fun.
-	apply/ rec_fun_comp; first by apply prod_rec_fun; [apply/ fst_rec_fun | apply/ snd_rec_fun].
-	apply/ rec_fun_comp; first by apply prod_rec_fun; [apply frec | apply id_rec_fun].
-	by apply cons_rec_fun.
-	done. done. done.
-by apply/ (list_rs_rec_ind nc hrec).
+cut (fun p => (f p.1 :: p.2)) \is_recursive_function => [hrec| ].
+	by apply/ (list_rs_rec_ind nc hrec).
+apply/rec_fun_comp; first	apply diag_rec_fun.
+apply/ rec_fun_comp; first by apply prod_rec_fun; [apply/ fst_rec_fun | apply/ snd_rec_fun].
+apply/ rec_fun_comp; first by apply prod_rec_fun; [apply frec | apply id_rec_fun].
+by apply cons_rec_fun.
+done. done. done.
 Qed.
 End LISTSPACES.
