@@ -165,24 +165,12 @@ split.
 	move => q a.
 	split.
 		case => n evl.
-		case: q evl => [qx evl | qy evl]. 
-			case E: (phix n qx) evl => [a1 | ] //.
-			move => [<-].
-			rewrite -(evalx qx a1).1; first by trivial.
-			by exists n.
-		case E: (phiy n qy) evl => [a2 | ] //.
-		move => [<-].
-		rewrite -(evaly qy a2).1; first by trivial.
-		by exists n.
+		case: q evl => [qx evl | qy evl]; case E: (_ n _) evl => [a' | ] // [<-].
+			by rewrite -(evalx qx a').1; last exists n.
+		by rewrite -(evaly qy a').1; last exists n.
 	rewrite /F2MF; case: q => [qx /=eq| qy /=eq].
-		have []:= (evalx qx (psix qx)).2; first by trivial.
-		move => n eq'.
-		exists n.
-		by rewrite eq' eq.
-	have []:= (evaly qy (psiy qy)).2; first by trivial.
-	move => n eq'.
-	exists n.
-	by rewrite eq' eq.
+		by have []:= (evalx qx (psix qx)).2 => // n eq'; exists n; rewrite eq' eq.
+	by have []:= (evaly qy (psiy qy)).2 => // n eq'; exists n; rewrite eq' eq.
 by split; [rewrite /lprj | rewrite /rprj].
 Defined.
 
@@ -252,8 +240,7 @@ have rprjfd: ((rprj phipsi) \from_dom (g o (delta (r:=X')))).
 	by rewrite (rep_sing X' (rprj phipsi) z' x'); first exists y'.
 have [[z' [[Gpsi [GpsiGpsi Gpsinz']]] propr]condr]:= Grg (rprj phipsi) rprjfd.
 split.
-	exists (z, z').
-	split; first by exists (name_pair Fphi Gpsi).
+	exists (z, z'); split; first by exists (name_pair Fphi Gpsi).
 	move => FphiGpsi [/= np [/=FphiFphi' GpsiGpsi']].
 	have [l nl]:= (propl (lprj FphiGpsi) FphiFphi').
 	have [k nk]:= (propr (rprj FphiGpsi) GpsiGpsi').
