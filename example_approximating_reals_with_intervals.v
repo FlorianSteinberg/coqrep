@@ -292,10 +292,9 @@ apply: Rle_trans.
 by apply: Rabs_triang.
 Qed.
 
-Lemma Rplus_prec : (fun x => Rplus (x.1) (x.2)) \is_prec_function.
+Lemma Rplus_rec_fun : Rplus \is_recursive_function.
 Proof.
-pose Rplus_realizer := (fun phi (n: positive) =>
-	I.add (SFBI2.PtoP n) (lprj phi n) (rprj phi n)).
+pose Rplus_realizer := (fun phi (n: positive) => I.add (SFBI2.PtoP n) (lprj phi n) (rprj phi n)).
 exists Rplus_realizer => phi [x y] [/=[xephin convx] [yephin convy]].
 split.
 	move => n; rewrite /Rplus_realizer.
@@ -303,20 +302,17 @@ split.
 move => eps epsg0.
 Admitted.
 
-Lemma Rplus_comp:
-	(fun p => Rplus p.1 p.2) \is_computable_function.
+Lemma Rplus_cmpt_fun:
+	Rplus \is_computable_function.
 Proof.
-apply prec_fun_cmpt.
-exact Rplus_prec.
+exact/rec_fun_cmpt/Rplus_rec_fun.
 Qed.
 
-Lemma Rmult_prec : (fun x => Rmult x.1 x.2) \is_prec_function.
+Lemma Rmult_rec_fun : Rmult \is_recursive_function.
 Proof.
 Admitted.
 
-Lemma Rmult_cmpt:
-	(fun p => Rmult p.1 p.2) \is_computable_function.
+Lemma Rmult_cmpt_fun: Rmult \is_computable_function.
 Proof.
-apply prec_fun_cmpt.
-exact Rmult_prec.
+exact/rec_fun_cmpt/Rmult_rec_fun.
 Qed.
