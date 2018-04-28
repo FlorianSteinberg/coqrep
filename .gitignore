@@ -1,6 +1,8 @@
 *.stackdump
 *.cache
 *#
+Makefile
+Makefile.conf
 *.aux
 *.glob
 *.stack.*.aux

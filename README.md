@@ -42,11 +42,11 @@ To build the library you can try doing what I do:
 You need to run "coq_makefile -f Make -o Makefile" once to generate a Makefile.
 You might have to change the line endings of the file Make depending on whether I last commited from Windows or Linux.
 Then run make to compile the library.
+Once you got it to run, the file "example_real_functions" is a good starting point for getting to know the library.
+You may also find the other example files interesting and there are some explanations of what is going on scattered throughout the library. 
+
 I started this project in the course of my one year postdoc at INRIA in Sophia-Antipolis to become familiar with Coq.
 There are a lot of parts that I have written myself and where it probably would have been better to rely on existing stuff.
 I am looking into replacing such parts.
 If you spot something that should be replaced feel free to tell me.
-If you still want to take a look at the content of this repository, I am thankful for any comments and any kind of support.
-The notations of this library heavily use natural language in attempt to make it possible to read lemmas and statements out loud.
-To avoid blocking too many keywords, left recursive notations that use natural language start in a backslash.
 
