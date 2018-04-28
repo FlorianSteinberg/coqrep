@@ -28,10 +28,7 @@ Definition seq_R := rep_space_list_rev rep_space_R.
 For the reals this is equivalent to identifying a polynomial with the function it produces. This means
 taking a quotient. Since quotient types are kind of problematic, the library does not provide a quotient type,
 so the construction must be done by hand. The quotient map is defined in the library for polynomials and called
-Poly *)
-Check Poly.
-
-(* The inverse of the quotient mapping still makes sense as a multivalued function. *)
+Poly The inverse of the quotient mapping still makes sense as a multivalued function. *)
 Definition Poly_inv p (L: seq_R):= Poly L = p.
 
 (* It is not single valued though, as lists that start in zeros are identified. *)
@@ -159,7 +156,6 @@ case: (Compare_dec.lt_dec i (maxn (size L) (size K)))%coq_nat => ineq.
 	by replace (nth 0%nat (iota 0%nat (maxn (size L) (size K))) i) with i by
 		by rewrite (nth_iota); last apply /leP.
 rewrite !nth_default; [ | rewrite size_map size_iota | apply/leq_trans; first exact: size_add ] => //.
-	Search _ (_ <= _)%nat (~~_).
 	by rewrite leqNgt; move /leP: ineq.
 rewrite geq_max.
 apply/andP.
