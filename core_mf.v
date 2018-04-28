@@ -276,9 +276,20 @@ Definition sur_par_fun S T (f: S ->> T) :=
 Notation "f '\is_surjective_partial_function'" := (sur_par_fun f) (at level 2).
 
 (* A modification of the following construction is used to define the product of represented spaces. *)
-Definition mf_prod_prod S T S' T' (f : S ->> T) (g : S' ->> T') :=
+Definition mfpp S T S' T' (f : S ->> T) (g : S' ->> T') :=
 	fun c x => f c.1 x.1 /\ g c.2 x.2.
-Notation "f ** g" := (mf_prod_prod f g) (at level 50).
+Notation "f ** g" := (mfpp f g) (at level 50).
+
+Definition mfpp_fun S T S' T' (f: S -> T) (g: S' -> T') :=
+	fun p => (f p.1, g p.2).
+Notation "f **_f g" := (mfpp_fun f g) (at level 50).
+
+Lemma mfpp_fun_mfpp (f: S -> T) (g: S' -> T'):
+	F2MF (mfpp_fun f g) =~= mfpp (F2MF f) (F2MF g).
+Proof.
+split; rewrite /F2MF; first by move <-.
+by rewrite /mfpp_fun/mfpp => [[-> ->]]; rewrite -surjective_pairing.
+Qed.
 
 Definition ppp1 (fg: (S * S') ->> (T * T')) :=
 	fun s t => exists s' p, fg (s,s') p /\ p.1 = t.
@@ -290,17 +301,18 @@ Lemma ppp1_proj (f: S ->> T) (g: S' ->> T'):
 	(exists s', s' \from_dom g) -> ppp1 (f ** g) =~= f.
 Proof.
 move => [s' [t' gs't']].
-by split => [[k [p [[/= eq _] eq']]] | fst ]; [rewrite -eq' | exists s'; exists (t, t')].
+by split => [[k [p [[/= eq _] eq']]] | ]; [rewrite -eq' | exists s'; exists (t, t')].
 Qed.
 
 Lemma ppp2_proj (f: S ->> T) (g: S' ->> T'):
 	(exists s, s \from_dom f) -> ppp2 (f ** g) =~= g.
 Proof.
 move => [s [somet fst]].
-by split => [[k [p [[/= _ eq] eq']]] | fgst ]; [rewrite -eq' | exists s; exists (somet, t)].
+by split => [[k [p [[/= _ eq] eq']]] | ]; [rewrite -eq' | exists s; exists (somet, t)].
 Qed.
 
-Definition mf_sum_sum S T S' T' (f : S ->> T) (g : S' ->> T') :=
+(* A modification of the following construction is used to define the sum of represented spaces. *)
+Definition mfss S T S' T' (f : S ->> T) (g : S' ->> T') :=
   fun c x => match c with
     | inl a => match x with
       | inl y => f a y
@@ -311,6 +323,21 @@ Definition mf_sum_sum S T S' T' (f : S ->> T) (g : S' ->> T') :=
       | inr z => g b z
     end
   end.
+Notation "f +s+ g" := (mfss f g) (at level 50).
+
+Definition mfss_fun S T S' T' (f: S -> T) (g: S' -> T') :=
+	fun ss' => match ss' with
+		| inl s => inl (f s)
+		| inr s' => inr (g s')
+	end.
+Notation "f +s+_f g" := (mfss_fun f g) (at level 50).
+
+Lemma mfss_fun_mfss (f: S -> T) (g: S' -> T'):
+	F2MF (mfss_fun f g) =~= mfss (F2MF f) (F2MF g).
+Proof.
+split; rewrite /F2MF; first by move <-; case s => /=.
+by case: s => /=; case: t => //= s t ->.
+Qed.
 
 Lemma mfpp_comp R R' (f: S ->> T) (g: S' ->> T') (f': R ->> S) (g': R' ->> S'):
 	(f ** g) o (f' ** g') =~= (f o f') ** (g o g').
@@ -359,7 +386,10 @@ Lemma mfpp_codom (f: S ->> T) (g : S' ->> T') :
   forall s t, s \from_codom f /\ t \from_codom g -> (s,t) \from_codom (f ** g).
 Proof. by move => s t [[s' fs's] [t' ft't]]; exists (s',t'). Qed.
 End MFPROPERTIES.
-Notation "f ** g" := (mf_prod_prod f g) (at level 50).
+Notation "f ** g" := (mfpp f g) (at level 50).
+Notation "f **_f g" := (mfpp_fun f g) (at level 50).
+Notation "f +s+ g" := (mfss f g) (at level 50).
+Notation "f +s+_f g" := (mfss_fun f g) (at level 50).
 Notation "f '\is_single_valued'" := (is_sing f) (at level 2).
 Notation "f '\restricted_to' P" := (fun s t => P s /\ f s t) (at level 2).
 Notation "t '\from_codom' f" := (codom f t) (at level 2).
