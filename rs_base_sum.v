@@ -26,6 +26,12 @@ Definition rslct X Y (phipsi: questions X * questions Y -> answers X + answers Y
 		| inr b => b
 	end.
 
+Definition slct X Y (phi: questions X * questions Y -> answers X + answers Y) :=
+	match phi (some_question X, some_question Y) with
+		| inl a => inl (lslct phi)
+		| inr b => inr (rslct phi)
+	end.
+
 Lemma lslct_linc (X Y: rep_space) (phi: names X):
 	@lslct X Y (linc phi) =  phi.
 Proof. by trivial. Qed.
@@ -92,22 +98,19 @@ Lemma inr_rec (X Y: rep_space):
 	(F2MF (@inr X Y)) \is_recursive.
 Proof. exact/rec_fun_rec/inr_rec_fun. Defined.
 
-Definition paib (X: rep_space):=
+Definition paib (X: Type):=
 	fun (xx: X + X) => match xx with
 		|	inl x => x
 		| inr x => x
 	end.
 
 Definition paib_frlzr (X: rep_space) :=
-	fun phi => match phi (some_question X, some_question X) with
-		| inl a => lslct phi
-		| inr a => rslct phi
-	end.
+	fun phi => @paib (names X) (slct phi).
 
 Lemma paib_frlzr_paib (X: rep_space):
 	(@paib_frlzr X) \is_realizer_function_for (@paib X).
 Proof.
-by rewrite /paib_frlzr; move => phi x; case: x => x [[a ->] phinx].
+by rewrite /paib_frlzr/paib/slct; move => phi x; case: x => x [[a ->] phinx].
 Qed.
 
 Lemma paib_rec_fun (X: rep_space):
