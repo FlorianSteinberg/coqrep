@@ -40,7 +40,7 @@ If something that should not be opaque is opaque, for instance because it relies
 I currently use Coq 8.7.2 to compile and I do not provide any compatability with other versions.
 To build the library you can try doing what I do:
 You need to run "coq_makefile -f _CoqProject -o Makefile" once to generate a Makefile.
-You might have to change the line endings of the file Make depending on whether I last commited from Windows or Linux.
+You might have to change some line endings depending on whether I last commited from Windows or Linux.
 Then run make to compile the library.
 Once you got it to run, the file "example_real_functions" is a good starting point for getting to know the library.
 You may also find the other example files interesting (you may want to avoid the one about intervals) and there are some explanations of what is going on scattered throughout the library. 
