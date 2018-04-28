@@ -175,7 +175,7 @@ have Fhcr: F \has_continuous_realizer.
 exists (exist_c Fsing Ftot Fhcr).
 split.
 	rewrite /=/F F2MF_comp.
-	rewrite sing_comp => //=; rewrite /mf_prod_prod/=; [ | | ].
+	rewrite sing_comp => //=; rewrite /mfpp/=; [ | | ].
 			rewrite /F2MF => z x.
 			split => [val| fzx [x' y] [fzx' gzy]]; last by rewrite ((projT2 f).1.1 z x x').
 			have [x' fzx']:= (projT2 f).1.2 z.
@@ -187,7 +187,7 @@ split.
 	have [x fzx]:= (projT2 f).1.2 z.
 	have [y gzy]:= (projT2 g).1.2 z.
 	by exists (x, y).
-rewrite /=/F F2MF_comp sing_comp => //=; rewrite /mf_prod_prod/=; [ | | ].
+rewrite /=/F F2MF_comp sing_comp => //=; rewrite /mfpp/=; [ | | ].
 rewrite /F2MF => z y.
 split => [val| gzy [x y'] [fzx gzy']]; last by rewrite ((projT2 g).1.1 z y y').
 have [y' gzy']:= (projT2 g).1.2 z.

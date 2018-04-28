@@ -50,7 +50,7 @@ end).
 split; last by move => a b; exact: F2MF_tot.
 exists (Some (S n, (fun n => nth x (x:: K) n))).
 rewrite /rep_opt/=/prod_rep/=/id_rep/=/rep_usig_prod/=;
-rewrite /lprj/=/rprj/=/mf_prod_prod/=/NXN_lst_rev/F2MF.
+rewrite /lprj/=/rprj/=/mfpp/=/NXN_lst_rev/F2MF.
 split; last by rewrite map_nth_iota.
 split => //.
 split => //.
@@ -61,7 +61,7 @@ case E: (k <= n); rewrite /n in E.
 	case: y phiny yK.
 		move => nan [/=sm name] nanK.
 		rewrite /nK.
-		rewrite /prod_rep/=/id_rep/=/lprj/rprj/=/mf_prod_prod/=/rep_usig_prod/= in name.
+		rewrite /prod_rep/=/id_rep/=/lprj/rprj/=/mfpp/=/rep_usig_prod/= in name.
 		move: name => [nnan prop].
 		have ineq: m < n by rewrite /n; apply /leP; rewrite -E'; apply /leP; rewrite E.
 		rewrite (nth_map 0); last by rewrite size_iota.
@@ -178,7 +178,7 @@ move: phinK => [[y [/=phiny yK]] _].
 split; last by move => a b; exact: F2MF_tot.
 exists (Some (size (x:: K), (fun n => nth x (x:: K) n))).
 rewrite /rep_opt/=/prod_rep/=/id_rep/=/rep_usig_prod/=;
-rewrite /lprj/=/rprj/=/mf_prod_prod/=/NXN_lst_rev/F2MF.
+rewrite /lprj/=/rprj/=/mfpp/=/NXN_lst_rev/F2MF.
 split; last by rewrite map_nth_iota.
 split => //.
 split; first by rewrite eq.
