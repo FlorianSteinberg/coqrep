@@ -26,11 +26,11 @@ Definition rslct X Y (phipsi: questions X * questions Y -> answers X + answers Y
 		| inr b => b
 	end.
 
-Lemma linc_lslct (X Y: rep_space) (phi: names X):
+Lemma lslct_linc (X Y: rep_space) (phi: names X):
 	@lslct X Y (linc phi) =  phi.
 Proof. by trivial. Qed.
 
-Lemma rinc_rslct (X Y: rep_space) (psi: names Y):
+Lemma rslct_rinc (X Y: rep_space) (psi: names Y):
 	@rslct X Y (rinc psi) =  psi.
 Proof. by trivial. Qed.
 
@@ -92,6 +92,32 @@ Lemma inr_rec (X Y: rep_space):
 	(F2MF (@inr X Y)) \is_recursive.
 Proof. exact/rec_fun_rec/inr_rec_fun. Defined.
 
+Definition paib (X: rep_space):=
+	fun (xx: X + X) => match xx with
+		|	inl x => x
+		| inr x => x
+	end.
+
+Definition paib_frlzr (X: rep_space) :=
+	fun phi => match phi (some_question X, some_question X) with
+		| inl a => lslct phi
+		| inr a => rslct phi
+	end.
+
+Lemma paib_frlzr_paib (X: rep_space):
+	(@paib_frlzr X) \is_realizer_function_for (@paib X).
+Proof.
+by rewrite /paib_frlzr; move => phi x; case: x => x [[a ->] phinx].
+Qed.
+
+Lemma paib_rec_fun (X: rep_space):
+	(@paib X) \is_recursive_function.
+Proof. exists (@paib_frlzr X); apply paib_frlzr_paib. Defined.
+
+Lemma paib_rec (X: rep_space):
+	(F2MF (@paib X)) \is_recursive.
+Proof. exact/rec_fun_rec/paib_rec_fun. Defined.
+
 (*
 Lemma sum_assoc_rec_fun (X Y Z: rep_space):
 	(fun xyz: X + (Y + Z) => match xyz with
@@ -151,58 +177,30 @@ exists (F2MF (@rinc X Y)); split; last exact: rinc_cont.
 by apply frlzr_rlzr; split; first by exists (phi (some_question Y)).
 Qed.
 
-Definition mfss_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):=
+Definition mfssFG_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):=
 	fun (phi: names (rep_space_sum X X')) FGphi =>
 		match phi (some_question X, some_question X') with
 			| inl y => F (lslct phi) (lslct FGphi) /\ linc (lslct FGphi) = FGphi
 			| inr y' => G (rslct phi) (rslct FGphi) /\ rinc (rslct FGphi) = FGphi
 		end.
 
-Definition mfss_frlzr X Y X' Y' (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):=
+Definition mfssFG_frlzr X Y X' Y' (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):=
 	fun (phi: names (rep_space_sum X X')) =>
 	match phi (some_question X, some_question X') with
 		| inl y => linc (F (lslct phi))
 		| inr y' => rinc (G (rslct phi))
 	end.
 
-Lemma mfss_rec_fun (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y'):
-	f \is_recursive_function -> g \is_recursive_function -> (fun xx' => match xx' with
-		| inl x => inl (f x)
-		| inr x' => inr (g x')
-	end) \is_recursive_function.
+Lemma mfssFG_frlzr_rlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):
+	F2MF (mfssFG_frlzr F G) =~= mfssFG_rlzr (F2MF F) (F2MF G).
 Proof.
-move => [M /= Mrf] [N /= Nrg].
-exists (mfss_frlzr M N).
-move => phi.
-case => [x [[a eq] phinx] |x' [[a eq] phinx']]; rewrite /mfss_frlzr/=.
-	split; rewrite eq; first by exists (M (lslct phi) (some_question _)).
-	exact (Mrf (lslct phi) x phinx).
-split; rewrite eq; first by exists (N (rslct phi) (some_question _)).
-exact (Nrg (rslct phi) x' phinx').
-Defined.
-
-Lemma mfss_frlzr_rlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):
-	F2MF (mfss_frlzr F G) =~= mfss_rlzr (F2MF F) (F2MF G).
-Proof.
-split; rewrite /F2MF/mfss_rlzr/mfss_frlzr.
+split; rewrite /F2MF/mfssFG_rlzr/mfssFG_frlzr.
 	by case (s (some_question X, some_question X')) => _ <-.
 by case (s (some_question X, some_question X')) => _ [->].
 Qed.
 
-Definition mfss_fun X X' Y Y' (f: X -> Y) (g: X' -> Y') xx':= match xx' with
-	| inl x => inl (f x)
-	| inr x' => inr (g x')
-end.
-
-Lemma mfss_mfss_fun X X' Y Y' (f: X -> Y) (g: X' -> Y'):
-	F2MF (mfss_fun f g) =~= mfss (F2MF f) (F2MF g).
-Proof.
-split; rewrite /F2MF; first by case: s => a <-.
-by case: s => a; case: t => // a1 <-.
-Qed.
-
-Lemma mfss_rlzrs (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y') F G:
-	F \is_realizer_of f -> G \is_realizer_of g -> (mfss_rlzr F G) \is_realizer_of (mfss f g).
+Lemma mfssFG_rlzr_spec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y') F G:
+	F \is_realizer_of f -> G \is_realizer_of g -> (mfssFG_rlzr F G) \is_realizer_of (mfss f g).
 Proof.
 move => Frf Grg phi [].
 case => y [[]].
@@ -213,15 +211,15 @@ case => y [[]].
 	have [[y' [[psi [Fphipsi psiny']]] prop cnd]]:= Frf (lslct phi) fd.
 	split.
 		exists (inl y');split.
-			exists (linc psi); split; rewrite /mfss_rlzr; first by rewrite eq.
-			by split; [exists (psi (some_question Y)) | rewrite linc_lslct].
-		move => psi'; rewrite /mfss_rlzr eq => [[b c]].
+			exists (linc psi); split; rewrite /mfssFG_rlzr; first by rewrite eq.
+			by split; [exists (psi (some_question Y)) | rewrite lslct_linc].
+		move => psi'; rewrite /mfssFG_rlzr eq => [[b c]].
 		have [y'' name]:= prop (lslct psi') b; exists (inl y'').
 		by split; first by exists (lslct psi' (some_question Y)); rewrite -c.
 	case => y'' [[psi'' [val /= [[a' eq'] name]] cond]]; last first.
-		move: val; rewrite /mfss_rlzr eq => [[val inc]].
+		move: val; rewrite /mfssFG_rlzr eq => [[val inc]].
 		by rewrite -inc /linc/= in eq'.
-	move: val; rewrite /mfss_rlzr eq => [[val inc]].
+	move: val; rewrite /mfssFG_rlzr eq => [[val inc]].
 	split; last first.
 		case => x'' [[a'' eq''] name']; last by rewrite eq'' in eq.
 		rewrite (rep_sing _ (lslct phi) x'' x) => //.
@@ -238,15 +236,15 @@ have fd: (rslct phi) \from_dom (g o (delta (r:=X'))).
 have [[y' [[psi [Fphipsi psiny']]] prop cnd]]:= Grg (rslct phi) fd.
 split.
 	exists (inr y'); split.
-		exists (rinc psi); split; rewrite /mfss_rlzr; first by rewrite eq.
-		by split; [exists (psi (some_question Y')) | rewrite rinc_rslct].
-	move => psi'; rewrite /mfss_rlzr eq => [[b c]].
+		exists (rinc psi); split; rewrite /mfssFG_rlzr; first by rewrite eq.
+		by split; [exists (psi (some_question Y')) | rewrite rslct_rinc].
+	move => psi'; rewrite /mfssFG_rlzr eq => [[b c]].
 	have [y'' name]:= prop (rslct psi') b; exists (inr y'').
 	by split; first by exists (rslct psi' (some_question Y')); rewrite -c.
 case => y'' [[psi'' [val /= [[a' eq'] name]] cond]].
-	move: val; rewrite /mfss_rlzr eq => [[val inc]].
+	move: val; rewrite /mfssFG_rlzr eq => [[val inc]].
 	by rewrite -inc /rinc/= in eq'.
-move: val; rewrite /mfss_rlzr eq => [[val inc]].
+move: val; rewrite /mfssFG_rlzr eq => [[val inc]].
 split; last first.
 	case => x'' [[a'' eq''] name']; first by rewrite eq'' in eq.
 	rewrite (rep_sing _ (rslct phi) x'' x) => //.
@@ -259,93 +257,52 @@ have [[this [tmpnm con]]]:= cnd y'' phiy''.
 by rewrite (rep_sing X' (rslct phi) x this).
 Qed.
 
-Lemma mfss_rec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
-	f \is_recursive -> g \is_recursive -> (mfss f g) \is_recursive.
+Lemma mfssFG_frlzr_spec (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y') F G:
+	F \is_realizer_function_for f -> G \is_realizer_function_for g -> (mfssFG_frlzr F G) \is_realizer_function_for (f +s+_f g).
 Proof.
-move => [M Mrf] [N Nrg].
-exists (mfss_frlzr M N).
-abstract by rewrite rrlzr_rlzr mfss_frlzr_rlzr; apply mfss_rlzrs; rewrite -rrlzr_rlzr.
-Defined.
-
-(*
-Lemma mfss_cont (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):
-	F \is_continuous -> G \is_continuous -> (mfpp_rlzr F G) \is_continuous.
-Proof.
-have mapl: forall K (q:questions X), List.In q K -> List.In ((@inl _ (questions X')) q) (map inl K).
-	elim => // q K ih q' /=listin; by case: listin => ass; [left; rewrite -ass | right; apply ih].
-have mapr: forall K (q:questions X'), List.In q K -> List.In ((@inr (questions X) _) q) (map inr K).
-	elim => // q K ih q' /=listin; by case: listin => ass; [left; rewrite -ass | right; apply ih].
-move => Fcont Gcont phi q [FGphi [ np [/=FlphilFGphi GrphirFGphi]]].
-case: q => q.
-	have lphifd: (lprj phi) \from_dom F by exists (lprj FGphi).
-	have [L Lprop] := (Fcont (lprj phi) q lphifd).
-	exists (map inl L).
-	move => FGphi' [np' [/=vall valr]] psi coin Fpsi [ np'' [/=val'l val'r]].
-	rewrite np' np''; apply injective_projections => //=.
-	rewrite (cont_to_sing Fcont vall FlphilFGphi).
-	apply/ Lprop; [ | | apply val'l ] => //=.
-	rewrite /lprj.
-	rewrite coin_lstn => q' listin/=.
-	rewrite ((@coin_lstn _ _ _ _ (map inl L)).1 coin (inl q')) => //.
-	by apply (mapl L q').
-have rphifd: (rprj phi) \from_dom G by exists (rprj FGphi).
-have [L Lprop] := (Gcont (rprj phi) q rphifd).
-exists (map inr L).
-move => FGphi' [np' [/=vall valr]] psi coin Fpsi [ np'' [/=val'l val'r]].
-rewrite np' np''; apply injective_projections => //=.
-rewrite (cont_to_sing Gcont valr GrphirFGphi).
-apply/ Lprop; [ | | apply val'r ] => //=.
-rewrite /rprj coin_lstn => q' listin/=.
-rewrite ((@coin_lstn _ _ _ _ (map inr L)).1 coin (inr q')) => //.
-by apply (mapr L q').
+intros.
+rewrite frlzr_rlzr mfssFG_frlzr_rlzr mfss_fun_mfss.
+by apply mfssFG_rlzr_spec; rewrite -frlzr_rlzr.
 Qed.
 
-Lemma mfpp_hcr (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
-	f \has_continuous_realizer -> g \has_continuous_realizer -> (f ** g) \has_continuous_realizer.
+Lemma sum_rec_fun (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y'):
+	f \is_recursive_function -> g \is_recursive_function -> (f +s+_f g) \is_recursive_function.
 Proof.
-move => [F [Frf Fcont]] [G [Grg Gcont]].
-exists (mfpp_rlzr F G).
-split; [exact: prod_rlzr | exact: mfpp_cont].
-Qed.*)
+move => [M /= Mrf] [N /= Nrg].
+exists (mfssFG_frlzr M N).
+exact/ mfssFG_frlzr_spec.
+Defined.
 
-Lemma sum_space_fun (X Y Z: rep_space) (f: X -> Z) (g: Y -> Z):
+Lemma sum_rec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
+	f \is_recursive -> g \is_recursive -> (f +s+ g) \is_recursive.
+Proof.
+move => [M Mrf] [N Nrg].
+exists (mfssFG_frlzr M N).
+abstract by rewrite rrlzr_rlzr mfssFG_frlzr_rlzr; apply mfssFG_rlzr_spec; rewrite -rrlzr_rlzr.
+Defined.
+
+Lemma sum_uprp_fun (X Y Z: rep_space) (f: X -> Z) (g: Y -> Z):
 	exists! (F: X + Y -> Z),
 		(forall x, F (inl x) = f x)
 		/\
 		(forall y, F (inr y) = g y).
 Proof.
-exists (fun xy => match xy with
-	| inl x => f x
-	| inr y => g y
-end).
-abstract by split => // F [eq eq']; apply functional_extensionality => [[x | y]].
-Defined.
-
-Lemma sum_space_rec_fun (X Y Z: rep_space) (f: X -> Z) (g: Y -> Z):
-	f \is_recursive_function -> g \is_recursive_function ->
-	exists (F: X + Y -> Z) (P:	F \is_recursive_function),
-		((F2MF F) o (F2MF (@inl X Y)) =~= (F2MF f))
-		/\
-		((F2MF F) o (F2MF (@inr X Y)) =~= (F2MF g)).
-Proof.
-move => [F Frf] [G Grg].
-exists (fun z => (f z, g z)).
-split; last by split; by rewrite F2MF_comp /F2MF/=.
-exists (fun phi => (mfpp_frlzr F G) (name_pair phi phi)).
-move => phi z phinz.
-rewrite /mfpp_frlzr.
-split => /=; [rewrite lprj_pair | rewrite rprj_pair].
-	by apply Frf; rewrite lprj_pair.
-by apply Grg; rewrite rprj_pair.
+exists (fun xy => paib (mfss_fun f g xy)); rewrite /paib.
+by split => // F [eq eq']; apply functional_extensionality => [[x | y]].
 Qed.
 
-Definition diag (X: rep_space):= (fun x => (x,x): rep_space_prod X X).
-
-Lemma diag_rec_fun (X: rep_space):
-	(@diag X) \is_recursive_function.
-Proof. by exists (fun phi => name_pair phi phi). Defined.
-
-Lemma diag_rec (X: rep_space):
-	(F2MF (@diag X)) \is_recursive.
-Proof. by exists (fun phi => name_pair phi phi); rewrite rrlzr_rlzr -frlzr_rlzr. Defined.*)
+Lemma sum_uprp_rec_fun (X Y Z: rep_space) (f: X -> Z) (g: Y -> Z):
+	f \is_recursive_function -> g \is_recursive_function ->
+	exists! (fg: X + Y -> Z), exists (P: fg \is_recursive_function),
+		(forall x, fg (inl x) = f x)
+		/\
+		(forall y, fg (inr y) = g y).
+Proof.
+intros.
+exists (fun xy => paib (mfss_fun f g xy)); split; last rewrite /paib.
+	split; last	by split => // F [eq eq']; apply functional_extensionality => [[x | y]].
+	by apply/ rec_fun_comp; [ apply: sum_rec_fun X0 X1 | apply paib_rec_fun | ] => /=.
+move => fg [fgrec [lfg rfg]].
+by apply functional_extensionality; case => /= x; [rewrite -lfg | rewrite -rfg].
+Qed.
 End SUMLEMMAS.
