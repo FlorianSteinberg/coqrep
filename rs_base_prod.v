@@ -1,5 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 Require Import all_core rs_base.
+Require Import FunctionalExtensionality.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -58,6 +59,26 @@ Notation "f '\is_recursive_function'" := (@is_rec_fun _ _ (prog f)) (at level 2)
 Notation "f '\is_computable_function'" := (@is_cmpt_fun _ _ (prog f)) (at level 2).
 
 Section PRODUCTLEMMAS.
+Lemma lprj_rlzr_fst (X Y: rep_space):
+	(@lprj X Y) \is_realizer_function_for fst.
+Proof. by move => phi x [phinx _]. Qed.
+
+Lemma fst_rec_fun (X Y: rep_space):
+	(@fst X Y) \is_recursive_function.
+Proof.
+by exists (@lprj X Y); exact /lprj_rlzr_fst.
+Defined.
+
+Lemma rprj_rlzr_snd (X Y: rep_space):
+	(@rprj X Y) \is_realizer_function_for snd.
+Proof. by move => phi x [_ phinx]. Qed.
+
+Lemma snd_rec_fun (X Y: rep_space):
+	(@snd X Y) \is_recursive_function.
+Proof.
+by exists (@rprj X Y); exact/rprj_rlzr_snd.
+Defined.
+
 Lemma rec_fun_rec (X Y: rep_space) (f: X -> Y):
 	f \is_recursive_function -> (F2MF f) \is_recursive.
 Proof.
@@ -70,34 +91,38 @@ Proof.
 by move => [M Mprop] /=; exists M; apply/frlzr_rlzr/rrlzr_rlzr.
 Qed.
 
-Lemma fst_rec_fun (X Y: rep_space):
-	(@fst X Y) \is_recursive_function.
-Proof.
-by exists (@lprj X Y); move => phi x [phinx _].
-Defined.
-
 Lemma fst_rec (X Y: rep_space):
 	(F2MF (@fst X Y)) \is_recursive.
 Proof. exact/rec_fun_rec/fst_rec_fun. Defined.
-
-Lemma snd_rec_fun (X Y: rep_space):
-	(@snd X Y) \is_recursive_function.
-Proof.
-by exists (@rprj X Y); move => phi x [_ phinx].
-Defined.
 
 Lemma snd_rec (X Y: rep_space):
 	(F2MF (@snd X Y)) \is_recursive.
 Proof. exact/rec_fun_rec/snd_rec_fun. Defined.
 
+Definition diag (X: rep_space):= (fun x => (x,x): rep_space_prod X X).
+
+Lemma name_pair_rlzr_diag (X: rep_space):
+	(fun phi => @name_pair X X phi phi) \is_realizer_function_for (@diag X).
+Proof. done. Qed.
+
+Lemma diag_rec_fun (X: rep_space):
+	(@diag X) \is_recursive_function.
+Proof. by exists (fun phi => name_pair phi phi). Defined.
+
+Lemma diag_rec (X: rep_space):
+	(F2MF (@diag X)) \is_recursive.
+Proof. exact/rec_fun_rec/diag_rec_fun. Defined.
+
+Definition switch X Y := fun (p: space X * space Y) => (p.2, p.1).
+
 Lemma switch_rec_fun (X Y: rep_space):
-	(fun x: X * Y => (x.2, x.1)) \is_recursive_function.
+	(@switch X Y) \is_recursive_function.
 Proof. 
 by exists (fun phi => name_pair (rprj phi) (lprj phi)); move => phi [x y] [phinx phiny].
 Defined.
 
 Lemma switch_rec (X Y: rep_space):
-	(F2MF (fun x: X * Y => (x.2, x.1))) \is_recursive.
+	(F2MF (@switch X Y)) \is_recursive.
 Proof. exact/rec_fun_rec/switch_rec_fun. Defined.
 
 Lemma prod_assoc_rec_fun (X Y Z: rep_space):
@@ -130,10 +155,7 @@ Lemma prod_rec_elt (X Y: rep_space) (x: X) (y: Y):
 	x \is_recursive_element -> y \is_recursive_element -> (x, y) \is_recursive_element.
 Proof.
 move => [phi phinx] [psi psiny].
-by exists (fun q => match q with
-	| inl qx => (phi qx, some_answer Y)
-	| inr qy => (some_answer X, psi qy)
-end).
+by exists (name_pair phi psi).
 Defined.
 
 Lemma lprj_pair (X Y: rep_space) (phi: names X) (psi: names Y):
@@ -202,33 +224,24 @@ exists (F2MF (@rprj X Y)).
 by split; [apply frlzr_rlzr => phi x [_ phinx] | exact: rprj_cont].
 Qed.
 
-Definition mfpp_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):=
+Definition mfppFG_rlzr (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):=
 	(fun (phipsi: names (rep_space_prod X X')) FphiGpsi =>
 		FphiGpsi = name_pair (lprj FphiGpsi) (rprj FphiGpsi)
 		/\
 		(F ** G) (lprj phipsi, rprj phipsi)	(lprj FphiGpsi, rprj FphiGpsi)).
 
-Definition mfpp_frlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):=
+Definition mfppFG_frlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):=
 	(fun (phipsi: names (rep_space_prod X X')) => name_pair (F (lprj phipsi)) (G (rprj phipsi))).
 
-Lemma prod_rec_fun (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y'):
-	f \is_recursive_function -> g \is_recursive_function -> (fun p => (f p.1, g p.2)) \is_recursive_function.
-Proof.
-move => [M Mrf] [N Nrg].
-exists (mfpp_frlzr M N).
-abstract by move => phipsi [x x'] [phinx psinx']; split; [apply Mrf | apply Nrg].
-Defined.
-
-Lemma mfpp_frlzr_rlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):
-	F2MF (mfpp_frlzr F G) =~= mfpp_rlzr (F2MF F) (F2MF G).
+Lemma mfppFG_frlzr_rlzr (X Y X' Y': rep_space) (F: (names X) -> (names Y)) (G: (names X') -> (names Y')):
+	F2MF (mfppFG_frlzr F G) =~= mfppFG_rlzr (F2MF F) (F2MF G).
 Proof.
 move => phi FGphi; rewrite {1}/F2MF.
-split => [eq | [np [/=vall valr]]]; last by rewrite np /mfpp_frlzr vall valr.
-by rewrite -eq /mfpp_rlzr/=/mfpp_frlzr lprj_pair rprj_pair.
+by split => [<- | [np [/=vall valr]]]; last by rewrite np /mfppFG_frlzr vall valr.
 Qed.
 
-Lemma prod_rlzr (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y') F G:
-	F \is_realizer_of f -> G \is_realizer_of g -> (mfpp_rlzr F G) \is_realizer_of (f ** g).
+Lemma mfppFG_rlzr_spec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y') F G:
+	F \is_realizer_of f -> G \is_realizer_of g -> (mfppFG_rlzr F G) \is_realizer_of (f ** g).
 Proof.
 move => Frf Grg phipsi [[y y']] [[[x x' [[/=phinx psinx'] [/= fxy gx'y']]]prop]].
 have lprjfd: ((lprj phipsi) \from_dom (f o (delta (r:=X)))).
@@ -262,16 +275,31 @@ have [this' stuff']:= prpr b psinb.
 by exists (this, this').
 Qed.
 
+Lemma mfppFG_frlzr_spec (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y') F G:
+	F \is_realizer_function_for f -> G \is_realizer_function_for g -> (mfppFG_frlzr F G) \is_realizer_function_for (mfpp_fun f g).
+Proof.
+intros; apply frlzr_rlzr; rewrite mfpp_fun_mfpp mfppFG_frlzr_rlzr.
+by apply mfppFG_rlzr_spec; rewrite -frlzr_rlzr.
+Qed.
+
+Lemma prod_rec_fun (X Y X' Y': rep_space) (f: X -> Y) (g: X' -> Y'):
+	f \is_recursive_function -> g \is_recursive_function -> (f **_f g) \is_recursive_function.
+Proof.
+move => [M /= Mrf] [N /= Nrg].
+exists (mfppFG_frlzr M N).
+exact/ mfppFG_frlzr_spec.
+Defined.
+
 Lemma prod_rec (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
 	f \is_recursive -> g \is_recursive -> (f ** g) \is_recursive.
 Proof.
 move => [M Mrf] [N Nrg].
-exists (mfpp_frlzr M N).
-abstract by rewrite rrlzr_rlzr mfpp_frlzr_rlzr; apply prod_rlzr; rewrite -rrlzr_rlzr.
+exists (mfppFG_frlzr M N).
+abstract by rewrite rrlzr_rlzr mfppFG_frlzr_rlzr; apply: mfppFG_rlzr_spec; rewrite -rrlzr_rlzr.
 Defined.
 
-Lemma mfpp_cont (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):
-	F \is_continuous -> G \is_continuous -> (mfpp_rlzr F G) \is_continuous.
+Lemma mfppFG_cont (X Y X' Y': rep_space) (F: (names X) ->> (names Y)) (G: (names X') ->> (names Y')):
+	F \is_continuous -> G \is_continuous -> (mfppFG_rlzr F G) \is_continuous.
 Proof.
 have mapl: forall K (q:questions X), List.In q K -> List.In ((@inl _ (questions X')) q) (map inl K).
 	elim => // q K ih q' /=listin; by case: listin => ass; [left; rewrite -ass | right; apply ih].
@@ -286,8 +314,7 @@ case: q => q.
 	rewrite np' np''; apply injective_projections => //=.
 	rewrite (cont_to_sing Fcont vall FlphilFGphi).
 	apply/ Lprop; [ | | apply val'l ] => //=.
-	rewrite /lprj.
-	rewrite coin_lstn => q' listin/=.
+	rewrite /lprj coin_lstn => q' listin/=.
 	rewrite ((@coin_lstn _ _ _ _ (map inl L)).1 coin (inl q')) => //.
 	by apply (mapl L q').
 have rphifd: (rprj phi) \from_dom G by exists (rprj FGphi).
@@ -306,44 +333,40 @@ Lemma mfpp_hcr (X Y X' Y': rep_space) (f: X ->> Y) (g: X' ->> Y'):
 	f \has_continuous_realizer -> g \has_continuous_realizer -> (f ** g) \has_continuous_realizer.
 Proof.
 move => [F [Frf Fcont]] [G [Grg Gcont]].
-exists (mfpp_rlzr F G).
-split; [exact: prod_rlzr | exact: mfpp_cont].
+exists (mfppFG_rlzr F G).
+split; [exact: mfppFG_rlzr_spec | exact: mfppFG_cont].
 Qed.
 
-Lemma prod_space_fun (X Y Z: rep_space) (f: Z -> X) (g: Z -> Y):
-	exists (F: Z -> X * Y),
-		(forall z, (F z).1 = f z)
-		/\
-		(forall z, (F z).2 = g z).
+Definition prod_uprp (X Y Z: rep_space) (f: Z -> X) (g: Z -> Y):
+	exists! (F: Z -> X * Y),
+	(forall z, (F z).1 = f z)
+	/\
+	(forall z, (F z).2 = g z).
 Proof.
-by exists (fun z => (f z, g z)).
+exists (fun z => mfpp_fun f g (diag z)); split => // F [lprp rprp]; rewrite /mfpp_fun/diag.
+by apply functional_extensionality => z; rewrite -lprp -rprp -surjective_pairing.
+Qed.
+
+Lemma rec_fun_comp (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
+	f \is_recursive_function -> g \is_recursive_function
+	-> forall h, (forall x, h x = g (f x)) -> h \is_recursive_function.
+Proof.
+move => [M comp] [N comp'] h eq.
+exists (fun phi => N (M phi)).
+abstract by move => phi x phinx; rewrite/prog/= eq; apply comp'; apply comp.
 Defined.
 
-Lemma prod_space_rec_fun (X Y Z: rep_space) (f: Z -> X) (g: Z -> Y):
+Lemma prod_uprp_rec_fun (X Y Z: rep_space) (f: Z -> X) (g: Z -> Y):
 	f \is_recursive_function -> g \is_recursive_function ->
-	exists (F: Z -> (rep_space_prod X Y)) (P:	F \is_recursive_function),
-		((F2MF (@fst X Y)) o (F2MF F) =~= (F2MF f))
-		/\
-		((F2MF (@snd X Y)) o (F2MF F) =~= (F2MF g)).
+	exists! (F: Z -> X * Y), exists (P: F \is_recursive_function),
+	(forall z, (F z).1 = f z)
+	/\
+	(forall z, (F z).2 = g z).
 Proof.
-move => [F Frf] [G Grg].
-exists (fun z => (f z, g z)).
-split; last by split; by rewrite F2MF_comp /F2MF/=.
-exists (fun phi => (mfpp_frlzr F G) (name_pair phi phi)).
-move => phi z phinz.
-rewrite /mfpp_frlzr.
-split => /=; [rewrite lprj_pair | rewrite rprj_pair].
-	by apply Frf; rewrite lprj_pair.
-by apply Grg; rewrite rprj_pair.
+intros; exists (fun x => (mfpp_fun f g (diag x))); split; last rewrite /diag.
+	split; last	by split => // F [eq eq']; apply functional_extensionality => [[x | y]].
+	by apply/ rec_fun_comp; [apply diag_rec_fun | apply: prod_rec_fun X0 X1 | ] => /=.
+move => fg [fgrec [lfg rfg]].
+by apply functional_extensionality => z; rewrite /mfpp_fun -lfg -rfg -surjective_pairing.
 Qed.
-
-Definition diag (X: rep_space):= (fun x => (x,x): rep_space_prod X X).
-
-Lemma diag_rec_fun (X: rep_space):
-	(@diag X) \is_recursive_function.
-Proof. by exists (fun phi => name_pair phi phi). Defined.
-
-Lemma diag_rec (X: rep_space):
-	(F2MF (@diag X)) \is_recursive.
-Proof. by exists (fun phi => name_pair phi phi); rewrite rrlzr_rlzr -frlzr_rlzr. Defined.
 End PRODUCTLEMMAS.

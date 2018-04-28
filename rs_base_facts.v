@@ -26,15 +26,6 @@ Lemma mon_cmpt_cmpt (X Y: rep_space) (f: X ->> Y):
 	f \is_monotone_computable -> f \is_computable.
 Proof. by move => [M [mon comp]]; exists M. Defined.
 
-Lemma rec_fun_comp (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
-	f \is_recursive_function -> g \is_recursive_function
-	-> forall h, (forall x, h x = g (f x)) -> h \is_recursive_function.
-Proof.
-move => [M comp] [N comp'] h eq.
-exists (fun phi => N (M phi)).
-abstract by move => phi x phinx; rewrite/prog/= eq; apply comp'; apply comp.
-Defined.
-
 Lemma rec_comp (X Y Z: rep_space) (f: X ->> Y) (g: Y ->> Z) h:
 	f \is_recursive -> g \is_recursive -> h =~= g o f -> h \is_recursive.
 Proof.
