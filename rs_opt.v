@@ -48,13 +48,31 @@ Canonical rep_space_opt (X: rep_space) := @make_rep_space
 	(prod_count (option_count one_count) (countable_answers X))
 	(@rep_opt_rep X).
 
+Lemma Some_rec_fun (X: rep_space):
+	(@Some X) \is_recursive_function.
+Proof.
+by exists (fun phi q => if q is inr q' then (Some star, phi q') else (Some star, some_answer X)).
+Defined.
+
+Lemma Some_rec (X: rep_space):
+	(F2MF (@Some X)) \is_recursive.
+Proof.
+exact/rec_fun_rec/Some_rec_fun.
+Defined.
+
+Lemma None_rec_elt (X: rep_space):
+	(@None X) \is_recursive_element.
+Proof.
+by exists (fun _ => (None, some_answer _)).
+Defined.
+
 Notation unsm phi:= (fun q => (phi (inr q)).2).
 
 Definition Some_inv (X: rep_space) ox (x: X) := ox = some x.
 
 Definition Some_inv_frlzr (X: rep_space) := fun (phi: names (rep_space_opt X)) (q: questions X) => unsm phi q.
 
-Lemma Some_inv_frlzr_crct (X: rep_space):
+Lemma Some_inv_frlzr_Some_inv (X: rep_space):
 	(@Some_inv_frlzr X) \is_rec_realizer_of (@Some_inv X).
 Proof.
 rewrite rrlzr_rlzr.
@@ -76,7 +94,7 @@ Lemma Some_inv_rec (X: rep_space):
 	(@Some_inv X) \is_recursive.
 Proof.
 exists (@Some_inv_frlzr X).
-exact: Some_inv_frlzr_crct.
+exact: Some_inv_frlzr_Some_inv.
 Defined.
 
 Lemma option_rs_rec_inv (X: rep_space) (Y: rep_space) (f: option X -> Y):
@@ -107,10 +125,25 @@ abstract by move => phi x phinx; case: x phinx => [/=a [eq phina] |/= Nope];
 	[rewrite eq; apply Mcmpt | rewrite Nope; apply Ncmpt].
 Defined.
 
-Lemma Some_rec (X: rep_space):
-	(@Some X) \is_recursive_function.
+Lemma opt_sum (X: rep_space):
+	wisomorphic (rep_space_opt X) (rep_space_sum X rep_space_one).
 Proof.
-by exists (fun phi q => if q is inr q' then (Some star, phi q') else (Some star, some_answer X)).
-Defined.
+exists (F2MF (fun ox => match ox with
+	| some x => inl x
+	| None => inr star
+end)).
+exists (F2MF (fun xs => match xs with
+	| inl x => Some x
+	| inr str => None
+end)).
+split.
+	apply /rec_fun_cmpt /option_rs_rec_ind; first by apply inl_rec_fun.
+	by apply rec_fun_rec_elt; [exists (fun _ => star) | apply inr_rec_fun].
+split; last by rewrite !F2MF_comp/F2MF/=; split => s t; case: s => //; elim.
+apply/rec_fun_cmpt/rec_fun_comp; [ | apply paib_rec_fun | ] => /=.
+	apply/ sum_rec_fun; first exact: Some_rec_fun.
+	by apply cnst_rec_fun; apply None_rec_elt.
+by case.
+Qed.
 End OPTIONSPACES.
 Notation unsm phi:= (fun q => (phi (inr q)).2).
