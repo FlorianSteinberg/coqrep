@@ -18,14 +18,13 @@ Notation N := (one -> nat).
 Notation "'init_seg' phi" := (in_seg id phi) (at level 2).
 
 Lemma min_sec: @is_min_sec nat id id.
-Proof. split => // s m; try lia. Qed.
+Proof. split => // s m ineq; apply /leP; lia. Qed.
 
 Lemma melt_init_seg:
 	forall n, max_elt id (init_seg n) = n.
 Proof.
-elim => // n ih; rewrite -{2}ih.
-replace (init_seg (S n)) with (cons n (init_seg n)) by trivial.
-by replace (max_elt id (n :: init_seg n)) with (max n.+1 (max_elt id (init_seg n))) by trivial; lia.
+elim => //= n ->; rewrite /maxn; case: ifP => // ineq.
+by exfalso; apply /PeanoNat.Nat.nlt_succ_diag_l/leP /ineq.
 Qed.
 
 (* This is the more conventional continuity using intial segments.
@@ -42,24 +41,23 @@ split => [ cont phi fd s' | cont phi].
 	have [m cont']:= (cont phi (S s')).
 	exists (init_seg m); split => // Fphi /= iv psi coin Fpsi iv'.
 	move: cont' (cont' psi coin) => _ coinv; rewrite iv iv' in coinv.
-	by move: ((inseg_coin id Fphi Fpsi (S s')).2 coinv s') => /=; lia.
-elim; first by exists 0 => psi coin; apply: (inseg_coin id (F phi) (F psi) 0).1 => n; lia.
+	by apply /((inseg_coin _ _ _ _).2 coinv)/ltnSn.
+elim; first by exists 0 => psi coin; apply: (inseg_coin id (F phi) (F psi) 0).1.
 move => n [m] ih.
 have [L [/=phifd cond]]:= (cont phi (F2MF_tot F phi) n).
 exists (max_elt id (app (init_seg m) L)) => psi coin.
 move: ((inseg_coin id phi psi (max_elt id (init_seg m ++ L))).2 coin) => coin'.
 apply: (inseg_coin id (F phi) (F psi) (S n)).1=> n0 ineq.
-have: n0 <= n by lia.
-move: ineq => _ ineq.
-case: (Compare_dec.le_lt_eq_dec n0 n ineq) => [neq | eq].
+case: (Compare_dec.le_lt_eq_dec n0 n _) => [ | neq | eq]; first by move/leP: ineq; lia.
 	move: ineq neq => _; move: n0.
+	move => n0 /leP ineq; move: n0 ineq.
 	apply/inseg_coin; apply ih; apply/inseg_coin => n1 n1ls.
-	by apply coin'; rewrite melt_app melt_init_seg; lia.
+	by apply coin'; rewrite melt_app melt_init_seg; apply/leq_trans; last exact: leq_maxl.
 have coin'': phi \and psi \coincide_on (init_seg (max_elt id L)).
 	apply: (inseg_coin id phi psi (max_elt id L)).1 => n1 n1ls.
-	by apply coin';	rewrite (melt_app); lia.
+	by apply coin'; rewrite (melt_app); apply/leq_trans;last exact: leq_maxr.
 rewrite eq; apply/ (cond (F phi)) => //=.
-by apply (@list_melt nat (fun n:nat => n) (fun n:nat => n)).
+by apply/ list_melt; first apply min_sec.
 Qed.
 
 (* The following uses lists for regular functions and is easier to prove equal to the
@@ -94,9 +92,9 @@ exists (L m.+1); split =>// Fphi /= [v1 c1] psi pep Fpsi [v2 c2].
 have cond:= ((inseg_coin (fun n:nat => n) phi psi m.+1).2 pep).
 have le1: Fphi star <= m by apply (c1 m); lia.
 have leq2: Fpsi star <= m	by apply: (c2 m); replace (psi m) with (phi m) by by apply (cond m).
-have l2: Fpsi star < m.+1 by lia.
-rewrite -(cond (Fpsi star) l2) in v2.
-have l1: Fphi star < m.+1 by lia.
+have /leP l2: Fpsi star < m.+1 by lia.
+rewrite -((cond (Fpsi star) l2)) in v2.
+have/leP l1: Fphi star < m.+1 by lia.
 rewrite (cond (Fphi star) l1) in v1.
 move: (c1 (Fpsi star) v2) (c2 (Fphi star) v1) => ieq1 ieq2.
 replace str with star by by elim str.
@@ -120,15 +118,18 @@ set psi' := fun n => if (leq m n) then 0 else 1.
 have coin: psi \and psi' \coincide_on init_seg sL.
 	apply/inseg_coin => n nls; rewrite /psi /psi'.
 	case E: (leq m n); last by trivial.
-	suffices: m <= n by rewrite /m; lia.
-	by apply /leP.
+	suffices ineq: (m <= n)%N.
+		rewrite /m in ineq.
+		by move/leP: nls; move/leP: ineq; lia.
+	by rewrite E.
 have coin': psi \and psi' \coincide_on L by apply/list_melt; last by apply/ coin.
 have neq: (G psi') = fun star => m.
 	apply: (ext psi' (fun star => m)); rewrite /F /psi'.
 	split => [ | m0]; last by case E: (leq m m0) => // _; apply /leP; rewrite E.
 	replace (leq m m) with true => //.
 	by have: (leq m m) by apply /leP; lia.
-suffices: G psi star = G psi' star by rewrite neq /m; lia.
+suffices: G psi star = G psi' star.
+	by rewrite neq /m; lia.
 by apply/ Lprop => //.
 Qed.
 

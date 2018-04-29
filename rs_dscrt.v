@@ -98,3 +98,73 @@ move => Fphi'/= FphiFphi' psi' [eq _] Fpsi' Fpsi'Fpsi'.
 by rewrite /F -eq E in FphiFphi' Fpsi'Fpsi'; rewrite FphiFphi' Fpsi'Fpsi'.
 Qed.
 End DISCRETENESS.
+Notation "X '\is_discrete'" := (dscrt X) (at level 2).
+
+Section APPLICATIONS.
+Lemma wiso_one (X: rep_space):
+	wisomorphic (rep_space_one c-> X) X.
+Proof.
+case (classic (inhabited X)) => [[somex] | noelt]; last first.
+	exists (fun _ _ => False).
+	exists (fun _ _ => False).
+	split.
+		apply/ rec_cmpt; exists (fun phi q => some_answer _) => phi xf.
+		exfalso; apply noelt; have [x fsx]:= ((projT2 xf).1.2 star).
+		by apply (inhabits x).
+	split.
+		apply/ rec_cmpt; exists (fun phi q => some_answer _) => phi x.
+		by exfalso; apply noelt; apply (inhabits x).
+	split; first by move => x; exfalso; apply noelt; apply (inhabits x).
+	move => xf; exfalso; apply noelt; have [x fsx]:= ((projT2 xf).1.2 star).
+	by apply (inhabits x).
+exists (fun (xf: rep_space_one c-> X) x => (projT1 xf) star x).
+pose g (x: X) := exist_fun (one_dscrt (fun _ => x)).
+exists (F2MF g).
+split; last first.
+	split.
+		apply rec_fun_cmpt => /=.
+		exists (fun phi q => inr (phi q.2)) => phi x phinx /=; rewrite /is_fun_name/=.
+		pose psi := (fun q : seq (one * one) * questions X => inr (phi q.2)).
+		apply rlzr_F2MF => phi' s phi's /=.
+		split; first by exists phi; exists 1; rewrite /U /=.
+		move => Fphi val.
+		suffices: Fphi = phi by move ->.
+		apply functional_extensionality => q.
+		have [n evl]:= val q.
+		have U1: (U (fun q : seq (one * one) * questions X => inr (phi q.2)) 0 phi' q = Some (phi q)) by trivial.
+		rewrite (U_mon _ U1) in evl.
+			by apply Some_inj.
+		by apply /leP/leq0n.
+	split; first by rewrite F2MF_comp.
+	rewrite sing_comp; [ | by move => xf; exact ((projT2 xf).1.1 star) | ]; last first.
+		by move => xf; have [x xfsx]:= ((projT2 xf).1.2 star); exists x.
+	move => xf yf.
+	split; last first.
+		move => <- x xfsx; rewrite /g /F2MF; apply eq_sub; rewrite /=.
+		apply functional_extensionality => y.
+		apply functional_extensionality => z; rewrite /F2MF.
+		apply prop_ext; split; first by move <-; elim: y.
+		by elim: y => xfsz; rewrite ((projT2 xf).1.1 star x z).
+	rewrite /g/F2MF => prp; rewrite /F2MF /=.
+	have [x xfsx]:= ((projT2 xf).1.2 star).
+	rewrite -(prp x xfsx).
+	apply eq_sub => /=; apply functional_extensionality => y.
+	apply functional_extensionality => z.
+	rewrite /F2MF.
+	apply prop_ext; split; last by move <-; elim: y.
+	by elim: y => xfsz; rewrite ((projT2 xf).1.1 star x z).
+pose L := fix L n := match n with
+	| 0 => nil
+	| S n => cons (star, star) (L n)
+end.
+pose F n (phi: names (rep_space_one c-> X)) q := match (phi ((L n), q)) with
+	| inl q => None
+	| inr a => Some a
+end.
+exists F.
+move => phi phifd.
+split; last first.
+	move => x phinx /=.
+	rewrite /is_fun_name /=.
+Admitted.
+End APPLICATIONS.

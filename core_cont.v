@@ -154,7 +154,7 @@ Definition c_dom (F: B ->> B') phi := closure (dom F) phi.
 
 Lemma dom_cdom (F: B ->> B') phi:
 	phi \from_dom F -> c_dom F phi.
-Proof. exact: P_cP. Qed.
+Proof. exact: subs_clos. Qed.
 
 (* The following is the reason why the phi \from_dom F is part of many definitions *)
 Lemma cert_cdom (F: B ->> B') phi q' a':

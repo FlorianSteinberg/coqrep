@@ -2,6 +2,7 @@
 From mathcomp Require Import all_ssreflect.
 Require Import core_mf.
 Require Import FunctionalExtensionality ClassicalChoice.
+Require Import CRelationClasses.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -24,55 +25,44 @@ Fixpoint coin (phi psi: B) L :=
   end.
 Notation "phi '\and' psi '\coincide_on' L" := (coin phi psi L) (at level 2).
 
-(* The convergence relation belonging to the topology is given as follows *)
-Definition conv phin psi :=
-	forall L, exists n, forall m, m <= n -> psi \and (phin m) \coincide_on L.
-
 (* coinciding on a finite list is an equivalence relation on the elemets of Baire space. *)
-Lemma coin_ref (phi: B):
-	forall L, phi \and phi \coincide_on L.
-Proof. by elim. Qed.
+Lemma coin_ref L (phi: B):
+	phi \and phi \coincide_on L.
+Proof. by elim: L. Qed.
 
-Lemma coin_sym phi psi L:
+Lemma coin_sym L phi psi:
 	phi \and psi \coincide_on L -> psi \and phi \coincide_on L.
-Proof. by elim L => //; split; [by rewrite H0.1| by apply/ H; apply H0.2]. Qed.
+Proof. by elim: L => //; split; [by rewrite H0.1| by apply/ H; apply H0.2]. Qed.
 
-Lemma coin_trans phi psi psi' L:
+Lemma coin_trans L phi psi psi':
 	phi \and psi \coincide_on L -> psi \and psi' \coincide_on L -> phi \and psi' \coincide_on L.
 Proof.
-elim: L => // q L ih [] eq1 c1 [] eq2 c2.
-by split; [rewrite eq1 eq2| apply: ih].
+by elim: L => // q L ih [] eq1 c1 [] eq2 c2; split; [rewrite eq1 eq2| apply: ih].
 Qed.
+
+Lemma coin_equiv L:
+	Equivalence (fun phi psi => (coin phi psi L)).
+Proof. by split; [apply/ coin_ref | apply/ coin_sym | apply/ coin_trans]. Qed.
 
 Lemma coin_lstn (phi psi: B) L:
 	phi \and psi \coincide_on L <-> (forall q, List.In q L -> phi q = psi q).
 Proof.
-elim L => //; split => [ [ass1 ass2] q' listin | ass ].
-	by case listin => ass'; [ rewrite -ass' | apply H.1 => //].
-by split; [ apply ass; left | apply H.2 => q' listin; apply ass; right].
+elim: L => //; split => [ [ass1 ass2] q' [<- | listin] | ass ] //; first by apply H.1.
+by split; last (apply H.2; intros); apply ass; [left | right].
 Qed.
 
 Lemma coin_app (phi psi: B) L K:
 	phi \and psi \coincide_on (L ++ K) <-> (phi \and psi \coincide_on L /\ phi \and psi \coincide_on K).
 Proof.
-split.
-	elim: L => [| a L ih]; first by replace (nil ++ K) with (K).
-	replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
-	rewrite -(List.app_comm_cons L K a).
-	by move => [ass1 ass2];	split; [ split => // | ]; apply ih; apply ass2.
-elim: L => [[_ coin]| a L ih [[ass1 ass2] ass3]]; first by replace (nil ++ K) with (K).
-replace ((a :: L) ++ K) with ((a :: L)%SEQ ++ K)%list by trivial.
-by rewrite -(List.app_comm_cons L K a); split => //; apply ih.
+split; first by elim: L => [| a L ih] //=; case => eq b; have []:= ih b; do 2 try split.
+by elim: L => [[_ coin]| a L ih [/=[/=ass1 ass2] ass3]] => //=; split => //; apply ih.
 Qed.
 
 Notation "L '\is_sublist_of' K" := (forall q, List.In q L -> List.In q K) (at level 2).
 
 Lemma coin_mon phi psi L K:
 	L \is_sublist_of K -> phi \and psi \coincide_on K -> phi \and psi \coincide_on L.
-Proof.
-move => subl coin; apply/ coin_lstn => q listin.
-by rewrite ((coin_lstn phi psi K).1 coin q) => //; apply subl.
-Qed.
+Proof. by rewrite !coin_lstn; intros; apply/H0/H. Qed.
 
 End BAIRE_SPACE.
 Notation "L '\is_sublist_of' K" := (forall q, List.In q L -> List.In q K) (at level 2).
@@ -81,27 +71,52 @@ Notation "phi '\and' psi '\coincide_on' L" := (coin phi psi L) (at level 2).
 Section BAIRE_SPACE_SETS.
 Context (Q A : Type).
 Notation B := (Q -> A).
+
 Definition closure (P: B -> Prop) phi :=
 	forall L, exists psi, phi \and psi \coincide_on L /\ P psi.
 
-Lemma P_cP (P: B -> Prop) phi:
-	P phi -> closure P phi.
-Proof. exists phi; split => //; exact: coin_ref. Qed.
+Notation "P '\is_subset_of' Q" := (subset P Q) (at level 50).
 
-Lemma ccP_cP (P: B -> Prop) phi:
-	closure (closure P) phi -> closure P phi.
+Lemma subs_clos P:
+	P \is_subset_of (closure P).
+Proof. by move => phi; exists phi; split => //; apply: coin_ref. Qed.
+
+Lemma clos_mon P P':
+	P \is_subset_of P' -> (closure P) \is_subset_of (closure P').
 Proof.
-move => ccPphi L.
-move: (ccPphi L) => [] psi [] coin cPphi.
-move: (cPphi L) => [] psi' [] coin' Pphi.
+move => subs phi cPphi L; have [psi [coin Ppsi]]:= cPphi L.
+by exists psi; split => //; apply subs.
+Qed.
+
+Lemma ccP_cP (P: B -> Prop):
+	closure (closure P) \is_subset_of closure P.
+Proof.
+move => phi ccPphi L; have [psi [coin cPpsi]] := ccPphi L; have [psi' [coin' Ppsi']] := cPpsi L.
 by exists psi'; split => //; apply: coin_trans coin coin'.
 Qed.
+End BAIRE_SPACE_SETS.
+Notation "P '\is_subset_of' Q" := (subset P Q) (at level 50).
+
+Section SEQUENCES.
+Context (Q A: Type).
+Notation B := (Q -> A).
+Notation sequence:= (nat -> B).
+
+Definition image (phin: sequence) phi := exists n, phi = phin n.
+
+Lemma img_subs phin P:
+	(image phin \is_subset_of P) <-> (forall n, P (phin n)).
+Proof. by split => H m; [apply/ H; exists m | move => [n ->]; apply H]. Qed.
+
+(* The convergence relation belonging to the topology is given as follows *)
+Definition lim phin (psi: B) :=
+	forall L, exists n, forall m, n <= m -> psi \and (phin m) \coincide_on L.
+Notation "psi '\is_limit_of' phin" := (lim phin psi) (at level 50).
 
 Lemma conv_cP (P: B -> Prop) phin psi:
-	conv phin psi -> (forall n, P (phin n)) -> closure P psi.
+	lim phin psi /\ (image phin \is_subset_of P) -> closure P psi.
 Proof.
-move => conv elts L.
-move: (conv L) => [] n prop.
+rewrite img_subs; case => conv elts L; have [n prop]:= conv L.
 by exists (phin n); split => //; apply (prop n).
 Qed.
-End BAIRE_SPACE_SETS.
+End SEQUENCES.
