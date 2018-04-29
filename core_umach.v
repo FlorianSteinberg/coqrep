@@ -353,7 +353,7 @@ move: phifd => [] Fphi FphiFphi.
 have eq' q': U psi_F (mf phi q') phi q' = Some (Fphi q').
 	rewrite U_stops.
 	congr Some.
-	by apply: mprop (FphiFphi); [ exists Fphi | apply: Fprop; apply FphiFphi | apply/ (coin_ref phi)].
+	by apply: mprop (FphiFphi); [ exists Fphi | apply: Fprop; apply FphiFphi | apply/ (coin_ref _ phi)].
 split => [|Mphi MphiMphi]; first by exists Fphi => q'; exists (mf phi q'); rewrite eq'.
 replace Mphi with Fphi => //.
 apply: functional_extensionality => q'.

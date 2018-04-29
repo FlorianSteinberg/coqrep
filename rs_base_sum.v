@@ -121,7 +121,6 @@ Lemma paib_rec (X: rep_space):
 	(F2MF (@paib X)) \is_recursive.
 Proof. exact/rec_fun_rec/paib_rec_fun. Defined.
 
-(*
 Lemma sum_assoc_rec_fun (X Y Z: rep_space):
 	(fun xyz: X + (Y + Z) => match xyz with
 		| inl x => inl (inl x)
@@ -131,6 +130,20 @@ Lemma sum_assoc_rec_fun (X Y Z: rep_space):
 		end
 	end) \is_recursive_function.
 Proof.
+exists (fun phi (q: (questions X)* (questions Y) * (questions Z)) =>
+	match slct phi with
+	| inl psi => linc (linc psi) q
+	| inr psi => match slct psi with
+		| inl psi' => linc (rinc psi') q
+		| inr psi' => rinc psi' q
+	end
+end).
+move => phi x phinx /=.
+
+
+case: (slct phi).
+case: (phi (some_question _)).
+		move => _ /=.
 Admitted.
 
 Lemma sum_assoc_rec (X Y Z: rep_space):
@@ -150,7 +163,7 @@ Lemma prod_assoc_inv_rec (X Y Z: rep_space):
 	(F2MF (fun x: X * Y * Z => (x.1.1, (x.1.2, x.2)))) \is_recursive.
 Proof.
 exact/rec_fun_rec/prod_assoc_inv_rec_fun.
-Defined.*)
+Defined.
 
 Lemma linc_cont X Y:
 	(F2MF (@linc X Y)) \is_continuous.

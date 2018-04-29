@@ -110,7 +110,7 @@ Definition c_dom (F: B ->> B') phi :=
 
 Lemma dom_cdom (F: B ->> B') phi:
 	phi \from_dom F -> c_dom F phi.
-Proof. exact: P_cP. Qed.
+Proof. exact: subs_clos. Qed.
 
 Lemma cert_cdom (F: B ->> B') phi q' a':
 	~ c_dom F phi -> exists L, cert F L phi q' a'.

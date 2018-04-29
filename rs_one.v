@@ -37,20 +37,20 @@ Canonical rep_space_one := @make_rep_space
 
 Definition one_fun (X: rep_space) (x: X) := star.
 
-Lemma term_uprp_fun (X: rep_space):
+Lemma trmnl_uprp_fun (X: rep_space):
 	exists! f: X -> one, True.
 Proof.
 by exists (@one_fun X); split => // f _; apply functional_extensionality => x; elim (f x).
 Qed.
 
-Lemma term_rec_fun (X: rep_space):
+Lemma one_fun_rec_fun (X: rep_space):
 	(@one_fun X) \is_recursive_function.
 Proof. by exists (fun phi q => star). Qed.
 
 Lemma term_uprp_rec_fun (X: rep_space):
 	exists! f: X -> one, exists (P: f \is_recursive_function), True.
 Proof.
-exists (@one_fun X); split; first by exists (@term_rec_fun X).
+exists (@one_fun X); split; first by exists (@one_fun_rec_fun X).
 by move => f _; apply functional_extensionality => x; elim (f x).
 Qed.
 
@@ -65,7 +65,7 @@ Qed.
 
 Definition one_cfun X := exist_fun (@one_fun_hcr X) : (X c-> rep_space_one).
 
-Lemma term_uprp_cont (X: rep_space):
+Lemma trmnl_uprp_cont (X: rep_space):
 	exists! f: X c-> rep_space_one, True.
 Proof.
 exists (@one_cfun X); split => // f _.
@@ -88,7 +88,7 @@ split; last by by move <-; exists 1.
 by move => evl; apply functional_extensionality => q; elim (Fphi q).
 Qed.
 
-Lemma term_uprp_rec_elt (X: rep_space):
+Lemma trmnl_uprp_rec_elt (X: rep_space):
 	exists! f: X c-> rep_space_one, exists (P: f \is_recursive_element), True.
 Proof.
 exists (@one_cfun X); split; first by exists (@one_cfun_cmpt_elt X).
@@ -97,5 +97,4 @@ apply /functional_extensionality => fx.
 apply /prop_ext; split; last by elim fx.
 by move <-; case: ((projT2 f).1.2 x); elim.
 Qed.
-
 End TERMINAL.
