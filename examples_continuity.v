@@ -38,14 +38,14 @@ Definition is_cont1 (G: (nat -> nat) -> nat -> nat) :=
 Lemma continuity1 (F: B -> B):
 	is_cont1 F <-> is_cont (F2MF F).
 Proof.
-split => [ cont phi s' fd | cont phi].
+split => [ cont phi fd s' | cont phi].
 	have [m cont']:= (cont phi (S s')).
-	exists (init_seg m) => Fphi /= [] iv /= psi coin Fpsi iv'.
+	exists (init_seg m); split => // Fphi /= iv psi coin Fpsi iv'.
 	move: cont' (cont' psi coin) => _ coinv; rewrite iv iv' in coinv.
 	by move: ((inseg_coin id Fphi Fpsi (S s')).2 coinv s') => /=; lia.
 elim; first by exists 0 => psi coin; apply: (inseg_coin id (F phi) (F psi) 0).1 => n; lia.
 move => n [m] ih.
-have [L cond]:= (cont phi n (F2MF_tot F phi)).
+have [L [/=phifd cond]]:= (cont phi (F2MF_tot F phi) n).
 exists (max_elt id (app (init_seg m) L)) => psi coin.
 move: ((inseg_coin id phi psi (max_elt id (init_seg m ++ L))).2 coin) => coin'.
 apply: (inseg_coin id (F phi) (F psi) (S n)).1=> n0 ineq.
@@ -71,11 +71,10 @@ Definition is_cont2 (G: (Q-> A) -> Q' -> A') :=
 Lemma continuity2 (F: (Q-> A) -> Q' -> A'):
 	is_cont2 F <-> is_cont (F2MF F).
 Proof.
-split => [cont psi s' fd | cont psi s'].
+split => [cont psi fd s' | cont psi s'].
 	have [L cond]:= (cont psi s').
-	exists L => Fpsi /= FpsiFpsi phi coin Fphi FphiFphi.
-	by rewrite -FphiFphi -FpsiFpsi; apply (cond phi).
-have [L cond] := (cont psi s' (F2MF_tot F psi)).
+	by exists L; split =>// Fpsi /= <- phi coin Fphi <-; apply (cond phi).
+have [L [/=_ cond]] := (cont psi (F2MF_tot F psi) s').
 by exists L => phi coin; apply/ (cond (F psi) _) => //=.
 Qed.
 
@@ -88,10 +87,10 @@ is continuous:*)
 
 Lemma F_is_continuous: F \is_continuous.
 Proof.
-set L := in_seg (fun n:nat => n) => phi str.
+set L := in_seg (fun n:nat => n) => phi phifd str.
 case: (classic (exists m, phi m = 0)) => [[m me0]| neq0]; last first.
-	by exists nil => fp1 /= v1; exfalso; apply neq0; exists (fp1 star); apply v1.
-exists (L m.+1) => Fphi /= [v1 c1] psi pep Fpsi [v2 c2].
+	by exists nil; split =>// fp1 /= v1; exfalso; apply neq0; exists (fp1 star); apply v1.
+exists (L m.+1); split =>// Fphi /= [v1 c1] psi pep Fpsi [v2 c2].
 have cond:= ((inseg_coin (fun n:nat => n) phi psi m.+1).2 pep).
 have le1: Fphi star <= m by apply (c1 m); lia.
 have leq2: Fpsi star <= m	by apply: (c2 m); replace (psi m) with (phi m) by by apply (cond m).
@@ -106,7 +105,7 @@ Qed.
 
 Lemma F_is_single_valued: F \is_single_valued.
 Proof.
-exact: cont_to_sing F_is_continuous.
+exact: cont_sing F_is_continuous.
 Qed.
 
 Lemma no_extension :
@@ -114,7 +113,7 @@ Lemma no_extension :
 Proof.
 move => [] G [] ext cont.
 set psi := fun n:nat => 1.
-have [L Lprop]:= (cont psi star (F2MF_tot G psi)).
+have [L [/=_ Lprop]]:= (cont psi (F2MF_tot G psi) star).
 set sL := max_elt id L.
 set m := (max ((G psi) star).+1 sL).
 set psi' := fun n => if (leq m n) then 0 else 1.

@@ -202,8 +202,8 @@ move => sur cont.
 pose P phiq n := mf_mod F phiq (init_seg n).
 have Pdom: forall phi, phi \from_dom F -> forall q', (phi, q') \from_dom P.
 	move => phi fd q'.
-	move : (cont phi q' fd) => [] L Lprop.
-	exists (size L) => Fphi FphiFphi.
+	move : (cont phi fd q') => [L [_ Lprop]].
+	exists (size L); split => // Fphi FphiFphi.
 	apply: cert_mon; first exact: inseg_melt.
 	by apply/ Lprop; first by apply FphiFphi.
 pose R phiq n := P phiq n /\ (forall K, P phiq (size K) ->  n <= size K).
@@ -217,7 +217,7 @@ split => phi q' X.
 	by move: (Rdom phi X q') => [] n Rn; apply: (mfprop (phi, q') n Rn).1.
 move => fd Xprop.
 move: (Rdom phi fd q') => [] n Rn.
-apply: (mfprop (phi, q') n Rn).2=> Fphi FphiFphi.
+apply: (mfprop (phi, q') n Rn).2; split => // Fphi FphiFphi.
 apply/ cert_mon; first exact: inseg_melt.
 by apply Xprop.
 Qed.
@@ -237,13 +237,14 @@ move: phifd => [] Fphi FphiFphi.
 have ineq': size (init_seg m) <= m by exact: (melt_inseg ims).
 suffices: mf phi' q' <= size (init_seg m) by lia.
 apply/ min; first by apply: phi'prop.1.
-move => Fphi' /= Fphi'Fphi'.
+split; first by apply phi'prop.1.
+move => // Fphi' /= Fphi'Fphi'.
 suffices eq: (Fphi q' = Fphi' q').
 	rewrite -eq.
 	apply/ cert_cons; first by apply coin_sym; apply coin.
 	apply/ cert_mon; first by apply inseg_mon; apply ineq.
-	by apply /mod; first by exists Fphi.
-apply /mod; [ by exists Fphi; apply FphiFphi | done | | apply Fphi'Fphi' ].
+	by apply /(mod _ _ _).2; first by exists Fphi.
+apply /(mod _ _ _).2; [ by exists Fphi; apply FphiFphi | done | | apply Fphi'Fphi' ].
 by apply coin_sym; apply/ coin_mon; first by apply inseg_mon; apply ineq.
 Qed.
 
@@ -327,7 +328,7 @@ pose phi' q' := phin (mf phi q').
 have Ffprop q': forall m, mf (phin m) q' <= m -> Ff (phin m) q' = Ff phi q'.
 	move => m ineq.
 	move: phifd (phinprop m).1 => [] Fphi FphiFphi [] Fphin FphinFphin.
-	apply/ mprop => /=; [ exists Fphin | apply/ Fprop; apply FphinFphin | | apply/Fprop; apply FphiFphi ] => //.
+	apply/ (mprop _ _ _).2 => /=; [ exists Fphin | apply/ Fprop; apply FphinFphin | | apply/Fprop; apply FphiFphi ] => //.
 	by apply/ coin_mon; [ apply inseg_mon | apply coin].
 
 have U_step_prop q': U_step psi_F phi q' (flst phi (init_seg (mf phi q'))) = inl (Ff phi q').
@@ -353,7 +354,7 @@ move: phifd => [] Fphi FphiFphi.
 have eq' q': U psi_F (mf phi q') phi q' = Some (Fphi q').
 	rewrite U_stops.
 	congr Some.
-	by apply: mprop (FphiFphi); [ exists Fphi | apply: Fprop; apply FphiFphi | apply/ (coin_ref phi)].
+	by apply: (mprop _ _ _).2 (FphiFphi); [ exists Fphi | apply: Fprop; apply FphiFphi | apply/ (coin_ref phi)].
 split => [|Mphi MphiMphi]; first by exists Fphi => q'; exists (mf phi q'); rewrite eq'.
 replace Mphi with Fphi => //.
 apply: functional_extensionality => q'.

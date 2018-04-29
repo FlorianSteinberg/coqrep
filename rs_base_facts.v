@@ -116,8 +116,8 @@ Lemma id_hcr X:
 Proof.
 exists (F2MF id).
 split; first by apply frlzr_rlzr.
-move => phi q' _.
-exists [ ::q'].
+move => phi phifd q'.
+exists [ ::q']; split => //.
 move => Fphi /= <- psi coin Fpsi <-.
 apply coin.1.
 Qed.
@@ -131,8 +131,8 @@ Lemma diag_hcr (X: rep_space):
 Proof.
 exists (F2MF (fun phi => name_pair phi phi)).
 split; first by apply frlzr_rlzr.
-move => phi q.
-case: q => q; by exists [:: q] => Fphi/= <- psi [eq _] Fpsi <-; rewrite /name_pair eq.
+move => phi phifd q.
+case: q => q; by exists [:: q]; split => // Fphi/= <- psi [eq _] Fpsi <-; rewrite /name_pair eq.
 Qed.
 
 Lemma diag_cmpt (X: rep_space):

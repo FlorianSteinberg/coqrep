@@ -199,8 +199,8 @@ Defined.
 Lemma lprj_cont X Y:
 	(F2MF (@lprj X Y)) \is_continuous.
 Proof.
-move => phi q; exists ([::inl q]).
-by move => Fphi/= <- psi [eq _] Fpsi <-; rewrite /lprj eq.
+move => phi phifd q; exists ([::inl q]).
+by split => // Fphi /= <- psi [eq _] Fpsi <-; rewrite /lprj eq.
 Qed.
 
 Lemma fst_hcr (X Y: rep_space):
@@ -213,8 +213,8 @@ Qed.
 Lemma rprj_cont X Y:
 	(F2MF (@rprj X Y)) \is_continuous.
 Proof.
-move => phi q; exists ([::inr q]).
-by move => Fphi/= <- psi [eq _] Fpsi <-; rewrite /rprj eq.
+move => phi phifd q; exists ([::inr q]).
+by split => // Fphi/= <- psi [eq _] Fpsi <-; rewrite /rprj eq.
 Qed.
 
 Lemma snd_hcr (X Y: rep_space):
@@ -305,24 +305,25 @@ have mapl: forall K (q:questions X), List.In q K -> List.In ((@inl _ (questions 
 	elim => // q K ih q' /=listin; by case: listin => ass; [left; rewrite -ass | right; apply ih].
 have mapr: forall K (q:questions X'), List.In q K -> List.In ((@inr (questions X) _) q) (map inr K).
 	elim => // q K ih q' /=listin; by case: listin => ass; [left; rewrite -ass | right; apply ih].
-move => Fcont Gcont phi q [FGphi [ np [/=FlphilFGphi GrphirFGphi]]].
+move => Fcont Gcont phi [FGphi [ np [/=FlphilFGphi GrphirFGphi]]] q.
 case: q => q.
 	have lphifd: (lprj phi) \from_dom F by exists (lprj FGphi).
-	have [L Lprop] := (Fcont (lprj phi) q lphifd).
+	have [L [/=phifd Lprop]] := (Fcont (lprj phi) lphifd q).
 	exists (map inl L).
+	split; first by exists FGphi; split.
 	move => FGphi' [np' [/=vall valr]] psi coin Fpsi [ np'' [/=val'l val'r]].
 	rewrite np' np''; apply injective_projections => //=.
-	rewrite (cont_to_sing Fcont vall FlphilFGphi).
+	rewrite (cont_sing Fcont vall FlphilFGphi).
 	apply/ Lprop; [ | | apply val'l ] => //=.
 	rewrite /lprj coin_lstn => q' listin/=.
 	rewrite ((@coin_lstn _ _ _ _ (map inl L)).1 coin (inl q')) => //.
 	by apply (mapl L q').
 have rphifd: (rprj phi) \from_dom G by exists (rprj FGphi).
-have [L Lprop] := (Gcont (rprj phi) q rphifd).
-exists (map inr L).
+have [L [/=_ Lprop]] := (Gcont (rprj phi) rphifd q).
+exists (map inr L); split; first by exists FGphi; split.
 move => FGphi' [np' [/=vall valr]] psi coin Fpsi [ np'' [/=val'l val'r]].
 rewrite np' np''; apply injective_projections => //=.
-rewrite (cont_to_sing Gcont valr GrphirFGphi).
+rewrite (cont_sing Gcont valr GrphirFGphi).
 apply/ Lprop; [ | | apply val'r ] => //=.
 rewrite /rprj coin_lstn => q' listin/=.
 rewrite ((@coin_lstn _ _ _ _ (map inr L)).1 coin (inr q')) => //.

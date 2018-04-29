@@ -352,7 +352,7 @@ have qnfdF: qn \from_dom F.
 		by exists 0.
 	have [x [[phi [Fqnphi]]] _ _]:= (rlzr qn qnfd).1.
 	by exists phi.
-have [L Lprop]:= (cont qn 1%Q qnfdF).
+have [L [/=_ Lprop]]:= (cont qn qnfdF 1%Q).
 set fold := @List.fold_right nat nat.
 set m:= fold maxn 0%N (unzip1 L).
 have mprop: forall n eps, List.In (n, eps) L -> (n <= m)%nat.

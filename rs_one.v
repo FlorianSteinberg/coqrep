@@ -54,7 +54,7 @@ Lemma one_fun_hcr (X: rep_space):
 Proof.
 exists (F2MF (fun _ _ => star)) => /=.
 split; first by rewrite -frlzr_rlzr.
-move => phi str phifd; exists nil.
+intros; exists nil; split => //.
 by move => Fphi/= -> psi _ Fpsi ->.
 Qed.
 

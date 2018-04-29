@@ -155,7 +155,7 @@ Defined.*)
 Lemma linc_cont X Y:
 	(F2MF (@linc X Y)) \is_continuous.
 Proof.
-move => phi q; exists ([:: q.1]).
+move => phi phifd q; exists ([:: q.1]); split => //.
 by move => Fphi/= <- psi [eq _] Fpsi <-; rewrite /linc eq.
 Qed.
 
@@ -169,7 +169,7 @@ Qed.
 Lemma rinc_cont X Y:
 	(F2MF (@rinc X Y)) \is_continuous.
 Proof.
-move => phi q; exists ([::q.2]).
+move => phi phifd q; exists ([::q.2]);split => //.
 by move => Fphi/= <- psi [eq _] Fpsi <-; rewrite /rinc eq.
 Qed.
 

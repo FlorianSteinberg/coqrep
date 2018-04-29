@@ -18,8 +18,8 @@ Proof.
 move => dscrt Y f_R.
 case: (classic (exists y:Y, true)) => [[y _] | ]; last first.
 	move => next;	exists (F2MF (fun _ => (fun _:questions Y => some_answer Y))).
-	split; first by move => phi [y _]; exfalso; apply next; exists y.
-	by move => phi val phifd; exists nil => Fphi /= <- psi _ Fpsi <-.
+	split; last by exists nil; split => // Fphi <- psi _ Fpsi <-.
+	by move => phi [y _]; exfalso; apply next; exists y.
 have [f icf]:= exists_choice f_R y.
 have [F [Frf Fcont]]:= (dscrt Y f).
 exists F; split => //.
@@ -32,7 +32,7 @@ Proof.
 move => X f.
 have [phi phinfs]:= rep_sur X (f star).
 exists (F2MF (fun _ => phi)).
-split; last by exists nil => Fphi <- psi _ Fpsi <-.
+split; last by exists nil; split => // Fphi <- psi _ Fpsi <-.
 apply frlzr_rlzr => psi str psinstr.
 by elim str.
 Qed.
@@ -49,9 +49,8 @@ split.
 	suffices Rphipsi: R phi psi by apply/ (icf phi psi Rphipsi).
 	move => n' phinn'.
 	by have <-: n = n' by rewrite -(rep_sing rep_space_nat phi n n').
-move => n q _.
-exists (cons star nil).
-move => Fphi /= <- psi coin Fpsi <-.
+move => n nfd q.
+exists (cons star nil); split => // Fphi /= <- psi coin Fpsi <-.
 suffices <-: n = psi by trivial.
 apply functional_extensionality => str.
 by elim str; rewrite coin.1.
@@ -80,12 +79,13 @@ split.
 		by apply (F'rf' (unsm phi) a phina).2.
 	split; first by exists psi; rewrite /F phinN.
 	by move => Fphi FphiFphi; rewrite /F phinN in FphiFphi; rewrite FphiFphi.
-move => phi q [Fphi FphiFphi].
+move => phi [Fphi FphiFphi] q.
 case E: (phi (inl star)).1.
 	rewrite /F E in FphiFphi.
 	have usphifd: (unsm phi) \from_dom F' by exists Fphi.
-	have [L Lprop]:= (Fcont (unsm phi) q usphifd).
-	exists (inl star :: map inr L).
+	have [L [phifd Lprop]]:= (Fcont (unsm phi) usphifd q).
+	exists (inl star :: map inr L); split.
+		by exists Fphi; rewrite /F E.
 	move => Fphi'/= FphiFphi' psi' [eq coin] Fpsi' Fpsi'Fpsi'.
 	rewrite /F -eq E in FphiFphi' Fpsi'Fpsi'.
 	have /=:= Lprop Fphi' => Lprop'.
@@ -93,7 +93,7 @@ case E: (phi (inl star)).1.
 		move: coin; elim: (L) => //= a K ih [eq' coin].
 		by split; [rewrite eq' | apply ih].
 	exact: Lprop' FphiFphi' (unsm psi') coin' Fpsi' Fpsi'Fpsi'.
-exists ([:: inl star]).
+exists ([:: inl star]); split; first by exists psi; rewrite /F E.
 move => Fphi'/= FphiFphi' psi' [eq _] Fpsi' Fpsi'Fpsi'.
 by rewrite /F -eq E in FphiFphi' Fpsi'Fpsi'; rewrite FphiFphi' Fpsi'Fpsi'.
 Qed.
