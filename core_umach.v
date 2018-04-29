@@ -195,8 +195,8 @@ Definition is_min_mod mf :=
 
 Context (ims: sec \is_minimal_section_of cnt).
 
-Lemma exists_minmod:
-  cnt \is_surjective -> F \is_continuous -> exists mf, is_min_mod mf.
+Lemma exists_minmod: cnt \is_surjective_function -> F \is_continuous ->
+	exists mf, is_min_mod mf.
 Proof.
 move => sur cont.
 pose P phiq n := mf_mod F phiq (init_seg n).
@@ -210,7 +210,7 @@ pose R phiq n := P phiq n /\ (forall K, P phiq (size K) ->  n <= size K).
 have Rdom: forall phi, phi \from_dom F -> forall q', (phi, q') \from_dom R.
 	move => phi fd q'.
   have [n [p nprop]] := well_order_nat (Pdom phi fd q').
-  by exists n; split => // K p'; apply: nprop.
+  by exists n; split => // K p'; apply/leP/nprop.
 have [mf mfprop] := exists_choice R 0.
 exists (fun phi q' => mf (phi, q')).
 split => phi q' X.
@@ -234,17 +234,17 @@ rewrite -/L -/phi'.
 have coin: phi' \and phi \coincide_on (init_seg m).
 	by apply icf_flst_coin; apply: phi'prop.2.
 move: phifd => [] Fphi FphiFphi.
-have ineq': size (init_seg m) <= m by exact: (melt_inseg ims).
+have ineq': size (init_seg m) <= m by exact/leP/(melt_inseg ims).
 suffices: mf phi' q' <= size (init_seg m) by lia.
 apply/ min; first by apply: phi'prop.1.
 move => Fphi' /= Fphi'Fphi'.
 suffices eq: (Fphi q' = Fphi' q').
 	rewrite -eq.
 	apply/ cert_cons; first by apply coin_sym; apply coin.
-	apply/ cert_mon; first by apply inseg_mon; apply ineq.
+	apply/ cert_mon; first by apply inseg_mon; apply/leP/ineq.
 	by apply /mod; first by exists Fphi.
 apply /mod; [ by exists Fphi; apply FphiFphi | done | | apply Fphi'Fphi' ].
-by apply coin_sym; apply/ coin_mon; first by apply inseg_mon; apply ineq.
+by apply coin_sym; apply/ coin_mon; first by apply inseg_mon; apply/leP/ineq.
 Qed.
 
 End MINIMAL_MODULI.
@@ -294,7 +294,7 @@ elim => [ | n ih].
 	move: (imm.1 (phin 0) q' (phinfd 0)).
 	apply/ mod_mon.
 	replace nil with (init_seg 0) by trivial; apply/ inseg_mon; rewrite / phin.
-	by replace (flst phi (init_seg 0)) with (nil: seq (Q * A)) by trivial; apply /leP.
+	by replace (flst phi (init_seg 0)) with (nil: seq (Q * A)) by trivial.
 case: ih => [[] m [] ineq eq | eq].
 	by rewrite /U_rec; left; exists m; split; [apply ineq | rewrite /U_rec in eq; rewrite /U_rec eq].
 case E: (mf (listf (flst phi (init_seg n.+1), q').1) (flst phi (init_seg n.+1), q').2 <= n.+1)%N.
@@ -307,7 +307,7 @@ have eq': U_rec n (psiF mf listf Ff) phi q' = inr (flst phi (init_seg n.+1)).
 by rewrite /U_rec in eq'; rewrite /U_rec le eq'/U_step/psiF length_flst_in_seg E.
 Qed.
 
-Lemma U_is_universal (somea: A) (somephi : B') (sur: cnt \is_surjective) (Fcont : F \is_continuous) :
+Lemma U_is_universal (somea: A) (somephi : B') (sur: cnt \is_surjective_function) (Fcont : F \is_continuous) :
   exists psiF, (U psiF) \ocomputes F.
 Proof.
 have [Ff Fprop] := (exists_choice F somephi).
@@ -328,7 +328,7 @@ have Ffprop q': forall m, mf (phin m) q' <= m -> Ff (phin m) q' = Ff phi q'.
 	move => m ineq.
 	move: phifd (phinprop m).1 => [] Fphi FphiFphi [] Fphin FphinFphin.
 	apply/ mprop => /=; [ exists Fphin | apply/ Fprop; apply FphinFphin | | apply/Fprop; apply FphiFphi ] => //.
-	by apply/ coin_mon; [ apply inseg_mon | apply coin].
+	by apply/coin_mon; [ apply/inseg_mon | apply coin]; apply /leP.
 
 have U_step_prop q': U_step psi_F phi q' (flst phi (init_seg (mf phi q'))) = inl (Ff phi q').
 	rewrite /U_step/psi_F/psiF/=length_flst_in_seg.

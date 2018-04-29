@@ -123,7 +123,7 @@ have rprop: forall c q', exists (c': C), pickle c' = r c q'.
 	suffices: r c q' <= pickle c.
 		have: r c q' <> pickle c by apply/eqP; rewrite E.
 		lia.
-	exact: search_le.
+	exact/leP/search_le.
 pose N c q:= match (pickle_inv C (r c q)) with
 	| None => None
 	| Some c' =>  M c' q
@@ -136,12 +136,12 @@ have mon: N \is_monotone_machine.
 		have[c' rmeqc']:= rprop m q'.
 		rewrite /N -rneqc pickleK_inv in evl.
 		have rmlrn: r m q' <= r n q'.
-			apply search_min.
+			apply/leP/search_min.
 			by rewrite /p -rneqc pickleK_inv evl; case: ifP.
 		suffices rnlrm: r n q' <= r m q'.
 			have eq: r m q' = r n q' by lia.
 			by rewrite /N eq -rneqc pickleK_inv.
-		apply search_min.
+		apply/leP/search_min.
 		rewrite /p -rmeqc' pickleK_inv.
 		case: ifP => // ha.
 		have pm: (p m q' (r m q')).
@@ -180,7 +180,7 @@ split.
 move => _.
 have eq: c' = c.
 	suffices eq: pickle c' = pickle c by apply Some_inj; rewrite -!pickleK_inv -eq.
-	have ineq: pickle c' <= pickle c by rewrite rc; apply search_le.
+	have ineq: pickle c' <= pickle c by rewrite rc; apply/leP/search_le.
 	suffices: ~pickle c' < pickle c by lia.
 	by apply/ leP; rewrite E.
 	by exists a; exists c; rewrite /N -rc pickleK_inv eq => //.

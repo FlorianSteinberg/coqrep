@@ -161,7 +161,7 @@ have rprop: forall c phi q', exists (c': C), pickle c' = r c phi q'.
 	suffices: r c phi q' <= pickle c.
 		have: r c phi q' <> pickle c by apply/eqP; rewrite E.
 		lia.
-	exact: search_le.
+	exact /leP/search_le.
 pose N c phi q:= match (pickle_inv C (r c phi q)) with
 	| None => None
 	| Some c' =>  M c' phi q
@@ -174,12 +174,12 @@ have mon: N \is_monotone_oracle_machine.
 		have[c' rmeqc']:= rprop m phi q'.
 		rewrite /N -rneqc pickleK_inv in evl.
 		have rmlrn: r m phi q' <= r n phi q'.
-			apply search_min.
+			apply/leP/search_min.
 			by rewrite /p -rneqc pickleK_inv evl; case: ifP.
 		suffices rnlrm: r n phi q' <= r m phi q'.
 			have eq: r m phi q' = r n phi q' by lia.
 			by rewrite /N eq -rneqc pickleK_inv.
-		apply search_min.
+		apply/leP/search_min.
 		rewrite /p -rmeqc' pickleK_inv.
 		case: ifP => // ha.
 		have pm: (p m phi q' (r m phi q')).
@@ -222,7 +222,7 @@ case E: (pickle c' < pickle c)%N pqrc.
 move => _.
 have eq: c' = c.
 	suffices eq: pickle c' = pickle c by apply Some_inj; rewrite -!pickleK_inv -eq.
-	have ineq: pickle c' <= pickle c by rewrite uprcq; apply search_le.
+	have ineq: pickle c' <= pickle c by rewrite uprcq; apply/leP/search_le.
 	suffices: ~pickle c' < pickle c by lia.
 	by apply/ leP; rewrite E.
 exists c; rewrite /N -uprcq pickleK_inv eq (sing phi Fphi Mphi) => //.

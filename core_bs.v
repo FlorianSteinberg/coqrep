@@ -119,5 +119,4 @@ Proof.
 rewrite img_subs; case => conv elts L; have [n prop]:= conv L.
 by exists (phin n); split => //; apply (prop n).
 Qed.
-
 End SEQUENCES.
