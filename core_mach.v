@@ -87,77 +87,54 @@ match (pickle_inv C n) with
 	end
 end else true.
 have pprop: forall c q' n, p c q' n -> n < pickle c -> exists (c': C), pickle c' = n.
-	move => c q' n pcn.
-	case E: (pickle_inv C n) => [c' | ] ineq.
-		by exists c'; rewrite -(pickle_invK C n) E.
-	by move: pcn; rewrite /p E; case: ifP => //; rewrite ineq.
+	move => c q' n; rewrite /p; case: ifP => // ineq.
+	case E: (pickle_inv C n) => [c' | ]//; case: (M c' q') => // _ _ _.
+	by exists c'; rewrite -(pickle_invK C n) E /=.
 pose r (c: C) q':= search (p c q') (pickle c).
 have rprop: forall c q', exists (c': C), pickle c' = r c q'.
-	move => c q'.
-	case E: (r c q' == pickle c).
-		have ->: (r c q' = pickle c) by apply /eqP; rewrite E.
-		by exists c.
-	suffices ineq: r c q' < pickle c.
-		apply/ (pprop c q' (r c q')) => //.
-		apply search_correct.
-		rewrite /p pickleK_inv.
-		by case: ifP => //;rewrite (ltnn (pickle c)).
-	by rewrite ltn_neqAle; apply /andP; split; [apply /negP; rewrite E |apply search_le].
+	move => c q'; case E: (r c q' == pickle c); first by exists c; apply /esym/eqP; rewrite E.
+	have ineq: r c q' < pickle c.
+		by rewrite ltn_neqAle; apply /andP; split; [apply/esym/negP; rewrite E |apply search_le].
+	apply/ (pprop c q' (r c q') _ ineq) /search_correct.
+	by rewrite /p pickleK_inv; case: ifP => //;rewrite (ltnn (pickle c)).
 pose N c q:= match (pickle_inv C (r c q)) with
 	| None => None
 	| Some c' =>  M c' q
 end.
 exists N.
 have mon: N \is_monotone_machine.
-	move => n m q' a' ineq evl.
-	case E: (pickle n < pickle m)%N.
-		have[c rneqc]:= rprop n q'.
-		have[c' rmeqc']:= rprop m q'.
-		rewrite /N -rneqc pickleK_inv in evl.
-		have rmlrn: r m q' <= r n q'.
-			apply/search_min.
-			by rewrite /p -rneqc pickleK_inv evl; case: ifP.
-		suffices rnlrm: r n q' <= r m q'.
-			have eq: r m q' = r n q' by apply/eqP; rewrite eqn_leq; apply /andP.
-			by rewrite /N eq -rneqc pickleK_inv.
-		apply/search_min.
-		rewrite /p -rmeqc' pickleK_inv.
-		case: ifP => // ha.
-		have: (p m q' (r m q')).
-			rewrite search_correct => //.
-			by rewrite /p; case: ifP => //; rewrite ltnn.
-		rewrite /p; have ->: r m q' < pickle m by rewrite -rmeqc'; apply /(leq_trans ha).
-		by rewrite -rmeqc' pickleK_inv.
-	suffices ineq': pickle m <= pickle n.
-		have <-: n = m => //.
-		apply Some_inj; rewrite -!pickleK_inv.
-		suffices <-: pickle n = pickle m by trivial.
-		by apply/eqP; rewrite eqn_leq; apply /andP.
-	by rewrite leqNgt E.
-split => //.
-move => q qfd.
-split.
-	have [[a [c Mqa]] prop]:= comp q qfd.
-	have pqrc: p c q (r c q).
-		apply search_correct; rewrite /p.
-		by case: ifP => // _; rewrite pickleK_inv Mqa.
+	move => n m q' a' ineq.
+	case E: (pickle n < pickle m)%N;[move => evl | move <-; f_equal]; last first.
+		suffices eq: pickle n = pickle m by apply Some_inj; rewrite -!pickleK_inv eq.
+		by apply/eqP; rewrite eqn_leq; apply /andP; split => //; rewrite leqNgt E.
+	have[c rneqc]:= rprop n q'.
+	have[c' rmeqc']:= rprop m q'.
+	rewrite /N -rneqc pickleK_inv in evl.
+	have rmlrn: r m q' <= r n q'.
+		by apply/search_min; rewrite /p -rneqc pickleK_inv evl; case: ifP.
+	suffices rnlrm: r n q' <= r m q'.
+		have eq: r m q' = r n q' by apply/eqP; rewrite eqn_leq; apply /andP.
+		by rewrite /N eq -rneqc pickleK_inv.
+	apply/search_min; rewrite /p -rmeqc' pickleK_inv; case: ifP => // ha.
+	have: (p m q' (r m q')).
+		by rewrite search_correct => //; rewrite /p; case: ifP => //; rewrite ltnn.
+	rewrite /p; have ->: r m q' < pickle m by rewrite -rmeqc'; apply /(leq_trans ha).
+	by rewrite -rmeqc' pickleK_inv.
+split => // q qfd; split; last first.
+	move => a [c Nqa]; apply (comp q qfd).2.
 	have [c' rc]:= rprop c q.
-	rewrite /p -rc in pqrc.
-	case E: (pickle c' < pickle c)%N pqrc.
-	rewrite pickleK_inv.
-	case E': (M c' q) => [a' | ] // _.
-	by exists a'; exists c; rewrite /N -rc pickleK_inv.
-move => _.
-	have eq: c' = c.
-		suffices eq: pickle c' = pickle c by apply Some_inj; rewrite -!pickleK_inv -eq.
-		have ineq: pickle c' <= pickle c by rewrite rc; apply/search_le.
-		by apply /eqP; rewrite eqn_leq; apply /andP; split; last rewrite leqNgt E.
-	by exists a; exists c; rewrite /N -rc pickleK_inv eq => //.
-move => a [c Nqa].
-apply (comp q qfd).2.
+	by exists (c'); rewrite /N -rc pickleK_inv in Nqa.
+have [[a [c Mqa]] prop]:= comp q qfd.
+have: p c q (r c q).
+	by apply search_correct; rewrite /p; case: ifP => //; rewrite pickleK_inv Mqa.
 have [c' rc]:= rprop c q.
-exists (c').
-by rewrite /N -rc pickleK_inv in Nqa.
+rewrite /p -rc; case: ifP => ass.
+	rewrite pickleK_inv; case E': (M c' q) => [a' | ] // _.
+	by exists a'; exists c; rewrite /N -rc pickleK_inv.
+suffices eq: c' = c by exists a; exists c; rewrite /N -rc pickleK_inv eq.
+suffices eq: pickle c' = pickle c by apply Some_inj; rewrite -!pickleK_inv -eq.
+have ineq: pickle c' <= pickle c by rewrite rc; apply/search_le.
+by apply /eqP; rewrite eqn_leq; apply /andP; split; last rewrite leqNgt ass.
 Qed.
 
 End MACHINES.
@@ -179,23 +156,13 @@ Lemma cmpt_op_cmpt (f: Q -> A) (F: B ->> B'):
 	-> is_comp C (fun q' a' => exists Ff, F f Ff /\ (Ff q') = a').
 Proof.
 move => fd comp' sing.
-have [M [mon comp]]:= (cmpt_sing_mon_op comp' sing).
-pose N c q' := M c f q' .
-exists N.
-have Nmon: N \is_monotone_machine.
-	move => c c' q a /leP ineq; rewrite /N.
-	by apply/mon/ineq.
+have [M [mon comp]]:= (cmpt_sing_mon_op sing comp').
+pose N c q' := M c f q'; exists N.
+have Nmon: N \is_monotone_machine by rewrite /N => c c' q a; apply/mon.
 apply sing_mon_cmpt => //.
-	move => q a a' [Ff [FfFf eq]] [Ff' [Ff'Ff' eq']].
-	suffices: Ff' = Ff by rewrite -eq -eq'; move <-.
-	by apply/ sing; last by apply FfFf.
-move => q' a' [Ff [FfFf eq]].
-have [[Mf MfMf] prop]:= (comp f fd).
-have [c val]:= (MfMf q').
-exists c. rewrite /N.
-rewrite -eq.
-suffices: Mf q' = Ff q' by move => <-.
-by apply/ sing_cmpt_elt; [ apply comp | | | apply val ].
+	by move => q a a' [Ff [H <-]] [Ff' [H0 <-]]; rewrite (sing f Ff Ff').
+have [[Mf MfMf] prop]:= (comp f fd) => q' a' []Ff[]; have [c val]:= (MfMf q').
+by exists c; rewrite /N -b val; f_equal; apply/sing_cmpt_elt; [apply comp | | | apply val].
 Qed.
 
 Lemma cmptbl_comp (f: Q' ->> A') (g: Q ->> Q'):
@@ -209,42 +176,19 @@ exists (fun n q => match N n q with
 	|some q' => M n q'
 end).
 move => q [a't [[q't [gqq't fq'ta't]] prop]].
-split.
-	have qfd: q \from_dom g by exists q't.
-	have [[q' evl] prop']:= (Ncomp q qfd).
-	have q'fd: q' \from_dom f by apply/ prop; apply prop'.
-	have [c val] := evl.
-	have [[a' [c' val']] prop'']:= (Mcomp q' q'fd).
-	exists a'.
-	case E: (pickle c' <= pickle c)%N.
-		exists c.
-		rewrite val.
-		apply/ Mmon; last by apply val'.
-		by rewrite E.
-	exists c'.
-	rewrite -val'.
-	suffices eq: N c' q = Some q' by rewrite eq.
-	apply/ Nmon; last by apply val.
-	by apply /leq_trans; [exact: leqnSn | rewrite ltnNge E].
-move => a' [/= c evl].
-split.
-	have ex: exists q', N c q = Some q'.
-		case E: (N c q) => [q' | ].
-			by exists q'.
-		by rewrite E in evl.
-	have [q' eq] := ex.
-	rewrite eq in evl.
-	exists q'.
-	have gqq': g q q'.
-		have qfd: q \from_dom g by exists q't.
-		apply/ (Ncomp q qfd).2.
-		by exists c.
-	split => //.
-	have q'fd: q' \from_dom f by apply prop.
-	apply/ (Mcomp q' q'fd).2.
-	by exists c.
-move => q' gqq'.
-by apply prop.
+have qfd: q \from_dom g by exists q't.
+split => [ | a' [/= c evl]]; last first.
+	split; last by intros; apply prop.
+	case E: (N c q) evl => [q' | ] // evl.
+	exists q'; split; first by apply/ (Ncomp q qfd).2; exists c.
+	apply/ (Mcomp q' _).2; last by exists c.
+	by apply prop; apply Ncomp; [exists q't | exists c].
+have [[q' [c evl]] prop']:= (Ncomp q qfd).
+have [ | [a' [c' val']] prop'']:= (Mcomp q' _); first by apply/prop/prop'; exists c.
+exists a'; case E: (pickle c' <= pickle c)%N.
+	by exists c; rewrite evl; apply/ Mmon; last apply val'; first rewrite E.
+exists c'; suffices ->: N c' q = Some q' => //; apply/ Nmon; last exact: evl.
+by apply /leq_trans; [exact: leqnSn | rewrite ltnNge E].
 Qed.
 End COMPUTABILITY_LEMMAS.
 

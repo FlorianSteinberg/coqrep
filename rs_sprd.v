@@ -69,11 +69,11 @@ apply Some_inj; rewrite /F2MF.
 case E: (m <= n).
 	rewrite -evl.
 	apply/ Mmon; last exact eq.
-	by apply/ leP; rewrite /pickle/=E.
+	by rewrite /pickle/= E.
 rewrite -eq; apply esym.
 apply/ Mmon; last exact evl.
-rewrite /pickle/=.
-move /leP: E; lia.
+apply/leq_trans; first by apply leqnSn.
+by rewrite /pickle/= ltnNge E.
 Qed.
 
 Lemma cmpt_fun_cmpt_elt (X Y: rep_space) (f: X ->> Y) (x: X) (y: Y):

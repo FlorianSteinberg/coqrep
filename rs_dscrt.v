@@ -134,7 +134,7 @@ split; last first.
 		have U1: (U (fun q : seq (one * one) * questions X => inr (phi q.2)) 0 phi' q = Some (phi q)) by trivial.
 		rewrite (U_mon _ U1) in evl.
 			by apply Some_inj.
-		by apply /leP/leq0n.
+		by apply /leq0n.
 	split; first by rewrite F2MF_comp.
 	rewrite sing_comp; [ | by move => xf; exact ((projT2 xf).1.1 star) | ]; last first.
 		by move => xf; have [x xfsx]:= ((projT2 xf).1.2 star); exists x.

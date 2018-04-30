@@ -108,6 +108,9 @@ Lemma mod_mon phiq L K:
 	L \is_sublist_of K -> mf_mod phiq L -> mf_mod phiq K.
 Proof. by move => sl [phifd mod]; split => //; intros; apply/(cert_mon sl)/mod. Qed.
 
+(* since we don't want to require a continuous operator to have a closed
+Graph, we need to be a little careful with the definition and carry the
+domain around most of the time. *)
 Definition cont_xtndbl_to phi := forall q', (phi, q') \from_dom mf_mod.
 Definition is_cont_in phi := phi \from_dom F /\ cont_xtndbl_to phi.
 Definition is_cont := forall phi, phi \from_dom F -> cont_xtndbl_to phi.
@@ -189,6 +192,10 @@ exists (fun phi q' => mf (phi, q')); move => phi q' phifd.
 by have [L Lprop]:= (cont phi phifd q'); exact (mprop _ _ Lprop).
 Qed.
 
+Lemma exists_mod F: F \is_continuous ->
+	exists mf, mf \is_modulus_of F.
+Proof. by intros; apply /cont_mod. Qed.
+
 Lemma elig_restr P (F: B ->> B') phi q' a':
 	eligible (F \restricted_to P) phi q' a' -> P phi /\ eligible F phi q' a'.
 Proof. by move => [] Fphi [] []; split => //; exists Fphi. Qed.
@@ -242,32 +249,25 @@ Qed.
 Lemma cont_comp Q'' A'' (F: B ->> B') (G: B' ->> (Q'' -> A'')):
 	F \is_continuous -> G \is_continuous -> G o F \is_continuous.
 Proof.
-move => Fcont Gcont phi phifd q''.
-have [mf ismod]:= ((cont_mod F).1 Fcont).
-case (classic (phi \from_dom F)) => [[Fphi FphiFphi]| nfd]; last first.
-	exists nil; split => // GFpsi [[Fphi [/= FphiFphi]]].
-	by exfalso; apply nfd; exists Fphi.
-have FphifdG: Fphi \from_dom G by have [_ [_ prop]]:= phifd; apply prop.
-have [L [/=_ Lprop]]:= (Gcont Fphi FphifdG q'').
+move => Fcont Gcont phi [GFphi [[Fphi [FphiFphi GFphiGFphi]] doms]] q''.
+have [mf ismod]:= (exists_mod Fcont).
+have [ | L [/=_ Lprop]]:= (Gcont Fphi _ q''); first by apply doms.
 set gather := fix gather K := match K with
 	| nil => nil
 	| cons q' K' => app (mf phi q') (gather K')
 end.
-exists (gather L); split => //= GFphi [] [] Fphi' [] FphiFphi' GFphi'GFphi _ psi coing.
-move => GFpsi [] [] Fpsi [] FpsiFpsi GFpsiGFpsi _.
-have gprop: forall K, phi \and psi \coincide_on (gather K) -> Fphi \and Fpsi \coincide_on K.
-	elim => // a K ih coin.
-	have [coin1 coin2]:= ((coin_app phi psi (mf phi a) (gather K)).1 coin).
-	split; last by apply ih.
-	by apply/ ((ismod _ a _).2 _ _ _ coin1) => //; exists Fphi.
-by apply /Lprop; [rewrite ((cont_sing Fcont) phi Fphi Fphi') | apply (gprop L) | ].
+exists (gather L); split; first by exists GFphi; split; [exists Fphi | apply doms].
+move => GFphi' [[Fphi' [/=FphiFphi' GFphi'GFphi'] _]] psi coing.
+move => GFpsi [[Fpsi [FpsiFpsi GFpsiGFpsi] _]].
+suffices gprop: forall K, phi \and psi \coincide_on (gather K) -> Fphi \and Fpsi \coincide_on K.
+	by apply /Lprop; [rewrite ((cont_sing Fcont) phi Fphi Fphi') | apply (gprop L) | ].
+elim => // a K ih coin; have [coin1 coin2]:= ((coin_app phi psi (mf phi a) (gather K)).1 coin).
+by split; [apply/ ((ismod _ a _).2 _ _ _ coin1) => //; exists Fphi | apply ih].
 Qed.
 
 Lemma comp_cont Q'' A'' (F: B ->> B') (G: B' ->> (Q'' -> A'')):
 	F \is_continuous -> G \is_continuous -> G o F \is_continuous.
-Proof.
-exact: cont_comp.
-Qed.
+Proof. exact: cont_comp. Qed.
 
 Lemma cnst_cont (Fphi: B'):
 	(fun (phi: B) (Fphi': B') => forall q, Fphi' q = Fphi q) \is_continuous.

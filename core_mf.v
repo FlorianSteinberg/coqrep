@@ -40,7 +40,7 @@ Proof. by move => f g eq; rewrite eq. Qed.
 (* The domain of a multifunctions is the set of all inputs such that the value set
 is not empty. *)
 Definition dom S T (f: S ->> T) s := (exists t, f s t).
-Notation "s '\from_dom' f" := (dom f s) (at level 2).
+Notation "s '\from_dom' f" := (dom f s) (at level 50).
 
 Global Instance dom_prpr S T: Proper ((@equiv S T) ==> eq ==> iff) (@dom S T).
 Proof.
@@ -127,6 +127,22 @@ Notation "f 'o_R' g" := (rel_comp f g) (at level 2).
 Section MFPROPERTIES.
 Context (S T S' T': Type).
 
+Definition mf_inv T S (f: S ->> T) t s := f s t.
+Notation inv f := (mf_inv f).
+Notation "f '\inverse'" := (mf_inv f) (at level 70).
+
+Global Instance mfinv_prpr S T: Proper ((@equiv S T) ==> (@equiv T S)) (@mf_inv T S).
+Proof. by split; intros; apply H. Qed.
+
+Notation "f '\is_section_of' g" := (f o g =~= F2MF id) (at level 2).
+
+Lemma sec_cncl (f: S -> T) g:
+	(F2MF f) \is_section_of (F2MF g) <-> cancel g f.
+Proof.
+split; last by intros; rewrite F2MF_comp /F2MF => s t; split => <-.
+by move => eq s; move: (eq s s); rewrite (F2MF_comp _ g _ s) /F2MF /= => ->.
+Qed.
+
 Definition is_tot S T (f: S ->> T) := forall s, s \from_dom f.
 Notation "f '\is_total'" := (is_tot f) (at level 2).
 
@@ -137,17 +153,14 @@ Lemma comp_tot R (f: S ->> T) (g: T ->> R):
 	f \is_total -> g \is_total -> (g o f) \is_total.
 Proof.
 move => ftot gtot s.
-have [t fst]:= ftot s.
-have [r gtr]:= gtot t.
-exists r.
-split; first by exists t.
-move => t' fst'.
-by apply gtot.
+have [t fst]:= ftot s; have [r gtr]:= gtot t.
+exists r; split; first by exists t.
+by intros; apply gtot.
 Qed.
 
 Lemma F2MF_tot (f: S -> T):
 	(F2MF f) \is_total.
-Proof. move => s; by exists (f s). Qed.
+Proof. by move => s; exists (f s). Qed.
 
 (* For total multi valued functions, the relational composition is identical to the multi-
 function composition.  *)
@@ -198,12 +211,21 @@ by have [r gsr]:= H0 s; by exists r; split; last by apply fgrt.
 Qed.
 
 Definition codom S T (f: S ->> T) (t : T) := exists s, f s t.
-Notation "t '\from_codom' f" := (codom f t) (at level 2).
+Notation "t '\from_codom' f" := (codom f t) (at level 50).
 (* the codomain of a multi-valued function is the union of all its value sets. It should
 not be understood as the range, as very few of its elements may be hit by a choice function. *)
+Lemma inv_dom_codom (f: S ->> T) t:
+	t \from_codom f <-> t \from_dom (f \inverse).
+Proof.
+by split; case => s; exists s.
+Qed.
 
 Definition is_cotot S T (f: S ->> T) := forall s, s \from_codom f.
 Notation "f '\is_cototal'" := (is_cotot f) (at level 2).
+
+Lemma inv_tot_cotot (f: S ->> T):
+	f \is_cototal <-> (f \inverse) \is_total.
+Proof. by split; move => H t; move: (H t); case => s; exists s. Qed.
 
 (* Being surjective implies being cototal*)
 Lemma sur_cotot f:
@@ -219,23 +241,6 @@ have eq: g =~= h.
 	by exfalso; apply notcodom; exists s; rewrite val2.1.
 case: (classic (g t true)) => ass; last by apply ass.
 by case: ((eq t true).1 ass).
-Qed.
-
-Definition sur_fun (f: S -> T) := forall t, exists s, f s = t.
-Notation "f '\is_surjective_function'" := (sur_fun f) (at level 2).
-
-Lemma sur_fun_sur (f: S -> T):
-	f \is_surjective_function <-> (F2MF f) \is_surjective.
-Proof.
-split.
-	move => sur R g h.
-	rewrite !F2MF_comp => eq s t.
-	have [r <-]:= sur s.
-	exact: (eq r t).
-move => sur t.
-have cotot: (F2MF f) \is_cototal by apply sur_cotot.
-have [s fst]:= cotot t.
-by exists s.
 Qed.
 
 (* The opposite implication does not hold in general*)
@@ -274,6 +279,23 @@ Qed.
 Definition sur_par_fun S T (f: S ->> T) :=
   f \is_single_valued /\ f \is_cototal.
 Notation "f '\is_surjective_partial_function'" := (sur_par_fun f) (at level 2).
+
+Definition sur_fun (f: S -> T) := forall t, exists s, f s = t.
+Notation "f '\is_surjective_function'" := (sur_fun f) (at level 2).
+
+Lemma sur_fun_sur (f: S -> T):
+	f \is_surjective_function <-> (F2MF f) \is_surjective.
+Proof.
+split.
+	move => sur R g h.
+	rewrite !F2MF_comp => eq s t.
+	have [r <-]:= sur s.
+	exact: (eq r t).
+move => sur t.
+have cotot: (F2MF f) \is_cototal by apply sur_cotot.
+have [s fst]:= cotot t.
+by exists s.
+Qed.
 
 (* A modification of the following construction is used to define the product of represented spaces. *)
 Definition mfpp S T S' T' (f : S ->> T) (g : S' ->> T') :=
