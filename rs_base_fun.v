@@ -213,7 +213,7 @@ exists (fun p => match p.1: seq (questions X* answers X) with
 abstract by pose id_name p := match p.1: seq (questions X* answers X) with
 		| nil => inl (p.2:questions X)
 		| (q,a):: L => inr (a: answers X)
-	end; rewrite /=/is_fun_name/=/rlzr id_comp -{1}(comp_id (rep X));
+	end; rewrite /=/is_fun_name/=/rlzr comp_id_l -{1}(comp_id_r (rep X));
 	apply /tight_comp_r/ (mon_cmpt_op); [exact: U_mon | move => phi q; exists 1].
 Defined.
 

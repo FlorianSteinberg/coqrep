@@ -223,7 +223,7 @@ case => y [[]].
 	case => [x [[[a eq] phinx] /= fxy] prp | x']; last by rewrite {1}/mfss/= => [][].
 	have fd: (lslct phi) \from_dom (f o (delta (r:=X))).
 		exists y; split; first by exists x.
-		by intros; rewrite (rep_sing _ (lslct phi) s x) => //; exists y.
+		by move => b c; rewrite (rep_sing _ (lslct phi) b x) => //; exists y.
 	have [[y' [[psi [Fphipsi psiny']]] prop cnd]]:= Frf (lslct phi) fd.
 	split.
 		exists (inl y');split.
@@ -248,7 +248,7 @@ case => y [[]].
 case => [x' | x [[[a eq] phinx] /= fxy] prp]; first by rewrite {1}/mfss/= => [][].
 have fd: (rslct phi) \from_dom (g o (delta (r:=X'))).
 	exists y; split; first by exists x.
-	by intros; rewrite (rep_sing _ (rslct phi) s x) => //; exists y.
+	by move => s b; rewrite (rep_sing _ (rslct phi) s x) => //; exists y.
 have [[y' [[psi [Fphipsi psiny']]] prop cnd]]:= Grg (rslct phi) fd.
 split.
 	exists (inr y'); split.

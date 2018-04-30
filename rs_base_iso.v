@@ -31,7 +31,7 @@ Lemma iso_ref X:
 Proof.
 exists (id_fun X); exists (id_fun X).
 exists (id_rec_elt X); exists (id_rec_elt X).
-by split; rewrite comp_id.
+by split; rewrite comp_id_r.
 Qed.
 
 Lemma iso_sym X Y:

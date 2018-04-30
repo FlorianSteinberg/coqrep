@@ -55,24 +55,46 @@ Definition rel_comp R S T (f : S ->> T) (g : R ->> S) :=
   fun r t => (exists s, g r s /\ f s t).
 Notation "f 'o_R' g" := (rel_comp f g) (at level 50).
 
+Global Instance relcomp_prpr R S T:
+Proper ((@equiv S T) ==> (@equiv R S) ==> (@equiv R T)) (@rel_comp R S T).
+Proof.
+move => f f' eqf g g' eqg s t; etransitivity; move: eqf.
+apply: (@bysym _ (fun f f' => f =~= f') (fun f => (f o_R g) s t)); last by symmetry.
+clear => f f' eqf [s' [gs't ftr]].
+by exists s'; split => //; apply eqf.
+by split => [[r [gsr frt]] | [r [gsr frt]]]; exists r; [rewrite -(eqg s r) | rewrite (eqg s r)].
+Qed.
+
+Lemma relcomp_assoc (f: S' ->> T') g (h: S ->> T):
+	((f o_R g) o_R h) =~= (f o_R (g o_R h)).
+Proof.
+split; last by move => [t' [[s' []]]]; exists s'; split => //; exists t'.
+by move => [t' [hst [s'[]]]]; exists s'; split => //; exists t'.
+Qed.
+
 (* The multi function composition adds an assumption that removes the symmetry of in- and output.
-The additional condition can be read g r is a subset of dom f. *)
+The additional condition is that g r is a subset of dom f. *)
+Notation "P '\is_subset_of' Q" := (subset P Q) (at level 50).
 Definition mf_comp R S T (f : S ->> T) (g : R ->> S) :=
-  fun r t => (f o_R g) r t /\ (forall s, g r s -> s \from_dom f).
+  fun r t => (f o_R g) r t /\ (g r) \is_subset_of (dom f).
 Notation "f 'o' g" := (mf_comp f g) (at level 50).
+
+Lemma subs_trans R (P P' P'':  R -> Prop):
+	P \is_subset_of P' -> P' \is_subset_of P'' -> P \is_subset_of P''.
+Proof. by move => PsP' P'sP'' s Ps; apply/P'sP''/PsP'. Qed.
 
 Global Instance comp_prpr R S T: Proper ((@equiv S T) ==> (@equiv R S) ==> (@equiv R T)) (@mf_comp R S T).
 Proof.
-move => f f' eqf g g' eqg s t.
-etransitivity.
-move: eqf.
-apply: (@bysym _ (fun f f' => f =~= f') (fun f => (f o g) s t)); last by symmetry.
-clear => f f' eqf [[s' [gs't ftr]] prop].
-by split => [ | t' g'st']; [ exists s'; split => //; apply eqf | rewrite -eqf; apply prop].
-move: eqg; apply: (@bysym _ (fun f f' => f =~= f') (fun g => (f' o g) s t)); last by symmetry.
-clear => g g' eq [[s' [gs't ftr]] prop].
-by split; [exists s'; split => //; apply eq| move => t' g'st'; apply prop; apply eq].
+move => f f' eqf g g' eqg s t; split; case.
+	split; last by move => r g'sr; rewrite -eqf; apply/b/eqg.
+	by move: a => [r stf]; exists r; rewrite -(eqf r t) -(eqg s r).
+split; last by move => r g'sr; rewrite eqf; apply/b/eqg.
+by move: a => [r stf]; exists r; rewrite (eqf r t) (eqg s r).
 Qed.
+
+Lemma dom_comp R Q Q' (f: Q ->> Q') (g: R ->> Q):
+	dom (f o g) \is_subset_of dom g.
+Proof. by move => r [s [[t[]]]]; exists t. Qed.
 
 (* This operation is associative *)
 Lemma comp_assoc (f: S' ->> T') g (h: S ->> T):
@@ -81,8 +103,7 @@ Proof.
 move => r q.
 split => [ [] [] s [] hrs [] [] t []| [] [] t [] [] [] s [] ].
 	split => [ | t' [] [] s' [] hrs'].
-		exists t;	split => //.
-		split => [ | s' hrs']; first by exists s.
+		exists t;	split => //; split => [ | s' hrs']; first by exists s.
 		by move: (b1 s' hrs') => [] x [] [] t' []; exists t'.
 	by move: (b1 s' hrs') => [] q' comp gs't _; apply comp.2.
 split => [ | s' hrs'].
@@ -99,13 +120,13 @@ suffices ghrt'': (g o h) r t'' by apply b2.
 by split => [ | s'' hrs'']; [exists s' | apply b0].
 Qed.
 
-Lemma id_comp (f: S ->> T):
+Lemma comp_id_l (f: S ->> T):
 	(F2MF id) o f =~= f.
 Proof.
 split => [[[t' [fst <-]] _] | fst] //; by split => [ | t' fst']; [exists t | exists t'].
 Qed.
 
-Lemma comp_id (f: S ->> T):
+Lemma comp_id_r (f: S ->> T):
 	f o (F2MF id) =~= f.
 Proof.
 split => [[[t' [<- fst]] _] | fst] //; by split => [| t' <- ]; [exists s|exists t].
@@ -121,8 +142,9 @@ End MULTIVALUED_FUNCTIONS.
 Notation "f =~= g" := (equiv f g) (at level 70).
 Notation "S ->> T" := (S -> T -> Prop) (format "S ->> T", at level 2).
 Notation "s '\from_dom' f" := (dom f s) (at level 2).
-Notation "f 'o' g" := (mf_comp f g) (at level 2).
 Notation "f 'o_R' g" := (rel_comp f g) (at level 2).
+Notation "P '\is_subset_of' Q" := (subset P Q) (at level 50).
+Notation "f 'o' g" := (mf_comp f g) (at level 2).
 
 Section MFPROPERTIES.
 Context (S T S' T': Type).
@@ -133,6 +155,20 @@ Notation "f '\inverse'" := (mf_inv f) (at level 70).
 
 Global Instance mfinv_prpr S T: Proper ((@equiv S T) ==> (@equiv T S)) (@mf_inv T S).
 Proof. by split; intros; apply H. Qed.
+
+Lemma id_inv:
+	(F2MF (@id S)) \inverse =~= F2MF id.
+Proof. done. Qed.
+
+Definition empty_mf S T := (fun (s: S) (t: T) => False).
+
+Lemma empty_inv:
+	(@empty_mf S T) \inverse =~= (@empty_mf T S).
+Proof. done. Qed.
+
+Lemma relcomp_inv (f: T ->> S') (g: S ->> T):
+	(f o_R g) \inverse =~= (g \inverse) o_R (f \inverse).
+Proof. by split; case => r []; exists r. Qed.
 
 Notation "f '\is_section_of' g" := (f o g =~= F2MF id) (at level 2).
 
@@ -155,7 +191,7 @@ Proof.
 move => ftot gtot s.
 have [t fst]:= ftot s; have [r gtr]:= gtot t.
 exists r; split; first by exists t.
-by intros; apply gtot.
+by intros => a b; apply gtot.
 Qed.
 
 Lemma F2MF_tot (f: S -> T):
@@ -223,7 +259,7 @@ Qed.
 Definition is_cotot S T (f: S ->> T) := forall s, s \from_codom f.
 Notation "f '\is_cototal'" := (is_cotot f) (at level 2).
 
-Lemma inv_tot_cotot (f: S ->> T):
+Lemma cotot_tot_inv (f: S ->> T):
 	f \is_cototal <-> (f \inverse) \is_total.
 Proof. by split; move => H t; move: (H t); case => s; exists s. Qed.
 
@@ -254,11 +290,10 @@ exists f'; split => [ k | sur ].
 pose g k b := k = t /\ b = true.
 pose h k b := k = t /\ b = false.
 suffices eq: g o f' =~= h o f'.
-	move: (((sur bool g h) eq) t false) => [] a b.
+	have [a b]:= (((sur bool g h) eq) t false).
 	by suffices htt: h t false by move: (b htt).2.
-have tru: True by trivial.
 by split; move => [ [] _ [] _ [] _ _ prop];
-	move: (prop t' tru) => [] b' [] eq; exfalso; apply neq.
+	by have [ | b' [eq]]:= (prop t' _); last by exfalso; apply neq.
 Qed.
 
 (* but for single valued functions it is true. *)
@@ -286,12 +321,12 @@ Notation "f '\is_surjective_function'" := (sur_fun f) (at level 2).
 Lemma sur_fun_sur (f: S -> T):
 	f \is_surjective_function <-> (F2MF f) \is_surjective.
 Proof.
-split.
-	move => sur R g h.
+split => sur.
+	move => R g h.
 	rewrite !F2MF_comp => eq s t.
 	have [r <-]:= sur s.
 	exact: (eq r t).
-move => sur t.
+move => t.
 have cotot: (F2MF f) \is_cototal by apply sur_cotot.
 have [s fst]:= cotot t.
 by exists s.
@@ -635,7 +670,6 @@ suffices val: h s = t' by rewrite -val; apply/ (prop h icf s t).
 have val': g s t' /\ (s = s -> t' = t') by split.
 by apply: (icf' s t' val').2.
 Qed.
-
 End TIGHT_EXTENDS_ICF.
 
 Global Instance icf_prpr S T: Proper (@equiv S T ==> eq ==> iff) (@icf S T).
@@ -645,3 +679,10 @@ Notation "f '\is_tightened_by' g" := (tight f g) (at level 2).
 Notation "g '\tightens' f" := (tight f g) (at level 2).
 Notation "g '\extends' f" := (forall s t, f s t -> g s t) (at level 2).
 Notation "g '\is_choice_for' f" := (icf f g) (at level 2).
+
+Lemma tight_comp S T R (f f': T ->> R) (g g': S ->> T):
+	f \tightens f' -> g \tightens g' -> (f o g) \tightens (f' o g').
+Proof.
+intros; apply/tight_trans/tight_comp_l; last by apply H.
+by apply/tight_trans/tight_comp_r; last by apply H0.
+Qed.

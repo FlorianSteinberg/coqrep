@@ -124,6 +124,7 @@ by move => phi phifd; exact/ (cntn phi phifd).2.
 Qed.
 End CONTINUITY_DEFINITION.
 
+Notation "F '\is_continuous_around' phi" := (cont_xtndbl_to F phi) (at level 2).
 Notation "F '\is_continuous'" := (is_cont F) (at level 2).
 Notation "F '\is_continuous_in' phi" := (is_cont_in F phi) (at level 2).
 

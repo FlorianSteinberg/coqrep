@@ -162,7 +162,7 @@ split.
 	move => Fphi' FphiFphi'; exists y.
 	by rewrite (Fsing phi Fphi' Fphi).
 move => y' [[Fphi' [FphiFphi' Fphi'ny']] _].
-split; last by exists y; rewrite (rep_sing X phi s x).
+split; last by move => x'; exists y; rewrite (rep_sing X phi x' x).
 exists x; split => //.
 rewrite (Fsing phi Fphi' Fphi) in Fphi'ny' => //.
 by rewrite (rep_sing Y Fphi y' y).
@@ -220,7 +220,7 @@ split.
 	have [Fphi FphiFphi]:= (prp phi x phinx).1.
 	by exists Fphi; split => //; apply (prp phi x phinx).2.
 move => y [[Fphi [FphiFphi Fphiny]] cnd].
-split; last by intros; exact: F2MF_tot.
+split; last by move => a b; exact: F2MF_tot.
 by exists x; split; last by rewrite (rep_sing Y Fphi y (f x)); last by apply (prp phi x phinx).2.
 Qed.
 
