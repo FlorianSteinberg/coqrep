@@ -115,7 +115,7 @@ by case: BigIntRadix2.mantissa_sign (Float m e) => //.
 Qed.
 
 Lemma D2R_Float (m e: bigZ):
-  I.T.toR (Float m e) = IZR [m]%bigZ * powerRZ 2 [e]%bigZ.
+  D2R (Float m e) = IZR [m]%bigZ * powerRZ 2 [e]%bigZ.
 Proof.
 rewrite /I.T.toR /SFBI2.toX /SFBI2.toF/=.
 case: (BigIntRadix2.mantissa_sign m) (BigIntRadix2.mantissa_sign_correct m);
@@ -205,8 +205,7 @@ Qed.
 
 Lemma rep_R_is_rep: rep_R \is_representation.
 Proof.
-split.
-	exact: rep_R_sing.
+split; first exact: rep_R_sing.
 move => x.
 exists (fun n => I.bnd 
 	(Float (BigZ.BigZ.of_Z (Int_part (x * (powerRZ 2 (Z.pos n))))) (BigZ.BigZ.of_Z (Z.neg n)))
@@ -227,7 +226,7 @@ split.
 move => eps epsg0.
 case: eps epsg0; first by rewrite /D2R/=; lra.
 move => m e epsg0 /=.
-exists (Pos.max xH (Z.to_pos (BigZ.to_Z (-e + 2)))) => n ineq; split => //.
+exists (Z.to_pos (BigZ.to_Z (-e + 2))) => n ineq; split => //.
 replace (BigZ.Neg (BigN.of_pos n)) with (BigZ.of_Z (Z.neg n)) by trivial.
 rewrite !D2R_Float !BigZ.spec_of_Z.
 set a := (x * 2 ^ Pos.to_nat n).
@@ -263,9 +262,9 @@ apply /Rlt_le/ Rpower_lt; try lra; first by rewrite /IZR/IPR/=; lra.
 apply IZR_lt.
 replace (Z.opp (Z.neg n)) with (Z.pos n) by trivial.
 rewrite /Z.succ Zplus_0_l.
-move:ineq.
-admit.
-Admitted.
+move: ineq; rewrite BigZ.spec_add BigZ.spec_opp; have ->: [2]%bigZ = 2%Z => //.
+by rewrite /Z.to_pos; case E: (- [e]%bigZ + 2)%Z; lia.
+Qed.
 
 Lemma Intervals_countable: ID \is_countable.
 Proof.
