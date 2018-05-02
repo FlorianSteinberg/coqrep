@@ -61,7 +61,7 @@ have [ |[a' [c evl]] prop]:= (comp q _); first by exists a.
 by exists c; have <-: a' = a by apply/ H; [apply prop; exists c | ].
 Qed.
 
-Lemma cmpt_fun N f: N \is_monotone_machine ->
+Lemma mon_cmpt_fun N f: N \is_monotone_machine ->
 	N \computes (F2MF f) <-> forall q, (meval N) q (f q).
 Proof.
 split => [comp q | prop].
@@ -74,11 +74,12 @@ Definition is_mon_cmpt (f: Q ->> A) :=
 	{N | N \is_monotone_machine /\ N \computes f}.
 Notation "f '\is_monotone_computable'" := (is_mon_cmpt f) (at level 2).
 
-Lemma cmpt_mon_cmpt (f: Q ->> A):
-	f \is_computable -> f \is_monotone_computable.
+Lemma cmpt_mon_cmpt_strong:
+	{K | forall (M: Q ~> A), (K M) \is_monotone_machine
+		/\
+		forall psi, M \computes psi -> (K M) \computes psi}.
 Proof.
-case => M comp.
-pose p (c: C) q n:= if n < (pickle c) then
+pose p' (M: Q ~> A) (c: C) q n:= if n < (pickle c) then
 match (pickle_inv C n) with
 	| None => false
 	| Some c' => match M c' q with
@@ -86,55 +87,65 @@ match (pickle_inv C n) with
 		| Some a => true
 	end
 end else true.
+pose r' M (c: C) q':= search (p' M c q') (pickle c).
+pose K M c q:= match (pickle_inv C (r' M c q)) with
+	| None => None
+	| Some c' =>  M c' q
+end.
+exists K => M.
+set p := p' M.
+set r := r' M.
+set N := K M.
 have pprop: forall c q' n, p c q' n -> n < pickle c -> exists (c': C), pickle c' = n.
-	move => c q' n; rewrite /p; case: ifP => // ineq.
+	move => c q' n; rewrite /p/p'; case: ifP => // ineq.
 	case E: (pickle_inv C n) => [c' | ]//; case: (M c' q') => // _ _ _.
 	by exists c'; rewrite -(pickle_invK C n) E /=.
-pose r (c: C) q':= search (p c q') (pickle c).
 have rprop: forall c q', exists (c': C), pickle c' = r c q'.
 	move => c q'; case E: (r c q' == pickle c); first by exists c; apply /esym/eqP; rewrite E.
 	have ineq: r c q' < pickle c.
 		by rewrite ltn_neqAle; apply /andP; split; [apply/esym/negP; rewrite E |apply search_le].
 	apply/ (pprop c q' (r c q') _ ineq) /search_correct.
-	by rewrite /p pickleK_inv; case: ifP => //;rewrite (ltnn (pickle c)).
-pose N c q:= match (pickle_inv C (r c q)) with
-	| None => None
-	| Some c' =>  M c' q
-end.
-exists N.
-have mon: N \is_monotone_machine.
+	by rewrite /p/p' pickleK_inv; case: ifP => //;rewrite (ltnn (pickle c)).
+split.
 	move => n m q' a' ineq.
 	case E: (pickle n < pickle m)%N;[move => evl | move <-; f_equal]; last first.
 		suffices eq: pickle n = pickle m by apply Some_inj; rewrite -!pickleK_inv eq.
 		by apply/eqP; rewrite eqn_leq; apply /andP; split => //; rewrite leqNgt E.
 	have[c rneqc]:= rprop n q'.
 	have[c' rmeqc']:= rprop m q'.
-	rewrite /N -rneqc pickleK_inv in evl.
+	rewrite /N/K-/r -rneqc pickleK_inv in evl.
 	have rmlrn: r m q' <= r n q'.
-		by apply/search_min; rewrite /p -rneqc pickleK_inv evl; case: ifP.
+		by apply/search_min; rewrite /p/p' -rneqc pickleK_inv evl; case: ifP.
 	suffices rnlrm: r n q' <= r m q'.
 		have eq: r m q' = r n q' by apply/eqP; rewrite eqn_leq; apply /andP.
-		by rewrite /N eq -rneqc pickleK_inv.
-	apply/search_min; rewrite /p -rmeqc' pickleK_inv; case: ifP => // ha.
+		by rewrite /N/K-/r eq -rneqc pickleK_inv.
+	apply/search_min; rewrite /p/p' -rmeqc' pickleK_inv; case: ifP => // ha.
 	have: (p m q' (r m q')).
-		by rewrite search_correct => //; rewrite /p; case: ifP => //; rewrite ltnn.
-	rewrite /p; have ->: r m q' < pickle m by rewrite -rmeqc'; apply /(leq_trans ha).
+		by rewrite search_correct => //; rewrite /p/p'; case: ifP => //; rewrite ltnn.
+	rewrite /p/p'; have ->: r m q' < pickle m by rewrite -rmeqc'; apply /(leq_trans ha).
 	by rewrite -rmeqc' pickleK_inv.
-split => // q qfd; split; last first.
+move => psi comp q qfd; split; last first.
 	move => a [c Nqa]; apply (comp q qfd).2.
 	have [c' rc]:= rprop c q.
-	by exists (c'); rewrite /N -rc pickleK_inv in Nqa.
+	by exists (c'); rewrite /N/K-/r -rc pickleK_inv in Nqa.
 have [[a [c Mqa]] prop]:= comp q qfd.
 have: p c q (r c q).
-	by apply search_correct; rewrite /p; case: ifP => //; rewrite pickleK_inv Mqa.
+	by apply search_correct; rewrite /p/p'; case: ifP => //; rewrite pickleK_inv Mqa.
 have [c' rc]:= rprop c q.
-rewrite /p -rc; case: ifP => ass.
+rewrite /p/p' -rc; case: ifP => ass.
 	rewrite pickleK_inv; case E': (M c' q) => [a' | ] // _.
-	by exists a'; exists c; rewrite /N -rc pickleK_inv.
-suffices eq: c' = c by exists a; exists c; rewrite /N -rc pickleK_inv eq.
+	by exists a'; exists c; rewrite /N/K-/r -rc pickleK_inv.
+suffices eq: c' = c by exists a; exists c; rewrite /N/K-/r -rc pickleK_inv eq.
 suffices eq: pickle c' = pickle c by apply Some_inj; rewrite -!pickleK_inv -eq.
 have ineq: pickle c' <= pickle c by rewrite rc; apply/search_le.
 by apply /eqP; rewrite eqn_leq; apply /andP; split; last rewrite leqNgt ass.
+Qed.
+
+Lemma cmpt_mon_cmpt (f: Q ->> A):
+	f \is_computable -> f \is_monotone_computable.
+Proof.
+move => [M comp]; have [K Kprop]:= cmpt_mon_cmpt_strong.
+by exists (K M); split; [apply (Kprop M).1 | apply (Kprop M).2].
 Qed.
 
 End MACHINES.
@@ -165,7 +176,7 @@ have [[Mf MfMf] prop]:= (comp f fd) => q' a' []Ff[]; have [c val]:= (MfMf q').
 by exists c; rewrite /N -b val; f_equal; apply/sing_cmpt_elt; [apply comp | | | apply val].
 Qed.
 
-Lemma cmptbl_comp (f: Q' ->> A') (g: Q ->> Q'):
+Lemma cmpt_comp (f: Q' ->> A') (g: Q ->> Q'):
 	f \is_computable -> g \is_computable -> (f o g) \is_computable.
 Proof.
 move => fcomp gcomp.

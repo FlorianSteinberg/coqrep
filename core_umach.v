@@ -57,6 +57,22 @@ have:= (ih ass eq); rewrite /U; case E: (U_rec m psi phi q') => //.
 by rewrite /U_rec in E; rewrite /U_rec E => <-.
 Qed.
 
+Lemma U_rec_step n psi phi q':
+	U_rec n.+1 psi phi q' = match U_rec n psi phi q' with
+	  | inl a' => inl a'
+		| inr L => U_step psi phi q' L
+	end.
+Proof. done. Qed.
+
+Lemma U_rec_length n psi phi q' L:
+	(U_rec n psi phi q') = inr L -> length L = n.+1.
+Proof.
+elim: n L; first by move => L; rewrite /U_rec/U_step; case: (psi (nil, q')) => [q [<-]|].
+move => n ih L; rewrite U_rec_step.
+case E: (U_rec n psi phi q') => [ | K] => //; rewrite /U_step.
+by case: (psi (K, q')) => // q [<-] /=; rewrite ih.
+Qed.
+
 (* List to multivalued function *)
 Notation L2MF L := (fun q a => List.In (q, a) L).
 
@@ -123,8 +139,13 @@ End FLST.
 
 Section MINIMAL_MODULI.
 Context (F: B ->> B').
+
 Definition listfprop listf :=
 	listf \is_choice_for (fun L phi => phi \from_dom F /\ phi \is_choice_for (L2MF L)).
+
+Lemma exists_lstf (a : A) :
+	exists listf, listfprop listf.
+Proof. exact: exists_choice. Qed.
 
 Context (cnt: nat -> Q).
 Notation init_seg := (in_seg cnt).
@@ -176,12 +197,14 @@ apply: (mfprop (phi, q') n Rn).2; split => // Fphi FphiFphi.
 by apply/ cert_mon; [apply: inseg_melt | apply Xprop].
 Qed.
 
-Lemma minmod_ineq mf listf phi:
-	listfprop listf -> is_min_mod mf -> phi \from_dom F
-		-> forall q' m, mf phi q' <= m -> mf (listf (flst phi (init_seg m))) q' <= m.
+Definition compat mf listf:= forall phi, phi \from_dom F ->
+	forall (q': Q') m, mf phi q' <= m -> mf (listf (flst phi (init_seg m))) q' <= m.
+
+Lemma minmod_compat mf listf:
+	listfprop listf -> is_min_mod mf -> compat mf listf.
 Proof.
-move => listfprop [mod min] phifd q' m ineq.
-have [/=_ mod'] :=mod phi q' phifd.
+move => listfprop [mod min] phi phifd q' m ineq.
+have [/=_ mod'] := mod phi q' phifd.
 pose L := flst phi (init_seg m).
 pose phi' := listf L.
 have [phi'fd icf]:= (phi'prop m listfprop phifd).
@@ -200,41 +223,36 @@ Qed.
 
 End MINIMAL_MODULI.
 
-Context (cnt : nat -> Q) (F: B ->> B').
+
+Section PSIF.
+Context (cnt: nat -> Q).
 Notation init_seg := (in_seg cnt).
+Notation "mf '\is_modulus_for' F" :=
+	((fun phi q' => init_seg (mf phi q')) \is_modulus_of F) (at level 2).
+Context (F: B ->> B') (mf: B -> Q' -> nat) (listf: seq (Q * A) -> B) (Ff: B -> B').
+Notation L phi m:= (flst phi (init_seg m)).
 
-Lemma listsf (a : A) :
-	exists listf, listf \is_choice_for (fun L phi => phi \from_dom F /\ phi \is_choice_for (L2MF L)).
-Proof. exact: exists_choice. Qed.
-
-Definition psiF mf listf (Ff: B -> B') (L: seq (Q * A) * Q') :=
+Definition psiF (L: seq (Q * A) * Q') :=
 	if (mf (listf L.1) L.2 <= length L.1)%N
 	then
 		(inr (Ff (listf L.1) L.2))
 	else
 		(inl (cnt (length L.1))).
 
-Lemma psiFprop sec mf listf Ff phi q':
-	is_min_sec cnt sec ->
-	is_min_mod F cnt sec mf ->
-	listfprop F listf ->
-	phi \from_dom F ->
+Lemma psiFprop phi q':
 	forall n,
 		(exists m,
 		mf (listf (flst phi (init_seg m))) q' <= m
 		/\
-		U_rec n (psiF mf listf Ff) phi q' = inl (Ff (listf (flst phi (init_seg m))) q'))
+		U_rec n psiF phi q' = inl (Ff (listf (flst phi (init_seg m))) q'))
 	\/
-	forall m, m <= n -> 
-	U_rec m (psiF mf listf Ff) phi q' = inr (flst phi (init_seg (S m))).
+	forall m, m <= n ->
+	U_rec m psiF phi q' = inr (flst phi (init_seg (S m))).
 Proof.
-move => ims imm listfprop phifd.
-pose phin m := listf (flst phi (init_seg m)).
-have phinfd m: (phin m) \from_dom F by apply: (phi'prop cnt m _ _).1.
-
+pose phin m := listf (L phi m).
 elim => [ | n ih].
 	rewrite /U_rec/U_step/psiF/=.
-	case E: (mf (listf [::]) q' <= 0)%N; first by left; exists 0; split.
+	case E: (mf (listf [::]) q' <= 0); first by left; exists 0; split.
 	by right => m ineq; have /eqP ->: m == 0; [rewrite -leqn0 | rewrite E].
 case: ih => [[] m [] ineq | eq].
 	by rewrite /U_rec; left; exists m; split; [apply ineq | rewrite /U_rec b].
@@ -242,51 +260,64 @@ case E: (mf (listf (flst phi (init_seg n.+1), q').1) (flst phi (init_seg n.+1), 
 	left; exists (n.+1);rewrite /U_rec in eq;rewrite /U_rec eq =>//.
 	by rewrite /U_step/psiF length_flst_in_seg; split; last rewrite E.
 right => m; rewrite  leq_eqVlt; case/orP => [/eqP nm | le]; last by rewrite -eq.
-have eq': U_rec n (psiF mf listf Ff) phi q' = inr (flst phi (init_seg n.+1)) by apply eq.
+have eq': U_rec n psiF phi q' = inr (flst phi (init_seg n.+1)) by apply eq.
 by rewrite /U_rec in eq'; rewrite /U_rec nm eq'/U_step/psiF length_flst_in_seg E.
 Qed.
 
-Lemma U_is_universal (somea: A) (somephi : B') (sur: cnt \is_surjective_function) (Fcont : F \is_continuous) :
-  exists psiF, (U psiF) \ocomputes F.
+Definition Ff_mod phi q' := forall m, mf (listf (L phi m)) q' <= m -> Ff (listf (L phi m)) q' = Ff phi q'.
+
+Lemma Ffprop
+	(icf: Ff \is_choice_for F)
+	(mod: mf \is_modulus_for F)
+	(lstprp: listfprop F listf):
+		forall phi q', phi \from_dom F -> Ff_mod phi q'.
 Proof.
-have [Ff Fprop] := (exists_choice F somephi).
-have [sec isminsec] := minimal_section sur.
-have [mf [mprop minmod]] := exists_minmod isminsec sur Fcont.
-have [listf listfprop] := listsf somea.
-set psi_F := psiF mf listf Ff.
+move => phi q' phifd m.
+have phinprop:= (phi'prop cnt m lstprp phifd).
+have coin: (listf (L phi m)) \and phi \coincide_on (init_seg m) by apply/icf_flst_coin/(phinprop).2.
+move: mod (mod (listf (L phi m)) q' (phinprop).1) => _ [/=_ mprop] ineq.
+move: phifd (phinprop).1 => [] Fphi FphiFphi [] Fphin FphinFphin.
+apply/mprop; [ apply/ (icf _ Fphin) | | apply/(icf _ Fphi) ] => //.
+by apply/coin_mon; [apply/inseg_mon | apply coin].
+Qed.
 
-exists psi_F => phi phifd.
+Lemma U_step_compat phi q' (cmpt: compat F cnt mf listf):
+	phi \from_dom F -> Ff_mod phi q' -> U_step psiF phi q' (L phi (mf phi q')) = inl (Ff phi q').
+Proof.
+move => phifd Ffprop.
+rewrite /U_step/psiF/=length_flst_in_seg; case: ifP => [|/negP eq].
+	by rewrite Ffprop; last by apply/cmpt.
+by exfalso; apply eq; apply/cmpt.
+Qed.
 
-pose phin m := listf (flst phi (init_seg m)).
-have phinprop m:= (phi'prop cnt m listfprop phifd).
+Lemma U_psiF_cmpt_F
+	(sur: cnt \is_surjective_function)
+	(icf: Ff \is_choice_for F)
+	(mod: (fun phi q' => init_seg (mf phi q')) \is_modulus_of F)
+	(lstprp: listfprop F listf)
+	(cmpt: compat F cnt mf listf):
+		(U psiF) \ocomputes F.
+Proof.
+move => phi phifd.
+pose phin m := listf (L phi m).
+have phinprop m:= (phi'prop cnt m lstprp phifd).
 have coin m: (phin m) \and phi \coincide_on (init_seg m) by apply/icf_flst_coin/(phinprop m).2.
 pose phi' q' := phin (mf phi q').
 
-have Ffprop q' m: mf (phin m) q' <= m -> Ff (phin m) q' = Ff phi q'.
-	move: mprop (mprop (phin m) q' (phinprop m).1) => _ [/=_ mprop] ineq.
-	move: phifd (phinprop m).1 => [] Fphi FphiFphi [] Fphin FphinFphin.
-	apply/mprop; [ apply/ (Fprop _ Fphin) | | apply/(Fprop _ Fphi) ] => //.
-	by apply/coin_mon; [apply/inseg_mon | apply coin].
-
-have U_step_prop q': U_step psi_F phi q' (flst phi (init_seg (mf phi q'))) = inl (Ff phi q').
-	rewrite /U_step/psi_F/psiF/=length_flst_in_seg; case: ifP => [|/negP eq].
-		by rewrite Ffprop; last by apply/ (@minmod_ineq F _ sec _ mf _ _ _).
-	by exfalso; apply eq; apply/ (@minmod_ineq F _ sec _ mf _ _ _).
-
-have U_stops q': U psi_F (mf phi q') phi q' = some (Ff phi q').
+have U_stops q': U psiF (mf phi q') phi q' = some (Ff phi q').
 	rewrite /U.
-	case: (@psiFprop sec mf _ Ff phi q' isminsec _ listfprop phifd (mf phi q'))=> // [[m [ineq ->]] | eq].
-		by congr some; rewrite (Ffprop q' m).
-	case: (PeanoNat.Nat.zero_or_succ (mf phi q')) => [null | [m sm]].
-		have eq': flst phi (init_seg (mf phi q')) = nil by rewrite null.
-		by rewrite null /= -eq' U_step_prop.
-	have /eq eqn: m <= mf phi q' by rewrite sm.
-	by rewrite sm /= eqn -sm U_step_prop.
+	case: (psiFprop phi q'(mf phi q'))=> [ [] m []ineq eq | eq].
+		by rewrite eq; congr some; rewrite (Ffprop).
+	case E: (mf phi q') => [ | m].
+		have eq': flst phi (init_seg (mf phi q')) = nil by rewrite E.
+		by rewrite /= -eq' U_step_compat => //; apply/ Ffprop.
+	have /eq eqn: m <= mf phi q' by rewrite E leqnSn.
+	by rewrite /= eqn -E U_step_compat => //; apply/ Ffprop.
 
 have [Fphi FphiFphi]:= phifd.
-have eq' q': U psi_F (mf phi q') phi q' = Some (Fphi q').
+have eq' q': U psiF (mf phi q') phi q' = Some (Fphi q').
 	rewrite U_stops; congr Some.
-	by apply: (mprop _ _ phifd).2; [ apply/ Fprop/FphiFphi | apply/ coin_ref | ].
+	by apply: (mod _ _ phifd).2; [ apply/icf/FphiFphi | apply/ coin_ref | ].
 split => [|Mphi MphiMphi]; first by exists Fphi => q'; exists (mf phi q'); rewrite eq'.
 have ->: Mphi = Fphi => //.
 apply: functional_extensionality => q'; apply Some_inj.
@@ -294,6 +325,22 @@ have [n eq] := MphiMphi q'.
 case/orP: (leq_total n (mf phi q')) => ineq.
 	by rewrite -(U_mon ineq eq).
 by rewrite -(U_mon ineq (eq' q')).
+Qed.
+End PSIF.
+
+Lemma U_universal (someq: Q) (somea : A) (somephi': B') (count: Q \is_countable):
+	forall F, F \is_continuous -> exists psiF, (U psiF) \ocomputes F.
+Proof.
+have [ | cnt sur]:= (count_sur Q).2.
+	by split; [apply (inhabits someq) | apply count].
+move => F Fcont.
+have [Ff Fprop] := exists_choice F somephi'.
+have [sec isminsec] := minimal_section sur.
+have [mf [mprop minmod]] := exists_minmod isminsec sur Fcont.
+have [listf listfprop] := exists_lstf F somea.
+exists (psiF cnt mf listf Ff).
+apply/U_psiF_cmpt_F => //.
+exact: (minmod_compat isminsec).
 Qed.
 
 (* Lemma comp_cont:

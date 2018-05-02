@@ -64,7 +64,7 @@ have []:= (count_sur (questions X)).2.
 	by split; [apply: inhabits (some_question X) | apply (countable_questions X)].
 move => cnt sur.
 have [[ftot fsing] [F [Frf Fcont]]]:= (projT2 f).
-have [psiF psinF]:= (U_is_universal (some_answer X) (fun q => (some_answer Y)) sur Fcont).
+have [psiF psinF]:= (U_universal (some_question X) (some_answer X) (fun q => (some_answer Y)) (countable_questions X) Fcont).
 exists psiF.
 rewrite /is_fun_name.
 apply/ tight_trans; last by apply Frf.

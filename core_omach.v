@@ -48,15 +48,19 @@ Definition is_mon_omac (M: B o~> B):=
 	forall c c' phi q' a', pickle c <= pickle c' -> M c phi q' = Some a' -> M c' phi q' = Some a'.
 Notation "M '\is_monotone_oracle_machine'" := (is_mon_omac M) (at level 2).
 
+Lemma eq_mon M c c' phi q' a' b': M c phi q' = Some a' -> M c' phi q' = Some b' ->
+	M \is_monotone_oracle_machine -> a' = b'.
+Proof.
+case/orP: (leq_total (pickle c) (pickle c')) => ineq eq eq' mon; apply /Some_inj.
+	by rewrite -(mon c c' phi q' a' ineq) => //.
+by apply esym; rewrite -(mon c' c phi q' b' ineq) => //.
+Qed.
+
 Lemma mon_sing_op (M: B o~> B):
 	M \is_monotone_oracle_machine -> (oeval M) \is_single_valued.
 Proof.
-move => mon phi Fphi Fphi' ev ev'.
-apply functional_extensionality => q'; apply Some_inj.
-move: (ev q') (ev' q') => [n val] [n' val'].
-case/orP: (leq_total (pickle n) (pickle n')) => ineq.
-	by rewrite -(mon n n' phi q').
-by rewrite -val -(mon n' n phi q').
+move => mon phi Fphi Fphi' ev ev'; apply functional_extensionality => q'.
+by move: (ev q') (ev' q') => [n val] [n' val']; apply /(eq_mon val val').
 Qed.
 
 Definition mon_cmpt (M: B o~> B') (F: B ->> B'):=

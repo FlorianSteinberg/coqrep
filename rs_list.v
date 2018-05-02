@@ -29,10 +29,10 @@ Lemma rep_list_rep X:
 Proof.
 split; first exact: rep_list_sing.
 elim.
-	exists (fun _ => (None, (0,some_answer X))).
+	exists (fun _ => (None, some_answer _)).
 	split; first by exists None.
 	move => a b; exact: F2MF_tot.
-move => a L [phi [[/=onan [phinonan  onanL]] _]].
+move => a L [phi [[/=onan [phinonan onanL]] _]].
 have [psi psina]:= rep_sur X a.
 exists (fun q => (Some star, match q with
 	| inl str => (0, some_answer X)
@@ -43,9 +43,8 @@ exists (fun q => (Some star, match q with
 	end
 end)).
 split; last by move => c d; exact: F2MF_tot.
-case: onan phinonan onanL; last first.
-	move => eq <-; exists (Some (0, fun _ => a)); split; split; split => //.
-move => nan phinnan nanL.
+case: onan phinonan onanL => [nan phinnan nanL | eq]; last first.
+	by move <-; exists (Some (0, fun _ => a)); do 3 split => //.
 exists (Some ((size L), fun n => if n < size L then nan.2 n else a)).
 split.
 	split; split => //=; rewrite /rprj => n /=.
@@ -53,10 +52,8 @@ split.
 rewrite -nanL /F2MF /NXN_lst size_inseg/=.
 have ->: S nan.1 < S nan.1 = false by apply ltnn.
 have ->: nan.1 < S nan.1 by apply ltnSn.
-suffices: in_seg (fun n : nat => if n < nan.1.+1 then nan.2 n else a) nan.1 = in_seg nan.2 nan.1.
-	by move => ->.
-elim: nan.1 => // n ih.
-by rewrite inseg_trunc.
+have ->: in_seg (fun n : nat => if n < nan.1.+1 then nan.2 n else a) nan.1 = in_seg nan.2 nan.1 => //.
+by elim: nan.1 => // n ih; rewrite inseg_trunc.
 Qed.
 
 Canonical rep_space_list (X: rep_space) := @make_rep_space
@@ -70,25 +67,31 @@ Canonical rep_space_list (X: rep_space) := @make_rep_space
 	(countable_answers (rep_space_opt (rep_space_prod rep_space_nat (rep_space_usig_prod X))))
 	(@rep_list_rep X).
 
+Lemma nil_rec_elt X:
+	(@nil X: rep_space_list X) \is_recursive_element.
+Proof.
+exists (fun _ => (None, some_answer _)).
+by split; [exists None | move => b c; exact: F2MF_tot].
+Qed.
+
 Definition lnm_size X (phi: names (rep_space_list X)) :=
 	match (phi (inl star)).1 with
 		| Some str => S (unsm phi (inl star)).1
 		| None => 0
 	end.
 
-Lemma lnm_size_crct X K phi:
+Lemma lnm_size_spec X K phi:
 	phi \is_name_of K -> (@lnm_size X phi) = size K.
 Proof.
-move => [[[]]]; rewrite /F2MF/NXN_lst/=/lnm_size/=; last by move => [-> <-].
-by move => [n an] [[-> [/=name _]] eq] _; rewrite -eq /= -name /lprj size_inseg.
+do 3 case; rewrite /NXN_lst/=/lnm_size/=; last by move => [-> <-].
+by move => [n an] [[-> [/=<- _]] <-] _; rewrite/=size_inseg.
 Qed.
 
 Lemma size_rec_fun X:
 	(fun K: rep_space_list X => size K) \is_recursive_function.
 Proof.
-exists (fun phi str => lnm_size phi).
-move => phi K phinK.
-by rewrite (lnm_size_crct phinK).
+exists (fun phi str => lnm_size phi) => phi K phinK.
+by rewrite (lnm_size_spec phinK).
 Qed.
 
 Definition lnm_list X (phi: names (rep_space_list X)):=
@@ -98,33 +101,39 @@ Lemma lnm_list_size X phi:
 	@lnm_size X phi = size (lnm_list phi).
 Proof. by rewrite /lnm_list size_inseg. Qed.
 
-Lemma cons_rec_fun (X: rep_space):
-	(fun p => cons (p.1: X) p.2) \is_recursive_function.
-Proof.
-exists (fun (phi: names (rep_space_prod X (rep_space_list X))) q => match q with
-	| inl str => (some star, (0, some_answer X))
-	| inr q' => match q' with
+Definition cons_frlzr X := fun (phi: names (rep_space_prod X (rep_space_list X))) q =>
+match (q: questions (rep_space_list X)) with
+	| inl str => (some star, some_answer _): answers (rep_space_opt _)
+	| inr q' => match (q': questions (rep_space_opt _)) with
 		| inl str => (Some star, ((lnm_size (rprj phi)), some_answer X))
 		| inr p => (Some star, (0,if p.1 < lnm_size (rprj phi)
 		then rprj (unsm (rprj phi)) p else (lprj phi p.2)))
 	end
-end).
+end.
+
+Lemma cons_frlzr_cons X:
+	(@cons_frlzr X) \is_realizer_function_for (fun xL => cons xL.1 xL.2).
+Proof.
 move => phi [x K] [/=phinx phinK].
-have eq:= (lnm_size_crct phinK).
+have eq:= (lnm_size_spec phinK).
 have phinxK: phi \is_name_of (x, K) by split.
 move: phinK => [[/=y [/=phiny yK]] _].
 split; last by move => a b; exact: F2MF_tot.
 case: y phiny yK => [nan phiny nanK | phiny yK]; last first.
 	exists (Some (0, fun n => x)).
 	rewrite -yK/= in eq => //; split; last by rewrite -yK.
-	by split => //; split; [rewrite /lprj/id_rep eq | rewrite eq] => /=.
-exists (Some (size  K, (fun n => if n < size K then nan.2 n else x))) => /=.
-split; first by do 2 split => //; rewrite eq/rprj; by move => n/=; case: (n < size K) => //; apply phiny.2.2.
+	by split; last by split; rewrite /= eq.
+exists (Some (size  K, (fun n => if n < size K then nan.2 n else x))).
+split; first by do 2 split => //; rewrite/=eq/rprj=> n/=; case: (n < size K) => //; apply phiny.2.2.
 rewrite -nanK /F2MF/NXN_lst size_inseg /=.
-replace (nan.1.+1 < nan.1.+1) with false by by rewrite ltnn.
-replace (nan.1 < nan.1.+1) with true by by rewrite ltnSn.
-by rewrite inseg_trunc => //.
+have ->: (nan.1.+1 < nan.1.+1) = false by rewrite ltnn.
+have ->: (nan.1 < nan.1.+1) = true by rewrite ltnSn.
+by rewrite inseg_trunc.
 Qed.
+
+Lemma cons_rec_fun (X: rep_space):
+	(@cons X) \is_recursive_function.
+Proof. exists (@cons_frlzr X); exact: cons_frlzr_cons. Defined.
 
 Lemma list_rs_rec_pind (X Y Z: rep_space) (g: Z -> Y) (h: (rep_space_prod Z (rep_space_prod X Y)) -> Y) f:
 	g \is_recursive_function -> h \is_recursive_function
@@ -146,11 +155,10 @@ pose fM' := fix fM' n (phi: names (rep_space_prod Z (rep_space_list X))) := matc
 end.
 exists (fun phi q => fM' (lnm_size (rprj phi)) phi q).
 move => phi [z K] [/=phinz phinK].
-elim: K phi phinz phinK => [ | a K].
-	by rewrite feq => phi phinz phinK; rewrite /fM' (lnm_size_crct phinK)/=; apply gMcmpt.
-move => ih phi phinz phinK.
+elim: K phi phinz phinK => [ | a K ih] phi phinz phinK.
+	by rewrite feq /fM' (lnm_size_spec phinK)/=; apply gMcmpt.
 replace (f (z,(a :: K))) with (h (z, (a, f (z,K)))) by by rewrite (feq (z,a::K)) feq.
-rewrite (lnm_size_crct phinK).
+rewrite (lnm_size_spec phinK).
 have [[y [phiny yaK]] _]:= phinK.
 case: y phiny yaK => // [[n an]] [nn [/=phinn phinan]] yaK.
 rewrite /id_rep/lprj in phinn.
@@ -164,9 +172,8 @@ case E: (size K) => [ | k].
 	have ->: K = nil by case T: K E => //.
 	by rewrite /fM' feq/=; apply gMcmpt.
 have psinK: (psi (S k) (rprj phi)) \is_name_of K.
-	split; last by move => stuf stuff; exact: F2MF_tot.
-	exists (Some (k, an)); split.
-	split => //.
+	split; last by move => b c; exact: F2MF_tot.
+	exists (Some (k, an)); split => //.
 	rewrite /F2MF/NXN_lst/=.
 	have [_ <-]:= yaK.
 	have ->: n = size K by rewrite -anK size_inseg.
@@ -205,16 +212,8 @@ Lemma map_prec (X Y: rep_space) (f: X -> Y):
 	f \is_recursive_function -> (fun K => map f K) \is_recursive_function.
 Proof.
 move => frec.
-have nc: (@nil Y) \is_recursive_element.
-	exists (fun q => (None, (0, some_answer Y))).
-	split; last by move => a b; exact: F2MF_tot.
-	by exists None.
 cut (fun p => (f p.1 :: p.2)) \is_recursive_function => [hrec| ].
-	by apply/ (list_rs_rec_ind nc hrec).
-apply/rec_fun_comp; first	apply diag_rec_fun.
-apply/ rec_fun_comp; first by apply prod_rec_fun; [apply/ fst_rec_fun | apply/ snd_rec_fun].
-apply/ rec_fun_comp; first by apply prod_rec_fun; [apply frec | apply id_rec_fun].
-by apply cons_rec_fun.
-done. done. done.
+	by apply/ (list_rs_rec_ind (nil_rec_elt _) hrec).
+by apply/ rec_fun_comp; [apply (prod_rec_fun frec (id_rec_fun _)) | apply cons_rec_fun | ].
 Qed.
 End LISTSPACES.
