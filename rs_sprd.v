@@ -69,6 +69,7 @@ move => sprd mon sing [phi phinx]; have [M Mprop]:= sprd_cmpt_rec sprd mon; exis
 by have [ | y' [Mphiny' fxy']]:= Mprop phi x phinx _; [exists y | rewrite (sing x y y')].
 Qed.
 
+(*
 Lemma fun_sprd (X Y: rep_space): (X c-> Y) \is_spread.
 Proof.
 move => N.
@@ -129,5 +130,5 @@ have [n val] := ass q.
 exists n.
 rewrite /psi in val.
 Admitted.
-
+*)
 End SPREADS.

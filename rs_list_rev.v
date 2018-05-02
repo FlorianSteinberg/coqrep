@@ -315,7 +315,7 @@ move => phi x phinx.
 by apply (fMprop (name_pair (fun _ => star) phi) (star, x)).
 Defined.
 
-Lemma nil_rec_elt (X: rep_space):
+Lemma nil_rev_rec_elt (X: rep_space):
 	(@nil X) \is_recursive_element.
 Proof.
 exists (fun _ => (None, some_answer _)).
@@ -325,7 +325,7 @@ Defined.
 Lemma cmpt_elt_seq_rev (X: rep_space) K:
 	(forall x: X, List.In x K -> x \is_recursive_element) -> K \is_recursive_element.
 Proof.
-elim: K => [ prp | a K ih prp]; first exact: nil_rec_elt.
+elim: K => [ prp | a K ih prp]; first exact: nil_rev_rec_elt.
 apply/ rec_fun_rec_elt.
 	apply ih => x listin.
 	by apply prp; right.
@@ -346,7 +346,7 @@ have hrec: (fun p => (f p.1 :: p.2)) \is_recursive_function.
 	apply/ rec_fun_comp; first by apply prod_rec_fun; [apply frec | apply id_rec_fun].
 	by apply cons_rec_fun_rev.
 	done. done. done.
-by apply (list_rev_rs_rec_ind (nil_rec_elt Y) hrec).
+by apply (list_rev_rs_rec_ind (nil_rev_rec_elt Y) hrec).
 Defined.
 
 Lemma map_rec_rev_par (X Y Z: rep_space) (f: Z*X -> Y): f \is_recursive_function ->
@@ -358,7 +358,7 @@ have hrec: (fun zaT => (f (zaT.1, zaT.2.1) :: zaT.2.2)) \is_recursive_function.
 	apply/ rec_fun_comp; first by apply prod_rec_fun; [apply frec | apply id_rec_fun].
 	by apply cons_rec_fun_rev.
 	done. done.
-apply/ (list_rev_rs_rec_pind (@cnst_rec_fun Z (rep_space_list_rev Y) nil (@nil_rec_elt Y)) hrec).
+apply/ (list_rev_rs_rec_pind (@cnst_rec_fun Z (rep_space_list_rev Y) nil (@nil_rev_rec_elt Y)) hrec).
 move => [z K] /=; by elim: K => // a K <-.
 Defined.
 

@@ -51,7 +51,7 @@ apply /rec_fun_rec_elt; last first.
 		by apply cons_rec_fun_rev.
 	by apply Q_rec_elts.
 	done.
-exact: nil_rec_elt.
+exact/ nil_rev_rec_elt.
 Defined.
 (* Here is how to access the elements of the list: *)
 Compute rprj (unsm (projT1 lst_rec_elt)) (0%nat, 1#2).
