@@ -601,6 +601,56 @@ Lemma lpT2p_rec_cons a (l l1 l2 : seq R) :
      (lpT2p_rec l (lsub_poly (0 :: lscal_poly 2%:R  l1) l2) l1).
 Proof. by []. Qed.
 
+Lemma cons_poly_inj:
+	forall a p b q, cons_poly (a: R) p = cons_poly b q -> a = b /\ p = q.
+Proof.
+move => a p b q /= eq.
+suffices: size (cons_poly (a - b) (p - q)) = 0%nat.
+	rewrite size_cons_poly.
+	case: nilP => //.
+	rewrite -polyseq0 => /poly_inj /subr0_eq ->.
+	by case: eqP => // /subr0_eq -> //.
+rewrite cons_poly_def.
+rewrite mulrBl.
+rewrite polyC_sub.
+rewrite addrAC addrA -cons_poly_def eq.
+by rewrite cons_poly_def addrK subrr polyseq0.
+Qed.
+
+Lemma cons_poly_inj0:
+	forall a p, cons_poly (a: R) p = 0 -> a = 0 /\ p = 0.
+Proof.
+move => a p.
+rewrite (_ : 0 = 0 * 'X + 0); last by rewrite !rm0.
+rewrite -cons_poly_def.
+move => /cons_poly_inj [-> ->].
+by rewrite cons_poly_def !rm0.
+Qed.
+
+Lemma lpT2p_rec_eq0 (q p1 p2 : seq R):
+	Poly q = 0 -> Poly (lpT2p_rec q p1 p2) = 0.
+Proof.
+elim: q p1 p2 => // a q ih /= p1 p2.
+move => /cons_poly_inj0 [-> eq].
+rewrite ladd_poly_spec lscal_poly_spec.
+by rewrite ih // -mul_polyC !rm0.
+Qed.
+
+Lemma lpT2p_rec_eq (q1 q2 p1 p2: seq R) :
+  Poly q1 = Poly q2 -> Poly (lpT2p_rec q1 p1 p2) = Poly (lpT2p_rec q2 p1 p2).
+Proof.
+elim: q1 q2 p1 p2 => //= [q2 p1 p2 eq | a q1 ih q2 p1 p2 eq].
+	by rewrite lpT2p_rec_eq0.
+rewrite ladd_poly_spec lscal_poly_spec.
+case: q2 eq => /=.
+	move => /cons_poly_inj0 [-> eq].
+	rewrite !rm0.
+	by apply lpT2p_rec_eq0.
+move => b q2 /cons_poly_inj [-> eq].
+rewrite ladd_poly_spec lscal_poly_spec /=.
+by rewrite (ih q2).
+Qed.
+
 Lemma lpT2p_rec_spec n (l l1 l2 : seq R) :
    Poly l1 = 'T_n.+1 -> Poly l2 = 'T_n ->
    Poly (lpT2p_rec l l1 l2) =
@@ -624,10 +674,26 @@ Definition lpT2p {R : ringType} (l : seq R) :=
   | _ => [::]
   end.
 
-Lemma lpT2p_eq (q1 q2 : seq R) :
-  Poly q1 = Poly q2 -> lpT2p q1 = lpT2p q2.
+Lemma lpT2p_eq0 (q : seq R) :
+  Poly q = 0 -> Poly (lpT2p q) = 0.
 Proof.
-Admitted.
+case: q => // a q.
+rewrite ladd_poly_spec =>/= /cons_poly_inj0 [-> eq].
+rewrite cons_poly_def !rm0.
+by rewrite lpT2p_rec_eq0.
+Qed.
+
+Lemma lpT2p_eq (q1 q2 : seq R) :
+  Poly q1 = Poly q2 -> Poly (lpT2p q1) = Poly (lpT2p q2).
+Proof.
+case: q1 q2 => // [q2 /= eq | a q1 q2].
+	by rewrite lpT2p_eq0.
+case: q2 => // [/cons_poly_inj0 [-> eq] | b q2 /=/cons_poly_inj [-> eq]].
+	rewrite ladd_cons_poly_spec !rm0.
+	by rewrite lpT2p_rec_eq0.
+rewrite !ladd_cons_poly_spec.
+by rewrite (lpT2p_rec_eq _ _ eq).
+Qed.
 
 Lemma lpT2p_spec (l : seq R) :
    Poly (lpT2p l) = pT2p (Poly l).
@@ -908,6 +974,7 @@ End LEMMAS.
 (* T_6(x)	=	32 x^6 - 48 x^4 + 18 x^2 - 1 *)
 
 Definition t0 := [:: ratz (Posz 1)].
+Print t0.
 Definition t1 := [:: 0; ratz (Posz 1)].
 Definition t2 := [:: ratz (-(Posz 1)); 0; ratz (Posz 2)].
 Definition t3 := [:: 0; ratz (- (Posz 3)); 0; ratz (Posz 4)].

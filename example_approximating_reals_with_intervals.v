@@ -114,8 +114,9 @@ rewrite /D2R/proj_val/=/SFBI2.toX/=/Interval_definitions.FtoX/=.
 by case: BigIntRadix2.mantissa_sign (Float m e) => //.
 Qed.
 
+Print Float.
 Lemma D2R_Float (m e: bigZ):
-  I.T.toR (Float m e) = IZR [m]%bigZ * powerRZ 2 [e]%bigZ.
+  D2R (Float m e) = IZR [m]%bigZ * powerRZ 2 [e]%bigZ.
 Proof.
 rewrite /I.T.toR /SFBI2.toX /SFBI2.toF/=.
 case: (BigIntRadix2.mantissa_sign m) (BigIntRadix2.mantissa_sign_correct m);

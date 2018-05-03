@@ -42,22 +42,23 @@ Notation bounded := I.bounded.
 (* All the operations *)
 Search Interval_interval_float.f_interval _.
 
+
+Section stuff.
 Variable prec:F.precision.
 Notation add I J := (I.add prec I J).
 Notation mul I J := (I.mul prec I J).
 Notation sub I J := (I.sub prec I J).
-Notation scl2 I := (I.scale I (F.ZtoS 2)).
+Notation scl2 I := (I.scale2 I (F.ZtoS 1)).
 Notation I0 := (I.fromZ 0).
 
 Fixpoint CbIA q (x : ID) : ID * ID :=
  if q is a :: q' then
    let t := CbIA q' x in
-   let a1 := sub (scl2 (mul (add a (fst t)) x)) (snd t) in
+   let a1 := sub (add a (scl2 (mul (fst t) x))) (snd t) in
    (a1, (fst t)) else (I0, I0).
 
 Definition CshawIA p x := sub (CbIA p x).1 (mul (CbIA p x).2 x).
 
-Print I.mul.
 Lemma cntd_I0:
 	forall x, x \contained_in I0 -> x = 0%R.
 Proof.
@@ -84,31 +85,44 @@ replace (Xreal (x - y)) with (Xsub (Xreal x) (Xreal y)) by trivial.
 by apply I.sub_correct.
 Qed.
 
-Lemma CbIA_crct (p: {poly R}) (pI: seq ID) (x: R) (I: ID):
-	(forall i, (p`_i) \contained_in (nth I0 pI i)) -> x \contained_in I ->
+Lemma stuff (p : {poly R}):
+	(forall i : nat, p`_i \contained_in nth I0 [::] i) -> p = 0.
+Proof.
+move => prp.
+apply polyP => i.
+rewrite coef0.
+apply cntd_I0.
+move: (prp i).
+Search _ Poly.
+by rewrite nth_default.
+Qed.
+
+Lemma I00:
+	0 \contained_in I0.
+Proof.
+by rewrite /=F.fromZ_correct/=; lra.
+Qed.
+
+Lemma CbIA_crct (p: seq R) (pI: seq ID) (x: R) (I: ID):
+	(forall i, (p`_i) \contained_in (nth I0 pI i)) -> x \contained_in I  -> size p = size pI ->
 		(Cb p x).1 \contained_in (CbIA pI I).1 /\ (Cb p x).2 \contained_in (CbIA pI I).2.
 Proof.
 move => prp xJ.
-elim: pI p prp => [p prp | J pI ih p prp].
-	have ->: p = 0.
-		apply polyP => i.
-		rewrite [nth 0 (polyseq 0) _]nth_default; last by rewrite size_poly0.
-		specialize (prp i).
-		move: prp; rewrite [nth I0 _ _]nth_default => // prp.
-		by apply cntd_I0.
-	have ->: Cb (0%:P) x = (0%R, 0%R) by by rewrite polyseq0/=.
-	replace (CbIA [::] I) with (I0,I0) by by rewrite /CbIA.
-	rewrite /=.
-	by rewrite /= F.fromZ_correct/Z2R; lra.
-split.
+elim: pI p prp => [[ | a p]// prp _ | J pI ih [ | a p]// prp eq].
+	by split; apply I00.
+rewrite /=.
+case: (ih p) => // [i | | ih1 ih2 ].
+		by apply (prp (S i)).
+	by case: eq.
+split => //.
 Admitted.
 
 Lemma CshawIA_crct (p: {poly R}) (pI: seq ID) (x: R) (J: ID):
-	(forall i, p`_i \contained_in (nth I0 pI i)) -> x \contained_in J ->
+	(forall i, p`_i \contained_in (nth I0 pI i)) -> x \contained_in J -> size p = size pI ->
 		(Cshaw p x) \contained_in (CshawIA pI J).
 Proof.
 move => prp xJ.
-elim: pI p prp => [p prp | I pI ih p prp].
+case: pI p prp => [p prp eq | I pI p prp eq].
 	have ->: p = 0.
 		apply polyP => i.
 		rewrite [nth 0 (polyseq 0) _]nth_default; last by rewrite size_poly0.
@@ -128,12 +142,42 @@ elim: pI p prp => [p prp | I pI ih p prp].
 rewrite -[p]polyseqK -lCshaw_spec/lCshaw/CshawIA.
 apply sub_correct_R; first by apply CbIA_crct.
 by apply mul_correct_R; first by apply CbIA_crct.
-Admitted.
+Qed.
 
-Definition I1 := I.fromZ (-1)%Z.
+End stuff.
 
 End MyClenshawStuff.
 
 Module V := MyClenshawStuff  SFBI2.
 
-Compute V.I1.
+Require Import QArith.
+Check V.CshawIA.
+Print s_float.
+From Bignums Require Import BigQ.
+Check bigQ.
+Definition a := 1%bigQ.
+Search _ (_-> BigQ.t_).
+Compute (2 * 4)%bigQ.
+Print s_float.
+Import Interval.Interval_specific_ops.
+Definition D2Q (d: s_float bigZ bigZ) := match d with
+	| Fnan => 0%bigQ
+	| Float m e => (BigQ.Qz m * (2^([e]%bigZ)))%bigQ
+end.
+
+Locate PtoP.
+Definition I1 := I.fromZ (-1)%Z.
+Definition I2 := I.fromZ (2)%Z.
+Definition I3 := I.fromZ (3)%Z.
+Definition lst := [:: I1; I2].
+Check I1.
+Import Interval.Interval_interval_float.
+Definition mapIQ I := match I with
+	| Inan => Inan
+	| Ibnd a b => Ibnd (D2Q a) (D2Q b)
+end.
+Compute (mapIQ (V.CshawIA (SFBI2.PtoP 5) [::I.fromZ(-1); (I.fromZ (2)%Z)] (I.fromZ (-1)))).
+Print V.CbIA.
+Compute (lCshaw [::ratz (-1); ratz (2)] (ratz (-1))).
+Search _ s_float.
+Check Interval_specific_ops.Float.
