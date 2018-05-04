@@ -4,6 +4,7 @@ From mathcomp Require Import all_algebra.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
+Require Import core_mf.
 
 Import GRing.Theory.
 Open Local Scope ring_scope.
@@ -587,6 +588,13 @@ Qed.
 Lemma pT2p0 : pT2p 0 = 0 :> {poly R}.
 Proof. by rewrite /pT2p size_poly0 big_ord0. Qed.
 
+Lemma pT2pC c: pT2p c%:P = c%:P :> {poly R}.
+Proof.
+rewrite /pT2p size_polyC.
+case E: (c != 0) => /=; last by rewrite big_ord0; move/eqP: E => ->.
+by rewrite big_ord_recr /= big_ord0 !rm0 polyseqC E /= alg_polyC.
+Qed.
+
 Fixpoint lpT2p_rec {R: ringType} l (p1 p2 : seq R) :=
 match l with
 |  a :: l =>
@@ -722,12 +730,16 @@ Section P2PT.
 
 Variable R : unitRingType.
 
-Fixpoint Tmulx_rec (l : seq R) :=
+Fixpoint lTmulx_rec (l : seq R) :=
   match l with 
   | a :: ((b :: c :: l) as l1) =>
-      (a + c) / 2%:R :: Tmulx_rec l1 
+      (a + c) / 2%:R :: lTmulx_rec l1 
   | l =>  [seq x /2%:R | x <- l]
   end.
+
+Lemma lTmulx_rec_step a b c (l : seq R) :
+	lTmulx_rec (a :: b :: c :: l) = (a + c) / 2%:R :: lTmulx_rec (b :: c :: l).
+Proof. done. Qed.
 
 Lemma XpT n : 
    (2%:R : R) \is a GRing.unit -> 
@@ -738,11 +750,11 @@ rewrite pTSS scalerDr addrCA scalerN subrr addr0.
 by rewrite -scaler_nat -scalerAl scalerA mulVr // scale1r.
 Qed.
 
-Lemma Tmulx_rec_spec (l : seq R)  n :
+Lemma lTmulx_rec_spec (l : seq R)  n :
   (2%:R : R) \is a GRing.unit -> 
   ('X * \sum_(i < size l) l`_i *: 'T_(n.+1 + i))%R =
   (l`_0 / 2%:R) *: 'T_n + (l`_1 / 2%:R) *: 'T_n.+1 +
-  \sum_(i < size (Tmulx_rec l)) (Tmulx_rec l)`_i *: 'T_(n.+2 + i) :> {poly R}.
+  \sum_(i < size (lTmulx_rec l)) (lTmulx_rec l)`_i *: 'T_(n.+2 + i) :> {poly R}.
 Proof.
 move=> H.
 elim: l n => [|a [|b [|c l]] IH] n.
@@ -757,7 +769,7 @@ elim: l n => [|a [|b [|c l]] IH] n.
   rewrite commr_polyX XpT // scalerDr !scalerA -!addrA; congr (_ + _).
   rewrite [RHS]addrCA; congr (_ + _).
   by rewrite scalerDr !scalerA.
-rewrite -[Tmulx_rec _]/((a + c) / 2%:R :: Tmulx_rec  [:: b, c & l]).
+rewrite -[lTmulx_rec _]/((a + c) / 2%:R :: lTmulx_rec  [:: b, c & l]).
 set u := [:: b, _ & _].
 rewrite -[size _]/(size [:: b, c & l]).+1.
 rewrite big_ord_recl mulrDr.
@@ -767,7 +779,7 @@ rewrite (eq_bigr f) => [|i _]; last first.
 rewrite {f}IH.
 rewrite ![_`_ _]/= addn0.
 rewrite -/u.
-set v := Tmulx_rec _.
+set v := lTmulx_rec _.
 rewrite -[size (_ :: _)]/(size v).+1.
 rewrite [in RHS]big_ord_recl.
 rewrite ![_`_ _]/= addn0.
@@ -781,30 +793,90 @@ rewrite -commr_polyX -scalerAl.
 by rewrite commr_polyX XpT // scalerDr !scalerA.
 Qed.
 
-Lemma size_Tmulx_rec l : size (Tmulx_rec l) = size l.
+Lemma size_lTmulx_rec l : size (lTmulx_rec l) = size l.
 Proof.
 elim: l => //= a [|b [|c l1]] IH //=.
 by rewrite IH.
 Qed.
 
-Definition Tmulx l :=
-  Tmulx_rec (0 :: (if l is a :: l then (a *+ 2 :: l) else l)).
+Lemma lTmulx_rec_eq0 L:
+	Poly L = 0 -> Poly (lTmulx_rec L) = 0.
+Proof.
+elim: L => // a L ih.
+rewrite [Poly _]/= => /= /cons_poly_inj0 [-> eq].
+case: L eq ih => [_ /= | b L]; first by rewrite !cons_poly_def !rm0.
+rewrite [Poly _]/= => /cons_poly_inj0 [-> eq] ih.
+case: L eq ih => [_ /= | c L]; first by rewrite !cons_poly_def !rm0.
+rewrite [Poly _]/= => /cons_poly_inj0 [-> eq]; rewrite !rm0.
+by rewrite /= !cons_poly_def !rm0 => ->; try rewrite eq; rewrite !rm0.
+Qed.
 
-Lemma size_Tmulx l : l != [::] -> size (Tmulx l) = (size l).+1.
-Proof. by case: l => // a l; rewrite size_Tmulx_rec. Qed.
+Lemma Poly_cons (a: R) K:
+	Poly (a :: K) = cons_poly a (Poly K).
+Proof. done. Qed.
 
-Lemma Tmulx_spec (l : seq R) :
+Lemma lTmulx_rec_eq L K:
+	Poly L = Poly K -> Poly (lTmulx_rec L) = Poly (lTmulx_rec K).
+Proof.
+elim: L K => [/= K eq | a L ih K]; first by rewrite lTmulx_rec_eq0.
+case: K => [eq | a' K]; first by rewrite [lTmulx_rec [::]]/= lTmulx_rec_eq0.
+rewrite ![Poly (_ :: _)]/= => /cons_poly_inj [-> eq].
+case: L eq ih => [ | b L].
+	case: K => // b' K; rewrite ![Poly _]/= => /esym /cons_poly_inj0 [-> eq] ih.
+	case: K eq => [ | c' K]; first by rewrite /= !cons_poly_def !rm0.
+	rewrite [Poly _]/= => /cons_poly_inj0 [-> /esym eq].
+	rewrite lTmulx_rec_step !rm0.
+	by rewrite !Poly_cons -ih; rewrite /= !cons_poly_def; try rewrite -eq; rewrite !rm0.
+case: K.
+	rewrite ![Poly _]/= => /cons_poly_inj0 [->].
+	case: L => [ | c L]; first by rewrite /= !cons_poly_def !rm0.
+	rewrite Poly_cons => /cons_poly_inj0 [-> eq] ih.
+	by rewrite lTmulx_rec_step Poly_cons (ih nil); try rewrite eq; rewrite /= !cons_poly_def !rm0.
+move => b' K.
+rewrite !Poly_cons => /cons_poly_inj [->].
+case: L => [ | c L].
+	case: K => // c' K; rewrite ![Poly _]/= => /esym /cons_poly_inj0 [-> eq] ih.
+	by rewrite lTmulx_rec_step !rm0 !Poly_cons -ih /=; try rewrite eq; rewrite !cons_poly_def !rm0.
+case: K => [ | c' K].
+	rewrite ![Poly _]/= => /cons_poly_inj0 [-> ->] ih.
+	by rewrite lTmulx_rec_step Poly_cons (ih [:: b']) /= !cons_poly_def !rm0.
+rewrite Poly_cons Poly_cons => /cons_poly_inj [-> eq] ih.
+rewrite !lTmulx_rec_step !Poly_cons.
+by rewrite (ih [:: b', c' & K]); last by rewrite /= !cons_poly_def eq.
+Qed.
+
+Definition lTmulx l :=
+  lTmulx_rec (0 :: (if l is a :: l then (a *+ 2 :: l) else l)).
+
+Lemma lTmulx_nil : lTmulx [::] = [:: 0].
+Proof. by rewrite /lTmulx /= rm0. Qed.
+
+Lemma size_lTmulx l : size (lTmulx l) = (size l).+1.
+Proof. by case: l => // a l; rewrite size_lTmulx_rec. Qed.
+
+Lemma lTmulx_eq L K:
+	Poly L = Poly K -> Poly (lTmulx L) = Poly (lTmulx K).
+Proof.
+rewrite /lTmulx => eq.
+apply lTmulx_rec_eq => /=; rewrite !cons_poly_def !rm0; congr (_ * _).
+case: L K eq => [ | a L]; case => //=; last first.
+		by move => b K /cons_poly_inj [-> ->].
+	by move => /cons_poly_inj0 [-> ->]; rewrite !cons_poly_def !rm0.
+by move => a L /esym/cons_poly_inj0 [-> ->]; rewrite !cons_poly_def !rm0.
+Qed.
+
+Lemma lTmulx_prop (l : seq R) :
   (2%:R : R) \is a GRing.unit -> 
   ('X * \sum_(i < size l) l`_i *: 'T_i)%R =
-  \sum_(i < size (Tmulx l)) (Tmulx l)`_i *: 'T_i :> {poly R}.
+  \sum_(i < size (lTmulx l)) (lTmulx l)`_i *: 'T_i :> {poly R}.
 Proof.
 move=> H.
 case: l => [|a l].
   by rewrite !(big_ord0, big_ord_recl) /= !rm0.
 rewrite [size _]/= big_ord_recl.
 rewrite (eq_bigr (fun i : 'I_(size l) => l`_i *: 'T_(1 + i))) => [|i _]; last first.
-  by rewrite lift0.  
-rewrite mulrDr Tmulx_rec_spec // size_Tmulx_rec size_Tmulx //.
+  by rewrite lift0.
+rewrite mulrDr lTmulx_rec_spec // size_lTmulx_rec size_lTmulx //.
 case: l => [|b l].
   rewrite !(big_ord0, big_ord_recl) /= !rm0.
   rewrite -[a *+ _]mulr_natl -commr_nat mulrK //.
@@ -822,17 +894,64 @@ case: l => [|c l] /=.
 by rewrite mulrDl -[a *+ _]mulr_natl -commr_nat mulrK.
 Qed.
 
-Lemma Tmulx_nil : Tmulx [::] = [:: 0].
-Proof. by rewrite /Tmulx /= rm0. Qed.
+Definition is_Tmulx (p q: {poly R}):=
+	('X * \sum_(i < size p) p`_i *: 'T_i)%R =
+  \sum_(i < size q) (q)`_i *: 'T_i :> {poly R}.
+
+Lemma lTmulx_spec l:
+	(2%:R : R) \is a GRing.unit -> 
+  is_Tmulx (Poly l) (Poly (lTmulx l)).
+Proof.
+rewrite /is_Tmulx.
+(* I am not sure anymore that this is easy to prove. *)
+Admitted.
+
+Definition lpXt i := iter i lTmulx [::1].
+
+Lemma lpXt_step i:
+	lpXt (S i) = lTmulx (lpXt i).
+Proof.
+by rewrite [LHS]iterS.
+Qed.
+
+Definition pXt i := Poly (lpXt i).
+
+Lemma pXt0:
+	pXt 0 = 1%:P.
+Proof.
+by rewrite /pXt/= cons_poly_def !rm0.
+Qed.
+
+Lemma pXt_step i:
+	(2%:R : R) \is a GRing.unit -> is_Tmulx (pXt i) (pXt i.+1).
+Proof.
+by move => u2; apply lTmulx_spec.
+Qed.
+
+Lemma lpXt_spec i:
+	(2%:R : R) \is a GRing.unit -> pT2p (pXt i) = 'X^i.
+Proof.
+move => u2.
+elim: i => [ | i ih]; first by rewrite pXt0 pT2pC.
+rewrite /pXt lpXt_step.
+rewrite /pT2p.
+rewrite -lTmulx_spec //.
+rewrite [X in _ * X = _ ]ih.
+Search _ ('X^_) S in poly.
+by rewrite exprS.
+Qed.
+
+Definition p2pT' p : {poly R} := \sum_(i < size p) p`_i *: pXt i.
+
+Notation "'Xt_ n " := (pT n) (at level 3, n at level 2, format "''Xt_' n").
 
 Fixpoint lp2pT (l : seq R) :=
-  if l is a :: l1 then ladd_const_poly a (Tmulx (lp2pT l1))
+  if l is a :: l1 then ladd_const_poly a (lTmulx (lp2pT l1))
   else [::].
 
 Lemma lp2pT_cons a l :
-  lp2pT (a :: l) = ladd_const_poly a (Tmulx (lp2pT l)).
+  lp2pT (a :: l) = ladd_const_poly a (lTmulx (lp2pT l)).
 Proof. by []. Qed. 
-
 
 Lemma lp2pT_spec l :
   (2%:R : R) \is a GRing.unit -> 
@@ -841,10 +960,10 @@ Lemma lp2pT_spec l :
 Proof.
 move=> I2.
 elim: l => [|a l IH] /=; first by rewrite big_ord0.
-rewrite cons_poly_def IH commr_polyX Tmulx_spec //.
+rewrite cons_poly_def IH commr_polyX lTmulx_prop //.
 case: lp2pT => [|b l1].
-  by rewrite Tmulx_nil !(big_ord_recr, big_ord0) /= !rm0 alg_polyC.
-case: Tmulx (size_Tmulx (isT: (b :: l1) != [::])) => //= c l2 ->.
+  by rewrite lTmulx_nil !(big_ord_recr, big_ord0) /= !rm0 alg_polyC.
+case: lTmulx (size_lTmulx (b :: l1)) => //= c l2 ->.
 rewrite big_ord_recl [RHS]big_ord_recl addrAC /=; congr (_ + _).
 by rewrite !alg_polyC polyC_add addrC.
 Qed.
@@ -871,7 +990,6 @@ Lemma p2pT0 : p2pT 0 = 0 :> {poly R}.
 Proof. by rewrite /p2pT polyseq0. Qed.
 
 End P2PT.
-
 
 Section LEMMAS.
 
