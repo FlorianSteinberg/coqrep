@@ -35,7 +35,7 @@ pose z := up (/ r).
 have irLz : / r < IZR z by rewrite /z; have := archimed (/ r); lra.
 have zPos : 0 < IZR z by lra.
 pose p := Z.to_pos z.
-have pE : (' p)%Z = z by rewrite Z2Pos.id //; apply: lt_0_IZR.
+have pE : (Z.pos p)%Z = z by rewrite Z2Pos.id //; apply: lt_0_IZR.
 exists (1 # p).
 rewrite /Q2R /= pE [1 * / _]Rmult_1_l.
 split; first by apply: Rinv_0_lt_compat.
