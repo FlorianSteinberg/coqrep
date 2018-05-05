@@ -1,6 +1,7 @@
 *.stackdump
 *.cache
 *#
+*.d
 Makefile
 Makefile.conf
 *.aux

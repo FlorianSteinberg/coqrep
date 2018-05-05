@@ -224,13 +224,19 @@ split; last by move => a b; exact: F2MF_tot.
 by exists x; split; last by rewrite (rep_sing Y Fphi y (f x)); last by apply (prp phi x phinx).2.
 Qed.
 
-Lemma frlzr_is_rep X Y:
-  (@frlzr X Y) \is_representation.
+Lemma frlzr_sing X Y:
+	(@frlzr X Y) \is_single_valued.
 Proof.
-split => [F f g Frf Frg | f].
-	apply functional_extensionality => x.
-	have [phi phinx]:= (rep_sur X x).
-	by apply/ (rep_sing Y); [apply: (Frf phi x) | apply: (Frg phi x)].
+move => F f g Frf Frg.
+apply functional_extensionality => x.
+have [phi phinx]:= (rep_sur X x).
+by apply/ (rep_sing Y); [apply: (Frf phi x) | apply: (Frg phi x)].
+Qed.
+
+Lemma frlzr_cotot X Y:
+	is_cotot (@frlzr X Y).
+Proof.
+move => f.
 set R :=(fun phi psi => phi \from_dom (rep X) -> forall x, (rep X) phi x -> (rep Y) psi (f x)).
 have Rtot: R \is_total => [phi | ].
 	case: (classic (phi \from_dom (rep X))) => [[x phinx] | nfd].
@@ -241,10 +247,20 @@ have [F Fcond]:= (choice R Rtot).
 by exists F => phi x phinx; apply Fcond => //; exists x.
 Qed.
 
+Lemma frlzr_sur X Y:
+	is_cotot (@frlzr X Y).
+Proof. exact: frlzr_cotot. Qed.
+
+Lemma frlzr_sur_par_fun X Y:
+	(@frlzr X Y) \is_surjective_partial_function.
+Proof. split; [exact: frlzr_sing | exact: frlzr_sur]. Qed.
+
+Lemma frlzr_rep X Y:
+  (@frlzr X Y) \is_representation.
+Proof. exact: frlzr_sur_par_fun. Qed.
+
 Definition hcr (X Y : rep_space) (f : X ->> Y) :=
-	exists F, F \is_realizer_of f
-	/\
-	@is_cont (questions X) (answers X) (questions Y) (answers Y) F.
+	exists F, F \is_realizer_of f /\ F \is_continuous.
 Notation "f '\has_continuous_realizer'":= (hcr f) (at level 2).
 
 Global Instance hcr_prpr (X Y: rep_space):
@@ -255,8 +271,7 @@ Lemma comp_hcr (X Y Z: rep_space) (f: X ->> Y) (g: Y ->> Z):
 	f \has_continuous_realizer -> g \has_continuous_realizer -> (g o f) \has_continuous_realizer.
 Proof.
 move => [F [Frf Fcont]] [G [Grg Gcont]].
-exists (G o F).
-split; first by apply rlzr_comp.
+exists (G o F); split; first by apply rlzr_comp.
 by apply/ cont_comp.
 Qed.
 End REALIZERS.

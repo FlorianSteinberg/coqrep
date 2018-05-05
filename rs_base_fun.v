@@ -30,45 +30,25 @@ Lemma is_fun_name_is_rep (X Y : rep_space):
 	(@is_fun_name X Y) \is_representation.
 Proof.
 case (classic (exists y: Y, true)) => [[somey _] | nex];last first.
-split => [psi f g psinf psing | ].
-	apply eq_sub.
-	apply functional_extensionality => x.
-	exfalso; apply nex.
-	have [[_ tot] _] := projT2 f.
-	have [y _] := tot x.
-	by exists (y).
-move => f.
-exists (fun p => inr (some_answer Y)) => ka [y asd].
-exfalso; apply nex; by exists y.
-split => [psi f g psinf psing | f].
-	move: (projT2 f) (projT2 g) => [[fsing ftot] hasrlzrf] [[gsing gtot] hastrlzrg].
-	have [hf eqf]:= ((@F2MF_sing_tot X Y (projT1 f) somey).1 (conj fsing ftot)).
-	have [hg eqg]:= ((@F2MF_sing_tot X Y (projT1 g) somey).1 (conj gsing gtot)).
-	apply/ eq_sub.
-	apply functional_extensionality => x;	apply functional_extensionality => y; apply prop_ext; move: x y.
-	suffices: F2MF hf =~= F2MF hg by rewrite eqf eqg.
-	suffices: hf = hg by move => <-.
+	split => [psi f g psinf psing | f].
+		apply /eq_sub/functional_extensionality => x.
+		have [y _] := (projT2 f).1.2 x.
+		by exfalso; apply nex; exists y.
+	exists (fun p => inr (some_answer Y)) => ka [y asd].
+	exfalso; apply nex; by exists y.
+split => [psi sf sg psinf psing | f].
+	have [ | f eqf]:= (F2MF_sing_tot (projT1 sf) somey).1; first by apply (projT2 sf).
+	have [ | g eqg]:= (F2MF_sing_tot (projT1 sg) somey).1; first by apply (projT2 sg).
+	apply/ eq_sub; do 2 (apply functional_extensionality; intros); apply: prop_ext.
+	move: x x0;	suffices: F2MF f =~= F2MF g by rewrite eqf eqg.
+	have ->: f = g => //.
 	have [F icf]:= exists_choice (eval (U psi)) (fun q => some_answer Y).
-	apply/ (frlzr_is_rep X Y).1.
-		apply frlzr_rlzr.
-		apply/ tight_rlzr.
-			apply/ icf_F2MF_tight.
-			by apply icf.
-		by rewrite /rlzr eqf.
-	apply frlzr_rlzr.
-	apply/ tight_rlzr.
-		apply/ icf_F2MF_tight.
-		by apply icf.
-	by rewrite /rlzr eqg.
-have []:= (count_sur (questions X)).2.
-	by split; [apply: inhabits (some_question X) | apply (countable_questions X)].
-move => cnt sur.
-have [[ftot fsing] [F [Frf Fcont]]]:= (projT2 f).
+	apply/ frlzr_sing; apply/frlzr_rlzr; apply/icf_rlzr; try apply icf.
+		by rewrite eqf; apply psinf.
+	by rewrite eqg; apply psing.
+have [_ [F [Frf Fcont]]]:= (projT2 f).
 have [psiF psinF]:= (U_universal (some_question X) (some_answer X) (fun q => (some_answer Y)) (countable_questions X) Fcont).
-exists psiF.
-rewrite /is_fun_name.
-apply/ tight_trans; last by apply Frf.
-by apply tight_comp_r.
+by exists psiF; apply/tight_trans; [apply tight_comp_r | apply Frf].
 Qed.
 
 Canonical rep_space_cont_fun X Y := @make_rep_space
