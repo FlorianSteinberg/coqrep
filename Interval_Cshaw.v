@@ -85,6 +85,24 @@ replace (Xreal (x - y)) with (Xsub (Xreal x) (Xreal y)) by trivial.
 by apply I.sub_correct.
 Qed.
 
+Lemma add_correct_R x y I J:
+	x \contained_in I -> y \contained_in J -> (x + y) \contained_in (add I J).
+Proof.
+intros.
+replace (Xreal (x + y)) with (Xadd (Xreal x) (Xreal y)) by trivial.
+by apply I.add_correct.
+Qed.
+
+Lemma scl2_correct_R x I:
+	x \contained_in I -> (x *+ 2) \contained_in (scl2 I).
+Proof.
+intros.
+replace (Xreal (x *+ 2)) with (Xmul (Xreal x) (Xreal (bpow radix2 1))).
+	by apply I.scale2_correct.
+congr Xreal.
+by have ->: (x*2 = x + x)%R by lra.
+Qed.
+
 Lemma stuff (p : {poly R}):
 	(forall i : nat, p`_i \contained_in nth I0 [::] i) -> p = 0.
 Proof.
@@ -115,7 +133,11 @@ case: (ih p) => // [i | | ih1 ih2 ].
 		by apply (prp (S i)).
 	by case: eq.
 split => //.
-Admitted.
+apply sub_correct_R => //.
+apply add_correct_R; first exact: (prp 0%nat).
+apply scl2_correct_R.
+by apply mul_correct_R.
+Qed.
 
 Lemma CshawIA_crct (p: {poly R}) (pI: seq ID) (x: R) (J: ID):
 	(forall i, p`_i \contained_in (nth I0 pI i)) -> x \contained_in J -> size p = size pI ->
