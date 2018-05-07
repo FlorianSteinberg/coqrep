@@ -101,6 +101,7 @@ End DISCRETENESS.
 Notation "X '\is_discrete'" := (dscrt X) (at level 2).
 
 Section APPLICATIONS.
+(*
 Lemma wiso_one (X: rep_space):
 	wisomorphic (rep_space_one c-> X) X.
 Proof.
@@ -109,7 +110,7 @@ case (classic (inhabited X)) => [[somex] | noelt]; last first.
 	exists (fun _ _ => False).
 	split.
 		apply/ rec_cmpt; exists (fun phi q => some_answer _) => phi xf.
-		exfalso; apply noelt; have [x fsx]:= ((projT2 xf).1.2 star).
+	
 		by apply (inhabits x).
 	split.
 		apply/ rec_cmpt; exists (fun phi q => some_answer _) => phi x.
@@ -166,5 +167,5 @@ move => phi phifd.
 split; last first.
 	move => x phinx /=.
 	rewrite /is_fun_name /=.
-Admitted.
+Admitted.*)
 End APPLICATIONS.

@@ -11,7 +11,7 @@ The notations of this library heavily use natural language in attempt to make it
 
 The core Ideas this library pursues are the following:
 - Each proof should lead to a program that is actually executable inside of Coq.
-- It is ok to use classical reasoning to simplify proofs, eliminate assumptions and provide canonical constructions (the function space construction currently uses propositional extensionality and several parts use classical reasoning).
+- It is ok to use classical reasoning to simplify proofs, eliminate assumptions and provide canonical constructions.
 That is, of course, only where it does not break with the previous point.
 - Programs extracted from abstract proofs are very slow.
 For a given problem it is usually possible to do a lot better by providing a concrete algorithm and proving it correct.

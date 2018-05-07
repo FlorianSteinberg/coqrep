@@ -63,16 +63,14 @@ intros; exists nil; split => //.
 by move => Fphi/= -> psi _ Fpsi ->.
 Qed.
 
-Definition one_cfun X := exist_fun (@one_fun_hcr X) : (X c-> rep_space_one).
+Definition one_cfun X := exist_c (@one_fun_hcr X) : (X c-> rep_space_one).
 
 Lemma trmnl_uprp_cont (X: rep_space):
 	exists! f: X c-> rep_space_one, True.
 Proof.
 exists (@one_cfun X); split => // f _.
-apply /eq_sub /functional_extensionality => x.
-apply /functional_extensionality => fx.
-apply /prop_ext; split; last by elim fx.
-by move <-; case: ((projT2 f).1.2 x); elim.
+apply /eq_sub; apply functional_extensionality => x.
+by case: (projT1 f x).
 Qed.
 
 Lemma one_cfun_cmpt_elt (X: rep_space):
@@ -93,8 +91,6 @@ Lemma trmnl_uprp_rec_elt (X: rep_space):
 Proof.
 exists (@one_cfun X); split; first by exists (@one_cfun_cmpt_elt X).
 move => f _; apply /eq_sub /functional_extensionality => x.
-apply /functional_extensionality => fx.
-apply /prop_ext; split; last by elim fx.
-by move <-; case: ((projT2 f).1.2 x); elim.
+by case (projT1 f x).
 Qed.
 End TERMINAL.

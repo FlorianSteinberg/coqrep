@@ -10,7 +10,7 @@ Unset Printing Implicit Defensive.
 Section ISOMORPHISMS.
 Definition isomorphism (X Y: rep_space) (f: X c-> Y) :=
 	exists (g: Y c-> X) (P: f \is_recursive_element) (Q:g \is_recursive_element),
-		((projT1 f) o (projT1 g) =~= F2MF id /\ (projT1 g) o (projT1 f) =~= F2MF id).
+		(forall y, (projT1 f) ((projT1 g) y) = y) /\ (forall x, (projT1 g) ((projT1 f) x) = x).
 
 Definition wisomorphism (X Y: rep_space) (f: X ->> Y) :=
 	exists (g: Y ->> X) (P: f \is_computable) (Q: g \is_computable),
@@ -30,8 +30,7 @@ Lemma iso_ref X:
 	X ~=~ X.
 Proof.
 exists (id_fun X); exists (id_fun X).
-exists (id_rec_elt X); exists (id_rec_elt X).
-by split; rewrite comp_id_r.
+by exists (id_rec_elt X); exists (id_rec_elt X).
 Qed.
 
 Lemma iso_sym X Y:

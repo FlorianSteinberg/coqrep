@@ -274,6 +274,13 @@ move => [F [Frf Fcont]] [G [Grg Gcont]].
 exists (G o F); split; first by apply rlzr_comp.
 by apply/ cont_comp.
 Qed.
+
+Lemma comp_hcr_fun (X Y Z: rep_space) (f: X -> Y) (g: Y -> Z):
+	(F2MF f) \has_continuous_realizer -> (F2MF g) \has_continuous_realizer -> (F2MF (fun x => g (f x))) \has_continuous_realizer.
+Proof.
+have ->: (F2MF (fun x => g (f x))) =~= (F2MF g) o (F2MF f) by rewrite F2MF_comp.
+exact: comp_hcr.
+Qed.
 End REALIZERS.
 Notation "f '\has_continuous_realizer'":= (hcr f) (at level 2).
 Notation "f '\is_realized_by' F" := (rlzr F f) (at level 2).

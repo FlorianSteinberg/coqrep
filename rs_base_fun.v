@@ -7,46 +7,34 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Section FUNCTIONSPACES.
-Definition is_ass (X Y: rep_space) psi (f: X ->> Y) :=
-	(oeval (U psi)) \is_realizer_of f.
+Definition is_ass (X Y: rep_space) psi (f: X -> Y) :=
+	(oeval (U psi)) \is_realizer_of (F2MF f).
 
 Notation "X c-> Y" :=
-	{f: X ->> Y | (f \is_single_valued /\ f \is_total) /\ f \has_continuous_realizer} (at level 2).
+	{f: X -> Y | (F2MF f) \has_continuous_realizer} (at level 2).
 
-Definition exist_c (X Y: rep_space) F sing tot Fhcr :=
-exist (fun f => (f \is_single_valued /\ f \is_total) /\ @hcr X Y f)
-	F (conj (conj sing tot) Fhcr).
-
-Definition exist_fun (X Y: rep_space) (g: X -> Y) ghcr: X c-> Y:=
-exist (fun f => (f \is_single_valued /\ f \is_total) /\ @hcr X Y f)
-	(F2MF g) (conj (conj (@F2MF_sing X Y g) (F2MF_tot g)) ghcr).
+Check exist.
+Definition exist_c (X Y: rep_space) F Fhcr :=
+exist (fun f => @hcr X Y (F2MF f))
+	F (Fhcr).
 
 Definition is_fun_name (X Y: rep_space) psi (f: X c-> Y) :=
-	(eval (U psi)) \is_realizer_of (projT1 f).
-
-Axiom prop_ext: prop_extensionality.
+	(eval (U psi)) \is_realizer_of (F2MF (projT1 f)).
 
 Lemma is_fun_name_is_rep (X Y : rep_space):
 	(@is_fun_name X Y) \is_representation.
 Proof.
 case (classic (exists y: Y, true)) => [[somey _] | nex];last first.
-	split => [psi f g psinf psing | f].
+	split => [_ [f  fhcr] g _ _ | f].
 		apply /eq_sub/functional_extensionality => x.
-		have [y _] := (projT2 f).1.2 x.
-		by exfalso; apply nex; exists y.
+		by exfalso; apply nex; exists (f (x)).
 	exists (fun p => inr (some_answer Y)) => ka [y asd].
 	exfalso; apply nex; by exists y.
-split => [psi sf sg psinf psing | f].
-	have [ | f eqf]:= (F2MF_sing_tot (projT1 sf) somey).1; first by apply (projT2 sf).
-	have [ | g eqg]:= (F2MF_sing_tot (projT1 sg) somey).1; first by apply (projT2 sg).
-	apply/ eq_sub; do 2 (apply functional_extensionality; intros); apply: prop_ext.
-	move: x x0;	suffices: F2MF f =~= F2MF g by rewrite eqf eqg.
-	have ->: f = g => //.
+split => [psi [f fhcr] [g ghcr] psinf psing | f].
+	apply/ eq_sub => /=; rewrite /is_fun_name/= in psinf psing.
 	have [F icf]:= exists_choice (eval (U psi)) (fun q => some_answer Y).
-	apply/ frlzr_sing; apply/frlzr_rlzr; apply/icf_rlzr; try apply icf.
-		by rewrite eqf; apply psinf.
-	by rewrite eqg; apply psing.
-have [_ [F [Frf Fcont]]]:= (projT2 f).
+	apply/ frlzr_sing; apply/frlzr_rlzr; apply/icf_rlzr; try apply icf; [apply psinf | 	apply psing].
+have [F [Frf Fcont]]:= (projT2 f).
 have [psiF psinF]:= (U_universal (some_question X) (some_answer X) (fun q => (some_answer Y)) (countable_questions X) Fcont).
 by exists psiF; apply/tight_trans; [apply tight_comp_r | apply Frf].
 Qed.
@@ -69,53 +57,24 @@ End FUNCTIONSPACES.
 Notation "X c-> Y" := (rep_space_cont_fun X Y) (at level 2).
 
 Section EVALUATION.
-Definition evaluation X Y (fx: (X c-> Y) * X):= (projT1 fx.1) fx.2.
-
-Lemma eval_sing X Y:
-	(@evaluation X Y) \is_single_valued.
-Proof.
-move => [f x] y z fxy fxz.
-have sing:= (projT2 f).1.1.
-apply/ sing; [apply fxy| apply fxz].
-Qed.
-
-Lemma eval_tot X Y:
-	(@evaluation X Y) \is_total.
-Proof.
-move => [f x].
-have [y fxy]:= ((projT2 f).1.2 x).
-by exists y.
-Qed.
+Definition evaluation X Y (fx: (X c-> Y) * X) := (projT1 fx.1) fx.2.
 
 Lemma eval_rlzr X Y:
-	(eval (fun n psiphi q => U (lprj psiphi) n (rprj psiphi) q)) \is_realizer_of (@evaluation X Y).
+	(eval (fun n psiphi q => U (lprj psiphi) n (rprj psiphi) q)) \is_realizer_of (F2MF (@evaluation X Y)).
 Proof.
 set R:=(fun n psiphi q => U (lprj psiphi) n (rprj psiphi) q).
-move => psiphi [y [[[f x] [[/=psinf phinx] fxy]] prop]].
-rewrite /is_fun_name/= in psinf.
-have eq: (eval (U (lprj psiphi))) (rprj psiphi) = (eval R) psiphi by trivial.
-have Rsing: (oeval R) \is_single_valued.
-	apply mon_sing_op => /= n m phi q' a' nlm Rnphiqa.
-	apply/ U_mon; [ apply nlm | apply Rnphiqa ].
-have [Fpsiphi val]:= (@rlzr_dom _ _ (sval f) _ psinf (rprj psiphi) x phinx ((projT2 f).1.2 x)).
-have Fpsiphiny: Fpsiphi \is_name_of y.
-	by apply/ rlzr_val_sing; [ apply (projT2 f).1.1 | apply psinf | apply phinx | apply fxy | ].
+rewrite rlzr_F2MF => phi [[f fhcr] x] [/=phinf phinx].
+rewrite /is_fun_name/= in phinf.
 split.
-	exists y; split; first by exists Fpsiphi.
-	move => psi eval; rewrite (Rsing psiphi psi Fpsiphi) => //; exists y.
-	by apply/ rlzr_val_sing; [ apply (projT2 f).1.1 | apply psinf | apply phinx | apply fxy | ].
-move => y' [[Fphi [val' Fphiny]]cond].
-split.
-	exists (f,x); split => //.
-	rewrite (Rsing psiphi Fphi Fpsiphi) in Fphiny => //.
-	by rewrite (rep_sing Y Fpsiphi y' y).
-move => [f' x'] [psinf' phinx'].
-exists y; rewrite (rep_sing (X c-> Y) (lprj psiphi) f' f) => //.
-by rewrite (rep_sing X (rprj psiphi) x' x).
+	have [ | Fphi FphiFphi]:= rlzr_dom phinf phinx; first by apply F2MF_tot.
+	have eq: (eval (U (lprj phi))) (rprj phi) = (eval R) phi by trivial.
+	by exists (Fphi); rewrite -eq.
+move => Fphi RphiFphi.
+by apply/ rlzr_val_sing; [ apply F2MF_sing | apply phinf | apply phinx | | ].
 Qed.
 
 Lemma eval_cmpt X Y:
-	(@evaluation X Y) \is_computable.
+	(@evaluation X Y) \is_computable_function.
 Proof.
 exists (fun n psiphi q => U (lprj psiphi) n (rprj psiphi) q).
 exact: eval_rlzr.
@@ -134,54 +93,24 @@ End EVALUATION.
 
 Section COMPUTABLE_ELEMENTS.
 Lemma cmpt_elt_mon_cmpt (X Y: rep_space) (f: X c-> Y):
-	f \is_recursive_element -> (projT1 f) \is_monotone_computable.
+	f \is_recursive_element -> (F2MF (projT1 f)) \is_monotone_computable.
 Proof. move => [psiF comp]; exists (U psiF); split => //; exact: U_mon. Defined.
 
 Lemma prod_space_cont (X Y Z: rep_space) (f: Z c-> X) (g: Z c-> Y):
 	exists (F: rep_space_cont_fun Z (rep_space_prod X Y)),
-		((F2MF (@fst X Y)) o (projT1 F) =~= (projT1 f))
+		(forall z, (projT1 F z).1 = (projT1 f) z)
 		/\
-		((F2MF (@snd X Y)) o (projT1 F) =~= (projT1 g)).
+		(forall z, (projT1 F z).2 = (projT1 g) z).
 Proof.
-set F := (((projT1 f) ** (projT1 g)) o (F2MF (fun z => (z, z)))).
-have Fsing: F \is_single_valued.
-	apply comp_sing; last exact: F2MF_sing.
-	apply mfpp_sing; split; [apply (projT2 f).1.1 | apply (projT2 g).1.1].
-have Ftot: F \is_total.
-	apply comp_tot; first exact: F2MF_tot.
-	apply mfpp_tot; split; [apply (projT2 f).1.2 | apply (projT2 g).1.2].
-have Fhcr: F \has_continuous_realizer.
-	by apply comp_hcr; [apply diag_hcr | apply mfpp_hcr; [apply (projT2 f).2 | apply (projT2 g).2 ]].
-exists (exist_c Fsing Ftot Fhcr).
-split.
-	rewrite /=/F F2MF_comp.
-	rewrite sing_comp => //=; rewrite /mfpp/=; [ | | ].
-			rewrite /F2MF => z x.
-			split => [val| fzx [x' y] [fzx' gzy]]; last by rewrite ((projT2 f).1.1 z x x').
-			have [x' fzx']:= (projT2 f).1.2 z.
-			have [y gzy]:= (projT2 g).1.2 z.
-			by rewrite -(val (x',y) (conj fzx' gzy)) => //.
-		move => z p p' [fzp fzp'] [gzp gzp'].
-		by apply injective_projections; [rewrite ((projT2 f).1.1 z p.1 p'.1) | rewrite ((projT2 g).1.1 z p.2 p'.2)].
-	move => z.
-	have [x fzx]:= (projT2 f).1.2 z.
-	have [y gzy]:= (projT2 g).1.2 z.
-	by exists (x, y).
-rewrite /=/F F2MF_comp sing_comp => //=; rewrite /mfpp/=; [ | | ].
-rewrite /F2MF => z y.
-split => [val| gzy [x y'] [fzx gzy']]; last by rewrite ((projT2 g).1.1 z y y').
-have [y' gzy']:= (projT2 g).1.2 z.
-have [x fzx]:= (projT2 f).1.2 z.
-by rewrite -(val (x,y') (conj fzx gzy')) => //.
-	move => z p p' [fzp fzp'] [gzp gzp'].
-	by apply injective_projections; [rewrite ((projT2 f).1.1 z p.1 p'.1) | rewrite ((projT2 g).1.1 z p.2 p'.2)].
-move => z.
-have [x fzx]:= (projT2 f).1.2 z.
-have [y gzy]:= (projT2 g).1.2 z.
-by exists (x, y).
+set F := fun z => ((projT1 f) **_f (projT1 g)) (z, z).
+have Fhcr: (F2MF F) \has_continuous_realizer.
+	have ->: (F2MF F) =~= (F2MF (projT1 f) ** F2MF (projT1 g)) o (F2MF (fun z => (z, z))).
+		by rewrite -mfpp_fun_mfpp F2MF_comp.
+	by apply comp_hcr; [apply diag_hcr | apply mfpp_hcr; [apply (projT2 f) | apply (projT2 g) ]].
+by exists (exist_c Fhcr).
 Qed.
 
-Definition id_fun X := (exist_fun (id_hcr X)).
+Definition id_fun X := (exist_c (id_hcr X)).
 
 Lemma id_rec_elt X:
 	(id_fun X : X c-> X) \is_recursive_element.
@@ -197,20 +126,8 @@ abstract by pose id_name p := match p.1: seq (questions X* answers X) with
 	apply /tight_comp_r/ (mon_cmpt_op); [exact: U_mon | move => phi q; exists 1].
 Defined.
 
-Definition fun_comp X Y Z (f: X c-> Y) (g: Y c-> Z) :(X c-> Z) :=
-	exist_c (comp_sing (projT2 g).1.1 (projT2 f).1.1)
-		(comp_tot (projT2 f).1.2 (projT2 g).1.2)
-		(comp_hcr (projT2 f).2 (projT2 g).2).
-
-Definition composition X Y Z := F2MF (fun fg => @fun_comp X Y Z fg.1 fg.2).
-
-Lemma fcmp_sing X Y Z:
-	(@composition X Y Z) \is_single_valued.
-Proof. exact: F2MF_sing. Qed.
-
-Lemma fcmp_tot X Y Z:
-	(@composition X Y Z) \is_total.
-Proof. exact: F2MF_tot. Qed.
+Definition composition X Y Z (f: X c-> Y) (g: Y c-> Z) :(X c-> Z) :=
+	exist_c (comp_hcr_fun (projT2 f) (projT2 g)).
 
 (*
 Lemma fcmp_mon_cmpt X Y Z:
@@ -223,7 +140,7 @@ Lemma fst_fun_name X Y:
 	(fun Lq => match Lq.1  with
 		| nil => inl (inl Lq.2)
 		| cons a K => inr a.2.1
-		end) \is_name_of (exist_fun (@fst_hcr X Y)).
+		end) \is_name_of (exist_c (@fst_hcr X Y)).
 Proof.
 set psi:= (fun Lq => match Lq.1  with
 	| nil => inl (inl Lq.2)
@@ -245,7 +162,7 @@ by case: n val => // n val; lia.
 Qed.
 
 Lemma fst_cmpt (X Y: rep_space):
-	(exist_fun (@fst_hcr X Y): (rep_space_prod X Y) c-> X) \is_recursive_element.
+	(exist_c (@fst_hcr X Y): (rep_space_prod X Y) c-> X) \is_recursive_element.
 Proof.
 exists (fun Lq => match Lq.1  with
 	| nil => inl (inl Lq.2)
@@ -258,7 +175,7 @@ Lemma snd_fun_name X Y:
 	(fun Lq => match Lq.1  with
 		| nil => inl (inr Lq.2)
 		| cons a K => inr a.2.2
-		end) \is_name_of (exist_fun (@snd_hcr X Y)).
+		end) \is_name_of (exist_c (@snd_hcr X Y)).
 Proof.
 set psi:= (fun Lq => match Lq.1  with
 	| nil => inl (inr Lq.2)
@@ -280,7 +197,7 @@ by case: n val => // n val; lia.
 Qed.
 
 Lemma snd_cmpt (X Y: rep_space):
-	(exist_fun (@snd_hcr X Y) :(rep_space_prod X Y) c-> Y) \is_recursive_element.
+	(exist_c (@snd_hcr X Y) :(rep_space_prod X Y) c-> Y) \is_recursive_element.
 Proof.
 exists (fun Lq => match Lq.1  with
 	| nil => inl (inr Lq.2)
