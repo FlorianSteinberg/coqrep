@@ -5,7 +5,7 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 Import GRing.Theory.
-Open Local Scope ring_scope.
+Local Open Scope ring_scope.
 Require Import ZArith.
 Require Import Interval.Interval_specific_ops.
 Require Import Interval.Interval_bigint_carrier.
@@ -160,7 +160,7 @@ case: pI p prp => [p prp eq | I pI p prp eq].
 	by have <-:= cntd_I0 prp.
 	replace 0%R with (Rmult 0 x) by by rewrite Rmult_0_l.
 	apply mul_correct_R => //=.
-	by rewrite /= F.fromZ_correct /Z2R; lra.
+	by rewrite /= F.fromZ_correct; lra.
 rewrite -[p]polyseqK -lCshaw_spec/lCshaw/CshawIA.
 apply sub_correct_R; first by apply CbIA_crct.
 by apply mul_correct_R; first by apply CbIA_crct.
@@ -201,5 +201,3 @@ end.
 Compute (mapIQ (V.CshawIA (SFBI2.PtoP 5) [::I.fromZ(-1); (I.fromZ (2)%Z)] (I.fromZ (-1)))).
 Print V.CbIA.
 Compute (lCshaw [::ratz (-1); ratz (2)] (ratz (-1))).
-Search _ s_float.
-Check Interval_specific_ops.Float.
