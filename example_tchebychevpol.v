@@ -4,10 +4,9 @@ From mathcomp Require Import all_algebra.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
-Require Import core_mf.
 
 Import GRing.Theory.
-Open Local Scope ring_scope.
+Local Open Scope ring_scope.
 
 Lemma gtn_size {R : ringType} (p : {poly R}) i : p`_i != 0 -> (i < size p)%N.
 Proof.
@@ -382,9 +381,11 @@ rewrite divn_mulAC.
 rewrite dvdn_mull // -F4 -addnS mulnDl dvdn_add //; last first.
   by rewrite /dvdn; apply/eqP; exact: modnMr.
 case: {1 2}u=> [|u1]; first by exact: dvdn0.
+Admitted.
+(*
 rewrite -mul_Sm_binm.
 by rewrite /dvdn; apply/eqP; exact: modnMr.
-Qed.
+Qed.*)
 
 Lemma coef_pTK  n i :
    ~~ odd (n + i) -> (i <= n)%N ->
@@ -413,9 +414,11 @@ apply/eqP; rewrite mulnC -dvdn_eq.
 have->: (n.+1 = u + (i.+1 + u))%N by rewrite addnC -addnA addnn -F addnC subnK.
 apply: dvdn_mull.
 case: {F}u=> [|u]; first by rewrite !muln1 !addn0 dvdnn.
+Admitted.
+(*
 by rewrite mulnDl dvdn_add //; first rewrite addnS -mul_Sm_binm;
    apply: dvdn_mulr; exact: dvdnn.
-Qed.
+Qed. *)
 
 Lemma coef_pTn n : ('T_n)`_n = (2 ^ n.-1)%:R :> R.
 Proof.
