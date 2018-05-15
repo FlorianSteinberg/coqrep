@@ -1,37 +1,10 @@
--R . rs
+-R . cheby
 
-core_mf.v
-core_bs.v
-core_cont.v
-core_inseg.v
-core_count.v
-core_omach.v
-core_umach.v
-core_mach.v
-all_core.v
-
-rs_base.v
-rs_base_prod.v
-rs_base_sub.v
-rs_base_fun.v
-rs_base_iso.v
-all_rs_base.v
-
-rs_one.v
-rs_nat.v
-rs_opt.v
-rs_usig.v
-rs_list.v
-rs_list_rev.v
-rs_dscrt.v
-rs_sets.v
-rs_sprd.v
-all_rs.v
-
-rs_reals_creals.v
-
-examples_continuity.v
 Rstruct.v
-example_polynomials.v
-example_real_functions.v
 example_tchebychevpol.v
+Interval_Cshaw.v
+generalities.v
+filter_Rlt.v
+atan_derivative_improper_integral.v
+asin.v
+arcsinh.v
