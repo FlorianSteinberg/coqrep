@@ -4,6 +4,8 @@ Require Import ssreflect ssrbool.
 Require Import Reals Coquelicot.Coquelicot Interval.Interval_tactic Psatz.
 Require Import filter_Rlt generalities.
 
+Open Scope R_scope.
+
 Lemma RInt_cos_0_PI (m : nat) : 
   m <> 0%nat ->
    is_RInt (fun y : R => cos (INR m * y)) 0 PI 0.
@@ -88,9 +90,6 @@ by case: Nat.eqb_spec => // H1; case: H.
 Qed.
 
 Definition asin x  := atan (x / sqrt (1 - x ^ 2)).
-
-Open Scope R_scope.
-
 
 Lemma asin_derivative x : -1 < x < 1 ->
   is_derive asin x (/sqrt (1 - x ^ 2)).

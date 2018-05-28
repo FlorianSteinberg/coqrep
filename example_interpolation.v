@@ -65,7 +65,7 @@ Lemma interp_cons a l :
      interp l + (f a - (interp l).[a])/(prodl l).[a] *: prodl l.
 Proof. by move=> /= /negPf->. Qed.
 
-Lemma horner_interp l : all (fun i => (interp l).[i] ==  f i) l.
+Lemma horner_interp l : all (fun i => (interp l).[i] == f i) l.
 Proof.
 elim: l => //= a l IH.
 have [aIl|aNIl] := boolP (_ \in _).
@@ -93,3 +93,24 @@ by exact: prodl_size.
 Qed.
 
 End Interp.
+
+Require Import Rstruct.
+Require Import Reals Coquelicot.Coquelicot Interval.Interval_tactic Psatz.
+
+Search "der" in poly.
+
+Lemma is_derive_horner p x :
+  is_derive (horner p : R -> R) x (p^`()).[x].
+Proof.
+elim/poly_ind: p => [|p c IH].
+  rewrite deriv0 hornerE.
+  apply: (is_derive_ext (fun x => 0)) => [t|]; first by rewrite hornerE.
+  by exact: is_derive_const.
+rewrite derivMXaddC !hornerE.
+apply: (is_derive_ext (fun x => p.[x] * x + c)) => [t|].
+  by rewrite !hornerE.
+auto_derive; first by exists p^`().[x].
+rewrite Rmult_1_r Rmult_1_l Rplus_comm.
+congr (_ + _ * _).
+by apply: is_derive_unique.
+Qed.
