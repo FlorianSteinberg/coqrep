@@ -381,11 +381,9 @@ rewrite divn_mulAC.
 rewrite dvdn_mull // -F4 -addnS mulnDl dvdn_add //; last first.
   by rewrite /dvdn; apply/eqP; exact: modnMr.
 case: {1 2}u=> [|u1]; first by exact: dvdn0.
-Admitted.
-(*
-rewrite -mul_Sm_binm.
+rewrite -mul_bin_diag.
 by rewrite /dvdn; apply/eqP; exact: modnMr.
-Qed.*)
+Qed.
 
 Lemma coef_pTK  n i :
    ~~ odd (n + i) -> (i <= n)%N ->
@@ -414,11 +412,9 @@ apply/eqP; rewrite mulnC -dvdn_eq.
 have->: (n.+1 = u + (i.+1 + u))%N by rewrite addnC -addnA addnn -F addnC subnK.
 apply: dvdn_mull.
 case: {F}u=> [|u]; first by rewrite !muln1 !addn0 dvdnn.
-Admitted.
-(*
-by rewrite mulnDl dvdn_add //; first rewrite addnS -mul_Sm_binm;
+by rewrite mulnDl dvdn_add //; first rewrite addnS -mul_bin_diag;
    apply: dvdn_mulr; exact: dvdnn.
-Qed. *)
+Qed.
 
 Lemma coef_pTn n : ('T_n)`_n = (2 ^ n.-1)%:R :> R.
 Proof.
@@ -905,9 +901,17 @@ Lemma lTmulx_spec l:
 	(2%:R : R) \is a GRing.unit -> 
   is_Tmulx (Poly l) (Poly (lTmulx l)).
 Proof.
+move=> H.
 rewrite /is_Tmulx.
-(* I am not sure anymore that this is easy to prove. *)
-Admitted.
+have H1 := lTmulx_prop l H.
+have ->: \sum_(i < size (Poly l)) (Poly l)`_i *: 'T_i =
+         \sum_(i < size l) l`_i *: 'T_i.
+  rewrite -(polybase_widen _ (size_Poly _)).
+  by apply: eq_bigr => i; rewrite coef_Poly.
+rewrite H1.
+rewrite -(polybase_widen _ (size_Poly _)).
+by apply: eq_bigr => i; rewrite coef_Poly.
+Qed.
 
 Definition lpXt i := iter i lTmulx [::1].
 
