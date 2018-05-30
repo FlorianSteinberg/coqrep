@@ -6,7 +6,7 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 Import GRing.Theory.
-Open Local Scope ring_scope.
+Local Open Scope ring_scope.
 
 
 Definition rm0 :=
