@@ -20,6 +20,39 @@ Definition rm0 :=
 
 Definition rm1 := (mulr1, mul1r, mulr1n).
 
+Section Poly_complement.
+Variable R : ringType.
+
+Lemma coef_Xn_eq (p: {poly R}):
+	p = \sum_(i < size p) p`_i *: 'X^i.
+Proof.
+by rewrite -[LHS]coefK poly_def.
+Qed.
+
+Lemma polyseq_eq (p q: {poly R}):
+	polyseq p = polyseq q <-> p = q.
+Proof.
+by split => [eqn | ->]; first rewrite -[LHS]polyseqK eqn polyseqK.
+Qed.
+
+Lemma coef_eq (p q: {poly R}):
+	p = q <-> forall i, p`_i = q`_i.
+Proof.
+split => [-> | prp] //.
+apply /subr0_eq /eqP.
+by rewrite -lead_coef_eq0 lead_coefE coefB prp addrC -[_ + _]add0r addrA subrK.
+Qed.
+
+Lemma XnX i:
+	('X^i * 'X =('X^i.+1: {poly R}))%R.
+Proof.
+apply coef_eq => n.
+rewrite coefMX !coefXn.
+by case: ifP => /=[/eqP -> | ] //; case: n.
+Qed.
+
+End Poly_complement.
+
 Section RBase.
 
 Variable R : ringType.
@@ -36,7 +69,28 @@ rewrite andbT => /andP[/(@leq_sizeP R) // H1 H2].
 by rewrite H1 ?scale0r.
 Qed.
 
+Lemma sumrA (p q: {poly R}):
+	\sum_(i < size (p + q)) (p + q)`_i *: F i = \sum_(i < size p) p`_i *: F i + \sum_(i < size q) q`_i *: F i.
+Proof.
+rewrite -(@polybase_widen (p + q) (maxn (size p) (size q))); last exact: size_add.
+rewrite -(@polybase_widen p (maxn (size p) (size q))); last by rewrite leq_maxl.
+rewrite -(@polybase_widen q (maxn (size p) (size q))); last by rewrite leq_maxr.
+elim: (maxn (size p) (size q)) => [ | n ih]; first by rewrite !big_ord0 rm0.
+rewrite !big_ord_recr/= ih coefD scalerDl.
+rewrite -addrA.
+rewrite ![p`_n *: F n  + _]addrC.
+by rewrite !addrA.
+Qed.
+
+Lemma sumrZ a (p: {poly R}):
+	\sum_(i < size (a *: p)) (a *: p)`_i *: F i = a*: (\sum_(i < size p) p`_i *: F i).
+Proof.
+rewrite -(@polybase_widen (a *: p) (size p)); last exact: size_scale_leq.
+elim: (size p) => [ | n ih]; first by rewrite !big_ord0 rm0.
+by rewrite !big_ord_recr/= ih -!mul_polyC mulrDr !mul_polyC scalerA -!mul_polyC coefCM.
+Qed.
 End RBase.
+Notation lin_sum := (@linear_sum _ _ _ _ (Linear _) _ _ _).
 
 Section Base.
 Variable R : idomainType.
@@ -44,14 +98,14 @@ Variable F : nat -> {poly R}.
 Hypothesis F0 : F 0 != 0.
 Hypothesis F_size : forall n, size (F n) = n.+1.
 
-Lemma size_polybase n p : 
-   size (\sum_(i < n) p`_ i *: F i) = \max_(i < n | p`_i != 0) i.+1.
+Lemma size_seqbase n l : 
+   size (\sum_(i < n) l`_ i *: F i) = \max_(i < n | l`_i != 0) i.+1.
 Proof.
 elim: n => [|n IH]; first by rewrite !big_ord0 size_poly0.
 rewrite [RHS]big_mkcond /= !big_ord_recr /= -big_mkcond /=.
-have [/eqP Hp| Hnp /=] := boolP (p`_n == 0).
+have [/eqP Hp| Hnp /=] := boolP (l`_n == 0).
   by rewrite Hp scale0r addr0 IH /= maxn0.
-have Hs : size (p`_ n *: F n) = n.+1 by rewrite size_scale.
+have Hs : size (l`_ n *: F n) = n.+1 by rewrite size_scale.
 case: (n) Hs IH => [Hs _|n1 Hs IH].
   by rewrite !big_ord0 add0r Hs.
 rewrite addrC size_addl Hs.
@@ -62,7 +116,23 @@ rewrite ltnS IH.
 by apply/bigmax_leqP => i _.
 Qed.
 
-Lemma polybase_eq0 n (l: seq R) : 
+Lemma size_polybase (p: {poly R}):
+	size (\sum_(i < size p) p`_ i *: F i) = size p.
+Proof.
+rewrite size_seqbase.
+case E: (size p) => [ | n]; first by rewrite big_ord0.
+rewrite big_mkcond/=.
+rewrite big_ord_recr /=.
+rewrite -big_mkcond/=.
+case: ifP => [_ | ].
+apply/ maxn_idPr.
+by apply/ bigmax_leqP => /= i _; rewrite ltnS ltnW.
+case/ idP.
+have ->: n = (size p).-1 by rewrite E.
+by rewrite -lead_coefE lead_coef_eq0 -size_poly_eq0 E.
+Qed.
+
+Lemma seqbase_coef_eq0 n (l: seq R) : 
    \sum_(i < n) l`_ i *: F i = 0 -> forall i, (i < n)%N -> l`_i = 0.
 Proof.
 move=> H i Hi.
@@ -76,8 +146,17 @@ suff P j : (0 < j < n)%N -> l`_j = 0.
   by apply: P.
 move=> /andP[HP1 HP2].
 have /eqP := (H).
-rewrite -size_poly_eq0 size_polybase -leqn0 => /bigmax_leqP/(_ (Ordinal HP2)).
+rewrite -size_poly_eq0 size_seqbase -leqn0 => /bigmax_leqP/(_ (Ordinal HP2)).
 by rewrite /=; case: eqP => //= _ /(_ isT).
+Qed.
+
+Lemma polybase_eq0 (p: {poly R}) : 
+   \sum_(i < size p) p`_ i *: F i = 0 <-> p = 0.
+Proof.
+split => [prp | ->]; last by rewrite big1 => // i _; rewrite coef0 rm0.
+rewrite [LHS]coef_Xn_eq.
+rewrite big1 => // i _.
+by rewrite (seqbase_coef_eq0 prp); first by rewrite !rm0.
 Qed.
 
 End Base.
@@ -143,7 +222,6 @@ Qed.
 End Lpol.
 
 Section Tcheby.
-
 Variable R : ringType.
 Implicit Types (pl : seq R) (p: {poly R}) .
 
@@ -447,6 +525,64 @@ rewrite pUSS exprS !mulrBr !mulrBl -!addrA; congr (_ + _).
 congr (_ + _); first by rewrite -commr_pU -!mulrA commr_pU.
 by rewrite opprB addrC addrA IH [_+1]addrC addrK.
 Qed.
+End Tcheby.
+
+Notation "'T_ n " := (pT n) (at level 3, n at level 2, format "''T_' n").
+
+Section LINEAR_INDEPENDENCE.
+(*This assumption is too strong but it is what is used in the lemma polybase_eq0 *)
+Variable R: idomainType. 
+(* This next assumption should be the appropriate one and is implied by the domain type assumption:*)
+Variable V2 : (2%:R : R) \is a GRing.unit.
+
+Lemma size_pT n : size ('T_ n : {poly R}) = n.+1.
+Proof.
+have := size_pT_leq R n.
+rewrite leq_eqVlt => /orP[/eqP//|].
+rewrite ltnS => /leq_sizeP/(_ _ (leqnn _))/eqP.
+rewrite coef_pTn natrX expf_eq0 andbC.
+have := divrr V2.
+case: eqP => [->|//] /eqP.
+by rewrite mul0r eq_sym oner_eq0.
+Qed.
+
+Lemma pT_neq0 n: 'T_n != 0 :> {poly R}.
+Proof.
+apply/eqP => /eqP eqn.
+by rewrite -size_poly_eq0 size_pT in eqn.
+Qed.
+
+Lemma size_sum_pT (p: {poly R}):
+	size (\sum_(i < size p) p`_i *: pT i) = size p.
+Proof. by rewrite size_polybase; last apply: size_pT. Qed.
+
+Lemma pT_eq (p q : {poly R}):
+	p = q <->
+	\sum_(i < size p) p`_i *: 'T_ i = \sum_(i < size q) q`_i *: 'T_ i.
+Proof.
+split=> [->//|/eqP].
+rewrite -(polybase_widen _ (leq_maxl (size p) (size q))).
+rewrite -(polybase_widen _ (leq_maxr (size p) (size q))).
+rewrite -subr_eq0 -sumrB.
+pose f (i : 'I_(maxn (size p) (size q))) := ((p- q)`_i) *: 'T_ i.
+rewrite (eq_bigr f) {}/f => [/eqP eq|i _]; last by rewrite coefB scalerBl.
+apply: subr0_eq.
+rewrite -polyP => i; rewrite coef0.
+have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
+  apply: seqbase_coef_eq0 eq _ ineq; first by rewrite pT0 oner_eq0.
+  by apply size_pT.
+apply/ leq_sizeP; last apply ineq.
+by rewrite -[size q]size_opp size_add.
+Qed.
+
+Lemma pT_eq0 (p: {poly R}):
+	p = 0 <-> \sum_(i < size p) p`_i *: 'T_i = 0.
+Proof. by rewrite pT_eq size_poly0 big_ord0. Qed.
+End LINEAR_INDEPENDENCE.
+
+Section CSHAW.
+Variable R : ringType.
+Implicit Types (pl : seq R) (p: {poly R}) .
 
 Definition Cshaw p r := \sum_(i < size p) p`_i  * ('T_i).[r].
 
@@ -566,8 +702,11 @@ rewrite !mulr2n !(mulrDl, mulrDr, opprB, opprD, mulNr ) -!addrA.
 do 40 (congr (_ + _); [idtac] || rewrite [RHS]addrC -![in RHS]addrA).
 by rewrite addrA subrK.
 Qed.
+End CSHAW.
 
 Section PT2P.
+Variable R : ringType.
+Implicit Types (pl : seq R) (p: {poly R}) .
 
 Definition pT2p p : {poly R} := \sum_(i < size p) p`_i *: 'T_i.
 
@@ -581,7 +720,7 @@ Proof.
 apply: (leq_trans (size_sum _ _ _)).
 apply/bigmax_leqP => i _.
 apply: leq_trans (size_scale_leq _ _) _.
-by apply: leq_trans (size_pT_leq _) _.
+by apply: leq_trans (size_pT_leq _ _) _.
 Qed.
 
 Lemma pT2p0 : pT2p 0 = 0 :> {poly R}.
@@ -593,6 +732,15 @@ rewrite /pT2p size_polyC.
 case E: (c != 0) => /=; last by rewrite big_ord0; move/eqP: E => ->.
 by rewrite big_ord_recr /= big_ord0 !rm0 polyseqC E /= alg_polyC.
 Qed.
+
+Lemma pT2pZ a (p : {poly R}) : pT2p (a *: p) = a *: pT2p p.
+Proof. by rewrite /pT2p sumrZ. Qed.
+
+Lemma pT2pD (p q : {poly R}) : pT2p (p + q) = pT2p p + pT2p q.
+Proof. by rewrite /pT2p sumrA. Qed.
+
+Lemma pT2p_lin : linear pT2p.
+Proof. by move => a p q; rewrite pT2pD pT2pZ. Qed.
 
 Fixpoint lpT2p_rec {R: ringType} l (p1 p2 : seq R) :=
 match l with
@@ -717,17 +865,62 @@ Qed.
 
 End PT2P.
 
-End Tcheby.
-
 Compute (ncons 11 (0%:R: int) [::1]).
 
 Compute lpT2p  (ncons 11 (0%:R: int) [::1]).
 
-Notation "'T_ n " := (pT n) (at level 3, n at level 2, format "''T_' n").
-
 Section P2PT.
 
-Variable R : unitRingType.
+(*Variable R : unitRingType. This section works for unitRingType, only the proof of
+is_Tmulx_uniqe needs R to be an idomainType and only because some of the
+previous lemmas are stated in a weak form.*)
+Variable R: idomainType.
+
+Lemma size_pT2p (p : {poly R}) :
+	(2%:R : R) \is a GRing.unit -> size (pT2p p) = size p.
+Proof. by move => I2; rewrite size_sum_pT. Qed.
+
+Definition is_Tmulx (p q: {poly R}):=
+	('X * \sum_(i < size p) p`_i *: 'T_i)%R =
+  \sum_(i < size q) q`_i *: 'T_i :> {poly R}.
+
+Lemma is_Tmulx_uniqe p q r:
+	(2%:R : R) \is a GRing.unit -> is_Tmulx p q -> is_Tmulx p r -> q = r.
+Proof. by move => V2; rewrite pT_eq => // <- <-. Qed.
+
+Lemma size_Tmulx p q:
+	(2%:R : R) \is a GRing.unit -> p <> 0 -> is_Tmulx p q -> size q = (size p).+1.
+Proof.
+intros.
+rewrite -size_sum_pT => //.
+rewrite -[size p]size_sum_pT => //.
+rewrite -H1 -commr_polyX size_mulX => //.
+apply /eqP.
+move => eq.
+by move: ((pT_eq0 H _).2 eq).
+Qed.
+
+Lemma is_TmulxD p p' q q':
+	is_Tmulx p q -> is_Tmulx p' q' -> is_Tmulx (p + p') (q + q').
+Proof.
+by intros; rewrite /is_Tmulx !sumrA -H -H0 mulrDr.
+Qed.
+
+Lemma is_TmulxZ a p q:
+	is_Tmulx p q -> is_Tmulx (a *: p) (a *: q).
+Proof.
+by move => isT; rewrite /is_Tmulx !sumrZ -isT scalerAr.
+Qed.
+
+Lemma sum_is_Tmulx p (F G: nat -> {poly R}): (forall i, is_Tmulx (F i) (G i)) ->
+	is_Tmulx (\sum_(i < size p) p`_ i *: F i) (\sum_ (i < size p) p`_i *: G i).
+Proof.
+move => prp.
+elim: (size p) => [ | n ih]; first by rewrite !big_ord0 /is_Tmulx size_poly0 !big_ord0 rm0.
+rewrite !big_ord_recr/=.
+apply: is_TmulxD => //.
+exact: is_TmulxZ.
+Qed.
 
 Fixpoint lTmulx_rec (l : seq R) :=
   match l with 
@@ -740,7 +933,7 @@ Lemma lTmulx_rec_step a b c (l : seq R) :
 	lTmulx_rec (a :: b :: c :: l) = (a + c) / 2%:R :: lTmulx_rec (b :: c :: l).
 Proof. done. Qed.
 
-Lemma XpT n : 
+Lemma pT_mulX n : 
    (2%:R : R) \is a GRing.unit -> 
    'X * 'T_n.+1 = 2%:R ^-1 *: 'T_n + 2%:R ^-1 *: 'T_n.+2 :> {poly R}.
 Proof.
@@ -761,11 +954,11 @@ elim: l n => [|a [|b [|c l]] IH] n.
 - rewrite ![[:: _]`_ _]/= mul0r scale0r addr0.
   rewrite ![size _]/= !(big_ord0, big_ord_recl).
   rewrite ![_`_ _]/= !addr0 !addn0 -!scalerA -scalerDr.
-  by rewrite -commr_polyX -scalerAl -XpT // commr_polyX.
+  by rewrite -commr_polyX -scalerAl -pT_mulX // commr_polyX.
 - rewrite ![[:: _; _]`_ _]/= ![size _]/= !(big_ord0, big_ord_recl).
   rewrite ![[:: _; _]`_ _]/= !addn1 !addn0 !addr0.
-  rewrite -commr_polyX mulrDl -!scalerAl commr_polyX XpT //.
-  rewrite commr_polyX XpT // scalerDr !scalerA -!addrA; congr (_ + _).
+  rewrite -commr_polyX mulrDl -!scalerAl commr_polyX pT_mulX //.
+  rewrite commr_polyX pT_mulX // scalerDr !scalerA -!addrA; congr (_ + _).
   rewrite [RHS]addrCA; congr (_ + _).
   by rewrite scalerDr !scalerA.
 rewrite -[lTmulx_rec _]/((a + c) / 2%:R :: lTmulx_rec  [:: b, c & l]).
@@ -789,14 +982,11 @@ rewrite !addrA; congr (_ + _).
 rewrite addrAC [in RHS] addrAC; congr (_ + _).
 rewrite mulrDl scalerDl addrA; congr (_ + _).
 rewrite -commr_polyX -scalerAl.
-by rewrite commr_polyX XpT // scalerDr !scalerA.
+by rewrite commr_polyX pT_mulX // scalerDr !scalerA.
 Qed.
 
 Lemma size_lTmulx_rec l : size (lTmulx_rec l) = size l.
-Proof.
-elim: l => //= a [|b [|c l1]] IH //=.
-by rewrite IH.
-Qed.
+Proof. by elim: l => //= a [|b [|c l1]] IH //=; rewrite IH. Qed.
 
 Lemma lTmulx_rec_eq0 L:
 	Poly L = 0 -> Poly (lTmulx_rec L) = 0.
@@ -893,13 +1083,8 @@ case: l => [|c l] /=.
 by rewrite mulrDl -[a *+ _]mulr_natl -commr_nat mulrK.
 Qed.
 
-Definition is_Tmulx (p q: {poly R}):=
-	('X * \sum_(i < size p) p`_i *: 'T_i)%R =
-  \sum_(i < size q) (q)`_i *: 'T_i :> {poly R}.
-
 Lemma lTmulx_spec l:
-	(2%:R : R) \is a GRing.unit -> 
-  is_Tmulx (Poly l) (Poly (lTmulx l)).
+	(2%:R : R) \is a GRing.unit -> is_Tmulx (Poly l) (Poly (lTmulx l)).
 Proof.
 move=> H.
 rewrite /is_Tmulx.
@@ -913,6 +1098,15 @@ rewrite -(polybase_widen _ (size_Poly _)).
 by apply: eq_bigr => i; rewrite coef_Poly.
 Qed.
 
+Lemma is_Tmulx_total:
+	(2%:R : R) \is a GRing.unit -> forall p, exists q, is_Tmulx p q.
+Proof.
+move => I2 p; exists (Poly (lTmulx p)); rewrite -{1}[p]polyseqK.
+exact: lTmulx_spec.
+Qed.
+
+Definition is_pXt i (p : {poly R}) := (pT2p p = 'X^i).
+
 Definition lpXt i := iter i lTmulx [::1].
 
 Lemma lpXt_step i:
@@ -921,36 +1115,254 @@ Proof.
 by rewrite [LHS]iterS.
 Qed.
 
-Definition pXt i := Poly (lpXt i).
+Lemma lpXt_spec i:
+	(2%:R : R) \is a GRing.unit -> is_pXt i (Poly (lpXt i)).
+Proof.
+move => u2.
+elim: i => [ | i ih]; first by rewrite /is_pXt /= cons_poly_def !rm0 pT2pC.
+rewrite /is_pXt lpXt_step /pT2p /is_Tmulx -lTmulx_spec //.
+rewrite [X in _ * X = _ ]ih.
+by rewrite exprS.
+Qed.
+
+Notation "'Xt_ i " := (Poly (lpXt i)) (at level 3, i at level 2, format "''Xt_' i").
 
 Lemma pXt0:
-	pXt 0 = 1%:P.
+	'Xt_0 = 1%:P.
 Proof.
-by rewrite /pXt/= cons_poly_def !rm0.
+by rewrite /= cons_poly_def !rm0.
 Qed.
 
 Lemma pXt_step i:
-	(2%:R : R) \is a GRing.unit -> is_Tmulx (pXt i) (pXt i.+1).
+	(2%:R : R) \is a GRing.unit -> is_Tmulx ('Xt_ i) ('Xt_i.+1).
 Proof.
 by move => u2; apply lTmulx_spec.
 Qed.
 
-Lemma lpXt_spec i:
-	(2%:R : R) \is a GRing.unit -> pT2p (pXt i) = 'X^i.
+Lemma pXt_neq0 n:
+	(2%:R : R) \is a GRing.unit -> 'Xt_n <> 0.
 Proof.
-move => u2.
-elim: i => [ | i ih]; first by rewrite pXt0 pT2pC.
-rewrite /pXt lpXt_step.
-rewrite /pT2p.
-rewrite -lTmulx_spec //.
-rewrite [X in _ * X = _ ]ih.
-Search _ ('X^_) S in poly.
-by rewrite exprS.
+move => I2.
+elim: n =>[/= | n ih ]; first by	rewrite cons_poly_def !rm0; apply /eqP; rewrite oner_neq0.
+apply/eqP; rewrite -size_poly_eq0 (@size_Tmulx ('Xt_n) ('Xt_n.+1)) => //.
+exact: lTmulx_spec.
 Qed.
 
-Definition p2pT' p : {poly R} := \sum_(i < size p) p`_i *: pXt i.
+Lemma size_pXt i:
+	(2%:R : R) \is a GRing.unit -> size ('Xt_ i) = i.+1.
+Proof.
+move => I2.
+elim: i; first by rewrite /= cons_poly_def !rm0 size_poly1.
+move => n ih.
+rewrite (@size_Tmulx ('Xt_n) ('Xt_n.+1)) => //; first by rewrite ih.
+	exact: pXt_neq0.
+exact: lTmulx_spec.
+Qed.
 
-Notation "'Xt_ n " := (pT n) (at level 3, n at level 2, format "''Xt_' n").
+Lemma size_sum_pXt (p: {poly R}):
+	(2%:R : R) \is a GRing.unit -> size (\sum_(i < size p) p`_i *: 'Xt_i) = size p.
+Proof.
+move => I2.
+rewrite (@size_polybase _ (fun i => 'Xt_i)  _ p) => //.
+by move => n; rewrite size_pXt.
+Qed.
+
+Lemma pXt_eq (p q : {poly R}):
+	(2%:R : R) \is a GRing.unit ->
+	p = q <-> 	\sum_(i < size p) p`_i *: 'Xt_ i = \sum_(i < size q) q`_i *: 'Xt_ i.
+Proof.
+move => I2.
+split=> [->//|/eqP].
+rewrite -(polybase_widen (fun i => 'Xt_i) (leq_maxl (size p) (size q))).
+rewrite -(polybase_widen (fun i => 'Xt_i) (leq_maxr (size p) (size q))).
+rewrite -subr_eq0 -sumrB.
+pose f (i : 'I_(maxn (size p) (size q))) := ((p- q)`_i) *: 'Xt_ i.
+rewrite (eq_bigr f) {}/f => [/eqP eq|i _]; last by rewrite coefB scalerBl.
+apply: subr0_eq.
+rewrite -polyP => i; rewrite coef0.
+have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
+have /eqP neq:= (@pXt_neq0 0 I2).
+by apply: (@seqbase_coef_eq0 _ (fun i => 'Xt_ i) neq) eq _ ineq => n; rewrite size_pXt.
+apply/ leq_sizeP; last apply ineq.
+by rewrite -[size q]size_opp size_add.
+Qed.
+
+Lemma pXt_eq0 (p: {poly R}):
+	(2%:R : R) \is a GRing.unit ->
+	p = 0 <-> \sum_(i < size p) p`_i *: 'Xt_i = 0.
+Proof.
+move => I2; rewrite pXt_eq => //.
+by rewrite size_poly0 big_ord0.
+Qed.
+
+Definition p2pT (p : {poly R}) := \sum_(i < size p) p`_i *: 'Xt_i.
+
+Lemma p2pT0 : p2pT 0 = 0 :> {poly R}.
+Proof.
+rewrite /p2pT.
+replace (size _) with 0%nat by by rewrite size_poly0.
+by rewrite big_ord0.
+Qed.
+
+Lemma p2pTC c: p2pT c%:P = c%:P :> {poly R}.
+Proof.
+rewrite /p2pT size_polyC.
+case E: (c != 0) => /=; last by rewrite big_ord0; move/eqP: E => ->.
+rewrite big_ord_recr /=.
+rewrite big_ord0 !rm0 polyseqC E /=.
+by rewrite cons_poly_def !rm0 /= alg_polyC.
+Qed.
+
+Lemma p2pTXn n : p2pT ('X^n) = 'Xt_n.
+Proof.
+elim: n; first by rewrite p2pTC /= cons_poly_def /= !rm0.
+move => n eq.
+rewrite /p2pT size_polyXn.
+rewrite big_ord_recr coefXn /= eq_refl !rm1.
+rewrite big1; first by rewrite rm0 -mul_polyC rm1.
+case => m ineq _ /=.
+rewrite coefXn.
+have ->/=: m == n.+1 = false by apply ltn_eqF.
+by rewrite !rm0.
+Qed.
+
+Lemma p2pTD p q: p2pT (p + q) = p2pT p + p2pT q.
+Proof. by rewrite /p2pT (sumrA (fun i => 'Xt_i)). Qed.
+
+Lemma p2pTZ a p: p2pT (a *: p) = a *: p2pT p.
+Proof. by rewrite /p2pT (sumrZ (fun i => 'Xt_i)). Qed.
+
+Lemma p2pT_lin: linear p2pT.
+Proof. by move => a p q; rewrite p2pTD p2pTZ. Qed.
+
+Lemma size_p2pT (p : {poly R}) :
+	(2%:R : R) \is a GRing.unit -> size (p2pT p) = size p.
+Proof. by move => I2; rewrite size_sum_pXt. Qed.
+
+Lemma p2pTpT2pK : 
+  (2%:R : R) \is a GRing.unit -> 
+  cancel p2pT (@pT2p R).
+Proof.
+move => I2 p.
+rewrite /p2pT.
+have pT2p'_lin: linear (@pT2p R) by apply pT2p_lin.
+have /= -> := (linear_sum (Linear pT2p'_lin)).
+pose f (i : 'I_(size p)) := p`_i *: ('X^i).
+rewrite (eq_bigr f) {}/f => [|i _]; last first.
+	have /= ->:= (linearZ_LR (Linear pT2p'_lin)).
+	by rewrite lpXt_spec.
+by rewrite -coef_Xn_eq.
+Qed.
+
+Lemma coef_pT_eq (p : {poly R}) :
+  (2%:R : R) \is a GRing.unit -> 
+  p =  \sum_(i < size p) (p2pT p)`_i *: 'T_i :> {poly R}.
+Proof.
+by move => I2; rewrite -[LHS]p2pTpT2pK => //; rewrite /pT2p size_p2pT.
+Qed.
+
+Lemma pTp2_surjective:
+  (2%:R : R) \is a GRing.unit -> forall q, exists p, (@pT2p R) p = q.
+Proof.
+move => I2 q.
+exists (p2pT q).
+by rewrite p2pTpT2pK.
+Qed.
+
+Lemma pT2p_injective:
+	(2%:R : R) \is a GRing.unit -> injective (@pT2p R).
+Proof.
+move => I2 p q eqn.
+apply subr0_eq.
+apply (@polybase_eq0 R (fun i => 'T_i)).
+		exact: pT_neq0.
+	by move => n; rewrite size_pT.
+rewrite -(@polybase_widen _ (fun i => 'T_i) _ (maxn (size p) (size q))); last first.
+	by rewrite -[size q]size_opp; apply size_add.
+pose f (i: 'I_(maxn (size p) (size q))) := p`_i *: 'T_i - q`_i *: 'T_i.
+rewrite (eq_bigr f) {}/f => [ | i _]; last by rewrite coefB scalerBl.
+rewrite sumrB.
+rewrite (polybase_widen (fun i => 'T_i)); last exact: leq_maxl.
+rewrite [X in _ - X](polybase_widen (fun i => 'T_i)); last exact: leq_maxr.
+apply /eqP.
+rewrite /pT2p in eqn.
+by rewrite eqn subr_eq0.
+Qed.
+
+Lemma p2pT_injective:
+  (2%:R : R) \is a GRing.unit -> injective p2pT.
+Proof.
+move => I2 p q eqn.
+rewrite -[LHS]p2pTpT2pK => //.
+by rewrite eqn p2pTpT2pK.
+Qed.
+
+Lemma pT2pp2pTK: 
+  (2%:R : R) \is a GRing.unit -> 
+  cancel (@pT2p R) (p2pT).
+Proof.
+move => I2 p.
+apply /eqP; rewrite -subr_eq0; apply /eqP.
+apply pT2p_injective => //.
+rewrite pT2pD p2pTpT2pK => //.
+rewrite -pT2pD.
+suff ->: (p - p) = 0 => //.
+by apply /eqP; rewrite subr_eq0; apply /eqP.
+Qed.
+
+Lemma coef_pXt_eq p:
+  (2%:R : R) \is a GRing.unit -> 
+  p =  \sum_(i < size p) (pT2p p)`_i *: 'Xt_i :> {poly R}.
+Proof.
+by move => I2; rewrite -[LHS]pT2pp2pTK => //; rewrite {1}/p2pT size_pT2p.
+Qed.
+
+Lemma pT2p_bijective:
+	(2%:R : R) \is a GRing.unit -> bijective (@pT2p R).
+Proof.
+by exists p2pT; [apply: pT2pp2pTK | apply: p2pTpT2pK].
+Qed.
+
+Lemma p2pT_bijective:
+	(2%:R : R) \is a GRing.unit -> bijective p2pT.
+Proof.
+by exists (@pT2p R); [apply: p2pTpT2pK | apply: pT2pp2pTK].
+Qed.
+
+Lemma p2pT_mulX p:
+	(2%:R : R) \is a GRing.unit -> 	is_Tmulx (p2pT p) (p2pT (p * 'X)).
+Proof.
+move => I2.
+rewrite {2}[p]coef_Xn_eq mulr_suml.
+have /= ->:= (linear_sum (Linear p2pT_lin)).
+pose f (i : 'I_(size p)) := p`_i *: p2pT ('X^i.+1).
+rewrite (eq_bigr f) {}/f => [|i _]; last first.
+	rewrite -scalerAl p2pTZ.
+	by suff ->: 'X^i * 'X = 'X^ i.+1 => // R'; rewrite XnX.
+rewrite {1}/p2pT.
+apply (@sum_is_Tmulx p (fun i => 'Xt_i) (fun i => p2pT ('X^i.+1))) => i.
+rewrite p2pTXn.
+exact: lTmulx_spec.
+Qed.
+
+Notation Tmulx p := (Poly (lTmulx p)).
+
+Lemma Tmulx_is_Tmulx p q:
+	(2%:R : R) \is a GRing.unit -> is_Tmulx p q <-> q = Tmulx p.
+Proof.
+move => I2.
+by split => [ isT | ->]; first rewrite (@is_Tmulx_uniqe p q (Tmulx p)) => //;
+	rewrite -{1}[p]polyseqK; apply: lTmulx_spec.
+Qed.
+
+Lemma p2pT_TmulX p:
+	(2%:R : R) \is a GRing.unit -> p2pT (p * 'X) = Tmulx (p2pT p).
+Proof.
+move => I2; apply/ is_Tmulx_uniqe => //.
+	exact: p2pT_mulX.
+rewrite -{1}[p2pT p]polyseqK.
+by apply lTmulx_spec.
+Qed.
 
 Fixpoint lp2pT (l : seq R) :=
   if l is a :: l1 then ladd_const_poly a (lTmulx (lp2pT l1))
@@ -958,137 +1370,31 @@ Fixpoint lp2pT (l : seq R) :=
 
 Lemma lp2pT_cons a l :
   lp2pT (a :: l) = ladd_const_poly a (lTmulx (lp2pT l)).
-Proof. by []. Qed. 
+Proof. by []. Qed.
 
 Lemma lp2pT_spec l :
-  (2%:R : R) \is a GRing.unit -> 
-  Poly l =
-  \sum_(i < size (lp2pT l)) (lp2pT l)`_i *: 'T_i :> {poly R}.
+  (2%:R : R) \is a GRing.unit -> p2pT (Poly l) = Poly (lp2pT l).
 Proof.
-move=> I2.
-elim: l => [|a l IH] /=; first by rewrite big_ord0.
-rewrite cons_poly_def IH commr_polyX lTmulx_prop //.
-case: lp2pT => [|b l1].
-  by rewrite lTmulx_nil !(big_ord_recr, big_ord0) /= !rm0 alg_polyC.
-case: lTmulx (size_lTmulx (b :: l1)) => //= c l2 ->.
-rewrite big_ord_recl [RHS]big_ord_recl addrAC /=; congr (_ + _).
-by rewrite !alg_polyC polyC_add addrC.
+move => I2.
+elim l => /=; first by rewrite p2pT0.
+move => a k ih.
+rewrite cons_poly_def.
+rewrite p2pTD p2pTC.
+rewrite ladd_cons_poly_spec.
+suff ->: p2pT (Poly k * 'X) = Poly (lTmulx (lp2pT k)) by rewrite addrC.
+apply/ (@is_Tmulx_uniqe (Poly (lp2pT k))) => //; last exact: lTmulx_spec.
+rewrite -ih.
+rewrite /is_Tmulx.
+rewrite (lTmulx_prop (p2pT (Poly k))) => //.
+pose f (i : 'I_(size(lTmulx (p2pT (Poly k))))) := (Poly (lTmulx (p2pT (Poly k))))`_ i *: 'T_i.
+rewrite (eq_bigr f) {}/f => [|i _]; last by rewrite -coef_Poly.
+rewrite (polybase_widen); last exact: size_Poly.
+by rewrite p2pT_TmulX.
 Qed.
 
-Definition p2pT (p : {poly R}) : {poly R} := Poly (lp2pT p).
-
-Lemma p2pT_spec (p : {poly R}) :
-  (2%:R : R) \is a GRing.unit -> 
-  p =
-  \sum_(i < size (p2pT p)) (p2pT p)`_i *: 'T_i :> {poly R}.
-Proof.
-move=> H.
-rewrite -{1}[p]polyseqK [LHS]lp2pT_spec // /p2pT.
-rewrite -(polybase_widen _ (size_Poly (lp2pT p))).
-by apply: eq_bigr => i _; rewrite coef_Poly.
-Qed.
-
-Lemma p2pTK : 
-  (2%:R : R) \is a GRing.unit -> 
-  cancel p2pT (@pT2p R).
-Proof. by move=> I2 p; rewrite {2}[p]p2pT_spec // pT2p_spec. Qed.
-
-Lemma p2pT0 : p2pT 0 = 0 :> {poly R}.
-Proof. by rewrite /p2pT polyseq0. Qed.
+Definition p2pT' (p : {poly R}) : {poly R} := Poly (lp2pT p).
 
 End P2PT.
-
-Section LEMMAS.
-
-Variable R: idomainType.
-Variable V2 : (2%:R : R) \is a GRing.unit.
-
-Lemma size_pT n : size ('T_ n : {poly R}) = n.+1.
-Proof.
-have := size_pT_leq R n.
-rewrite leq_eqVlt => /orP[/eqP//|].
-rewrite ltnS => /leq_sizeP/(_ _ (leqnn _))/eqP.
-rewrite coef_pTn natrX expf_eq0 andbC.
-have := divrr V2.
-case: eqP => [->|//] /eqP.
-by rewrite mul0r eq_sym oner_eq0.
-Qed.
-
-Lemma pT_eq (p q : {poly R}) :
-  p = q <-> \sum_(i < size p) p`_i *: 'T_ i = 
-            \sum_(i < size q) q`_i *: 'T_ i.
-Proof.
-split=> [->//|/eqP].
-rewrite -(polybase_widen _ (leq_maxl (size p) (size q))).
-rewrite -(polybase_widen _ (leq_maxr (size p) (size q))).
-rewrite -subr_eq0 -sumrB.
-pose f (i : 'I_(maxn (size p) (size q))) := ((p- q)`_i) *: 'T_ i.
-rewrite (eq_bigr f) {}/f => [/eqP eq|i _]; last by rewrite coefB scalerBl.
-apply: subr0_eq.
-rewrite -polyP => i; rewrite coef0.
-have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
-  apply: polybase_eq0 eq _ ineq; first by rewrite pT0 oner_eq0.
-  by apply size_pT.
-apply/ leq_sizeP; last apply ineq.
-by rewrite -[size q]size_opp size_add.
-Qed.
-
-Lemma pTK2p : 
-  (2%:R : R) \is a GRing.unit -> 
-  cancel (@pT2p R) (@p2pT R).
-Proof. by move=> I2 p; apply/pT_eq; rewrite -p2pT_spec // pT2p_spec. Qed.
-
-Lemma size_pT2p (p : {poly R}) : size (pT2p p) = size p.
-Proof.
-have [/eqP->|pNZ] := boolP (p == 0); first by rewrite pT2p0.
-rewrite /pT2p size_polybase => [|i]; last by apply: size_pT.
-rewrite {-7}(polySpred pNZ).
-rewrite big_mkcond big_ord_recr /= -big_mkcond /=.
-rewrite -lead_coefE lead_coef_eq0 pNZ /= -(polySpred pNZ).
-rewrite (maxn_idPr _) //.
-apply/bigmax_leqP=> i _.
-by apply: leq_trans (leq_pred  _).
-Qed.
-
-Lemma pT2pZ a (p : {poly R}) : pT2p (a *: p) = a *: pT2p p.
-Proof.
-have [->|/eqP aNZ] := (a =P 0); first by rewrite !rm0 pT2p0.
-rewrite !/pT2p.
-pose f (i : 'I_(size (a*: p))) := a *: (p`_ i *: 'T_i).
-rewrite (eq_bigr f) {}/f => [|i _]; last by rewrite scalerA coefZ.
-have ->: size (a *: p) =  size p by rewrite size_scale.
-by rewrite scaler_sumr.
-Qed.
-
-Lemma pT2pD (p q : {poly R}) : pT2p (p + q) = pT2p p + pT2p q.
-Proof.
-rewrite !/pT2p.
-rewrite -(polybase_widen _ (leq_maxl (size p) (size q))).
-rewrite -(polybase_widen _ (leq_maxr (size p) (size q))).
-rewrite -(polybase_widen _ (size_add p q)).
-pose f (i : 'I_( maxn (size p) (size q))) := p`_ i *: 'T_i + q`_i *: 'T_i.
-rewrite (eq_bigr f) {}/f => [|i _]; last by rewrite coefD scalerDl.
-by rewrite big_split/=.
-Qed.
-
-Lemma pT2p_lin : linear (@pT2p R).
-Proof. by move => a p q; rewrite pT2pD pT2pZ. Qed.
-
-Lemma size_p2pT (p : {poly R}) : size (p2pT p) = size p.
-Proof.
-have [/eqP->|pNZ] := boolP (p == 0); first by rewrite p2pT0.
-rewrite {2}[p]p2pT_spec //.
-rewrite size_polybase => [|n]; last by apply: size_pT.
-have [/eqP->|p2NZ] := boolP (p2pT p == 0); first by rewrite size_poly0 big_ord0.
-rewrite {-1}(polySpred p2NZ).
-rewrite big_mkcond big_ord_recr -big_mkcond.
-rewrite -lead_coefE lead_coef_eq0 p2NZ /=.
-rewrite -(polySpred p2NZ) (maxn_idPr _) //.
-apply/bigmax_leqP=> i _.
-by apply: leq_trans (leq_pred  _).
-Qed.
-
-End LEMMAS.
 
 (* T_0(x)	=	1 *)
 (* T_1(x)	=	x	 *)
