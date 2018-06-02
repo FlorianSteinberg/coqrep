@@ -1396,6 +1396,52 @@ Definition p2pT' (p : {poly R}) : {poly R} := Poly (lp2pT p).
 
 End P2PT.
 
+Section pTab.
+Variable R: fieldType.
+
+Definition Tab (a b: R) := 	(1 + 1)/(b - a) *: 'X + (- (a + b) / (b - a))%:P.
+
+Definition pTab a b n := 'T_n \Po (Tab a b).
+
+Notation "''T^(' a ',' b ')_' n" := (pTab a b n)
+  (at level 3, n at level 2, format "''T^(' a ',' b ')_' n").
+
+Lemma horner_pTab a b n (x: R):
+('T^(a,b)_n).[x] = ('T_n).[(x*+2 - a - b) / (b - a)].
+Proof.
+rewrite /pTab horner_comp /Tab.
+rewrite hornerD hornerZ hornerX hornerC.
+f_equal.
+rewrite mulr2n -{2 3}[x]mul1r -[1 * x + 1 * x]mulrDl -addrA [RHS]mulrDl.
+by rewrite -[-a-b]opprD -{3}[b-a]mulr1 -mulf_div divr1.
+Qed.
+
+Lemma a b n:
+	b != a -> 	('T^(a,b)_n).[a] = ('T_n).[-1].
+Proof.
+move =>/eqP neq.
+rewrite horner_pTab mulr2n -[a + a - a]addrA.
+f_equal.
+have -> : a - a = 0 by apply /eqP; rewrite (subr_eq0 a a).
+rewrite rm0 -opprB mulNr divrr => //.
+rewrite unitfE.
+apply /eqP => /eqP eqn; apply /neq /eqP.
+by rewrite -subr_eq0.
+Qed.
+
+Lemma horner_pTab_b a b n:
+	b != a -> 	('T^(a,b)_n).[b] = ('T_n).[1].
+Proof.
+move =>/eqP neq.
+rewrite horner_pTab mulr2n -!addrA [- a - b]addrC !addrA -[b + b - b]addrA.
+have -> : b - b = 0 by apply /eqP; rewrite (subr_eq0 b b).
+rewrite rm0 divrr => //.
+rewrite unitfE.
+apply /eqP => /eqP eqn; apply /neq /eqP.
+by rewrite -subr_eq0.
+Qed.
+End pTab.
+
 (* T_0(x)	=	1 *)
 (* T_1(x)	=	x	 *)
 (* T_2(x)	=	2 x^2 - 1 *)
