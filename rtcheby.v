@@ -324,3 +324,26 @@ rewrite {2}(_ : 0 = 0 + 0); try lra.
 apply: is_RInt_plus; apply: RInt_cos_0_PI; first by rewrite -plusE; lia.
 rewrite -minusE; lia.
 Qed.
+
+Require Import example_tchebychevpol.
+From mathcomp Require Import all_algebra.
+Import GRing.Theory.
+Local Open Scope ring_scope.
+Require Import Rstruct.
+
+Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
+  /GRing.one //=.
+
+Lemma pT_Tcheby n (x: R):
+	(Rle (-R1) x) /\ (Rle x R1) -> Tcheby n x = (pT n).[x].
+Proof.
+move => ineq.
+elim: n {-2}(n) (leqnn n) => [n ass | n ih k ineqk].
+	have/eqP-> : n == 0%nat by rewrite -leqn0.
+	by rewrite Tcheby_0; try lra; rewrite pT0 hornerC.
+rewrite leq_eqVlt in ineqk; case/orP: ineqk => [/eqP eqn | ineqk]; last by rewrite ih.
+case E: n => [ | m]; first by	rewrite eqn E Tcheby_1; try lra; first by rewrite pT1 hornerX.
+rewrite eqn E pTSS Tcheby_rec; try lra.
+rewrite hornerD hornerM mulr2n hornerD hornerX hornerN.
+by rewrite -!ih; toR; try lra; rewrite E.
+Qed.
