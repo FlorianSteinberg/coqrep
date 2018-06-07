@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import Psatz under CPoly Poly_exec Poly_complements seq_base ssring.
+Require Import Psatz under CPoly Poly_exec Poly_complements seq_base.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

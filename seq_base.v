@@ -64,7 +64,6 @@ have lp : l`_ n * (F n)`_n != 0.
 	apply (@F_lead n).
 	by rewrite lead_coefE F_size.
 have Hs: size (l`_n *: F n) = n.+1.
-	Search _ size lead_coef.
 	suff/leP: (n.+1 <= size (l`_n *: F n))%nat.
 		have/leP:= @size_scale_leq _ (l`_n) (F n).
 		rewrite F_size; lia.
