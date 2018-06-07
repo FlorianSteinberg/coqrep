@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import under Poly_complements.
+Require Import Psatz under Poly_complements.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -47,19 +47,28 @@ Qed.
 End RBase.
 
 Section Base.
-Variable R : idomainType.
+Variable R : unitRingType.
 Variable F : nat -> {poly R}.
-Hypothesis F0 : F 0 != 0.
 Hypothesis F_size : forall n, size (F n) = n.+1.
+Hypothesis F_lead: forall n r, r * lead_coef (F n) = 0 -> r = 0.
 
 Lemma size_seqbase n l : 
    size (\sum_(i < n) l`_ i *: F i) = \max_(i < n | l`_i != 0) i.+1.
 Proof.
 elim: n => [|n IH]; first by rewrite !big_ord0 size_poly0.
 rewrite [RHS]big_mkcond /= !big_ord_recr /= -big_mkcond /=.
-have [/eqP Hp| Hnp /=] := boolP (l`_n == 0).
+have [/eqP Hp| /eqP Hnp /=] := boolP (l`_n == 0).
   by rewrite Hp scale0r addr0 IH /= maxn0.
-have Hs : size (l`_ n *: F n) = n.+1 by rewrite size_scale.
+have lp : l`_ n * (F n)`_n != 0.
+	apply /eqP => eq; apply Hnp.
+	apply (@F_lead n).
+	by rewrite lead_coefE F_size.
+have Hs: size (l`_n *: F n) = n.+1.
+	Search _ size lead_coef.
+	suff/leP: (n.+1 <= size (l`_n *: F n))%nat.
+		have/leP:= @size_scale_leq _ (l`_n) (F n).
+		rewrite F_size; lia.
+	by apply gtn_size; rewrite coefZ.
 case: (n) Hs IH => [Hs _|n1 Hs IH].
   by rewrite !big_ord0 add0r Hs.
 rewrite addrC size_addl Hs.
@@ -86,6 +95,11 @@ have ->: n = (size p).-1 by rewrite E.
 by rewrite -lead_coefE lead_coef_eq0 -size_poly_eq0 E.
 Qed.
 
+Lemma Fneq0: forall n, F n != 0.
+Proof.
+by move => n; rewrite -size_poly_gt0 F_size.
+Qed.
+
 Lemma seqbase_coef_eq0 n (l: seq R) : 
    \sum_(i < n) l`_ i *: F i = 0 -> forall i, (i < n)%N -> l`_i = 0.
 Proof.
@@ -95,8 +109,17 @@ suff P j : (0 < j < n)%N -> l`_j = 0.
   case: (n) Hi P => // n1 Hi P /eqP.
   rewrite big_ord_recl big1 => [|j _]; last first.
     by rewrite P ?scale0r // lift0 /= ltnS.
-  rewrite addr0  scale_poly_eq0 (negPf F0) orbF.
-  case: i Hi => [_ /eqP->//|i Hi _].
+  rewrite addr0.
+  move => /eqP eq; move: eq.
+  rewrite -polyP => prp.
+  specialize (prp 0%nat).
+  rewrite coef0 coefZ in prp.
+  move: prp.
+  rewrite [0%nat]pred_Sn.
+  rewrite -(F_size 0).
+  rewrite -lead_coefE => prp.
+ 	have:= @F_lead 0 _ prp.
+  case: i Hi => [_ ->//|i Hi _].
   by apply: P.
 move=> /andP[HP1 HP2].
 have /eqP := (H).
@@ -114,3 +137,19 @@ by rewrite (seqbase_coef_eq0 prp); first by rewrite !rm0.
 Qed.
 
 End Base.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

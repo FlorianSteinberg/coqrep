@@ -1,7 +1,9 @@
-From mathcomp Require Import all_ssreflect.
-Require Import Reals Coquelicot.Coquelicot Psatz.
+From mathcomp Require Import all_ssreflect all_algebra.
+Require Import Reals Coquelicot.Coquelicot Psatz CPoly Rstruct.
+Import GRing.Theory.
 
-
+Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
+  /GRing.one //=.
 Set Bullet Behavior "None". 
 
 Open Scope R_scope.
@@ -179,17 +181,47 @@ apply: cos_is_inj => //.
 apply/acos_right_inv/COS_bound.
 Qed.
 
-Definition Tcheby n x := cos (INR n * acos x).
-Notation "'T_ n x" := (Tcheby n x) (at level 10, format "''T_' n  x").
+Section Cheby_rec.
+Definition Cheby n x := cos (INR n * acos x).
 
-Lemma Tcheby_0 x : -1 <= x <= 1 -> Tcheby 0 x = 1.
-Proof. by rewrite /Tcheby Rmult_0_l cos_0. Qed.
+Lemma Cheby_0 x : -1 <= x <= 1 -> Cheby 0 x = 1.
+Proof. by rewrite /Cheby Rmult_0_l cos_0. Qed.
 
-Lemma Tcheby_1 x : -1 <= x <= 1 -> Tcheby 1 x = x.
-Proof. by rewrite /Tcheby Rmult_1_l; exact: acos_right_inv. Qed.
+Lemma Cheby_1 x : -1 <= x <= 1 -> Cheby 1 x = x.
+Proof. by rewrite /Cheby Rmult_1_l; exact: acos_right_inv. Qed.
 
-Lemma Tcheby_cos n a : 0 <= a <= PI -> Tcheby n (cos a) = cos ((INR n) * a).
-Proof. by move=> *; rewrite /Tcheby acos_left_inv. Qed.
+Lemma Cheby_rec x n : 
+  -1 <= x <= 1 ->  Cheby n.+2 x = 2 * x * Cheby n.+1 x - Cheby n x.
+Proof.
+move=> H.
+suff : Cheby n.+2 x + Cheby n x = 2 * x * Cheby n.+1 x.
+  move=> <-; ring.
+rewrite form1.
+have-> : (INR n.+2 * acos x - INR n * acos x) / 2 = acos x.
+  rewrite !S_INR; field.
+have-> : (INR n.+2 * acos x + INR n * acos x) / 2 = INR n.+1 * acos x.
+  rewrite !S_INR; field.
+by rewrite acos_right_inv.
+Qed.
+Local Open Scope ring_scope.
+
+Lemma pT_Tcheby n (x: R):
+	(Rle (-R1) x) /\ (Rle x R1) -> Cheby n x = ('T_n).[x].
+Proof.
+move => ineq.
+elim: n {-2}(n) (leqnn n) => [n ass | n ih k ineqk].
+	have/eqP-> : n == 0%nat by rewrite -leqn0.
+	by rewrite Cheby_0; try lra; rewrite pT0 hornerC.
+rewrite leq_eqVlt in ineqk; case/orP: ineqk => [/eqP eqn | ineqk]; last by rewrite ih.
+case E: n => [ | m]; first by	rewrite eqn E Cheby_1; try lra; first by rewrite pT1 hornerX.
+rewrite eqn E pTSS Cheby_rec; try lra.
+rewrite hornerD hornerM mulr2n hornerD hornerX hornerN.
+by rewrite -!ih; toR; try lra; rewrite E.
+Qed.
+End Cheby_rec.
+
+Lemma Cheby_cos n a : 0 <= a <= PI -> Cheby n (cos a) = cos ((INR n) * a).
+Proof. move=> *; rewrite /Cheby acos_left_inv //. Qed.
 
 Lemma cos_add_INR a n : cos (a + INR n * PI) = if Nat.even n then cos a else -cos a.
 Proof.
@@ -199,25 +231,11 @@ rewrite neg_cos IH Nat.even_succ -Nat.negb_even.
 by case: Nat.even => /=; lra.
 Qed.
 
-Lemma Tcheby_rec x n : 
-  -1 <= x <= 1 ->  Tcheby n.+2 x = 2 * x * Tcheby n.+1 x - Tcheby n x.
-Proof.
-move=> H.
-suff : Tcheby n.+2 x + Tcheby n x = 2 * x * Tcheby n.+1 x.
-  move=> <-; ring.
-rewrite form1.
-have-> : (INR n.+2 * acos x - INR n * acos x) / 2 = acos x.
-  rewrite !S_INR; field.
-have-> : (INR n.+2 * acos x + INR n * acos x) / 2 = INR n.+1 * acos x.
-  rewrite !S_INR; field.
-by rewrite acos_right_inv.
-Qed.
-
-Lemma Tcheby_compi m n a : -1 <= a <= 1 -> Tcheby n (Tcheby m a) = Tcheby (n * m) a.
+Lemma Cheby_compi m n a : -1 <= a <= 1 -> Cheby n (Cheby m a) = Cheby (n * m) a.
 Proof.
 move=> Ha.
 have U := acos_bound _ Ha.
-rewrite /Tcheby mult_INR Rmult_assoc.
+rewrite /Cheby mult_INR Rmult_assoc.
 set v := _ * acos a.
 have HP := PI2_1;
 have [k [r [-> Hr]]] : exists k, exists r, v = r + INR k * PI /\ (0 <= r <= PI).
@@ -323,27 +341,4 @@ apply: is_RInt_scal.
 rewrite {2}(_ : 0 = 0 + 0); try lra.
 apply: is_RInt_plus; apply: RInt_cos_0_PI; first by rewrite -plusE; lia.
 rewrite -minusE; lia.
-Qed.
-
-Require Import example_tchebychevpol.
-From mathcomp Require Import all_algebra.
-Import GRing.Theory.
-Local Open Scope ring_scope.
-Require Import Rstruct.
-
-Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
-  /GRing.one //=.
-
-Lemma pT_Tcheby n (x: R):
-	(Rle (-R1) x) /\ (Rle x R1) -> Tcheby n x = (pT _ n).[x].
-Proof.
-move => ineq.
-elim: n {-2}(n) (leqnn n) => [n ass | n ih k ineqk].
-	have/eqP-> : n == 0%nat by rewrite -leqn0.
-	by rewrite Tcheby_0; try lra; rewrite pT0 hornerC.
-rewrite leq_eqVlt in ineqk; case/orP: ineqk => [/eqP eqn | ineqk]; last by rewrite ih.
-case E: n => [ | m]; first by	rewrite eqn E Tcheby_1; try lra; first by rewrite pT1 hornerX.
-rewrite eqn E pTSS Tcheby_rec; try lra.
-rewrite hornerD hornerM mulr2n hornerD hornerX hornerN.
-by rewrite -!ih; toR; try lra; rewrite E.
 Qed.

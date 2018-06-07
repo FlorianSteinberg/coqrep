@@ -13,29 +13,30 @@ Variable R : ringType.
 Implicit Types (l : seq R) (p: {poly R}) .
 
 (* Chebychev *)
-Fixpoint pT_rec {R: ringType} (n : nat) {struct n} : seq R :=
-  if n is n1.+1 then
-    if n1 is n2.+1 then polyseq ('X *+2 * Poly (pT_rec n1) - Poly (pT_rec n2))
-    else [:: 0; 1]
-  else [::1].
 
-Definition pT n :{poly R} := Poly (pT_rec n).
+Fixpoint pT_expanded_def (n : nat) {struct n} : {poly R} :=
+  if n is n1.+1 then
+    if n1 is n2.+1 then 'X *+2 * pT_expanded_def n1 - pT_expanded_def n2
+    else 'X
+  else 1.
+
+Fact pT_key : unit. Proof. by []. Qed.
+Definition pT := locked_with pT_key pT_expanded_def.
+Canonical pT_unlockable := [unlockable fun pT].
 
 Notation "'T_ n" := (pT n) 
   (at level 3, n at level 2, format "''T_' n ").
 
 Lemma pT0 : 'T_0 = 1 :> {poly R}.
-Proof. by rewrite /pT /= cons_poly_def !rm0. Qed.
+Proof. by rewrite unlock /pT_expanded_def. Qed.
 
 Lemma pT1 : 'T_1 = 'X :> {poly R}.
 Proof.
-by rewrite /pT /= !cons_poly_def !rm0 !rm1.
+by rewrite unlock /pT_expanded_def.
 Qed.
 
 Lemma pTSS : forall n, 'T_n.+2 = 'X *+2 * 'T_n.+1 - 'T_n :> {poly R}.
-Proof.
-by elim => [ | n ->]; rewrite /pT/= !polyseqK; first by rewrite !cons_poly_def.
-Qed.
+Proof. by move => n; rewrite unlock. Qed.
 
 Notation "'T_ n" := (pT n) 
   (at level 3, n at level 2, format "''T_' n ").
@@ -325,20 +326,26 @@ End Tcheby.
 Notation "'T_ n " := (pT _ n) (at level 3, n at level 2, format "''T_' n").
 
 Section LINEAR_INDEPENDENCE.
-(*This assumption is too strong but it is what is used in the lemma polybase_eq0 *)
-Variable R: idomainType. 
-(* This next assumption should be the appropriate one and is implied by the domain type assumption:*)
+Variable R: unitRingType.
 Variable V2 : (2%:R : R) \is a GRing.unit.
+
+Lemma pT_mulX n : 
+   'X * 'T_n.+1 = 2%:R ^-1 *: 'T_n + 2%:R ^-1 *: 'T_n.+2 :> {poly R}.
+Proof.
+rewrite pTSS scalerDr addrCA scalerN subrr addr0.
+by rewrite -scaler_nat -scalerAl scalerA mulVr // scale1r.
+Qed.
 
 Lemma size_pT n : size ('T_ n : {poly R}) = n.+1.
 Proof.
 have := size_pT_leq R n.
 rewrite leq_eqVlt => /orP[/eqP//|].
 rewrite ltnS => /leq_sizeP/(_ _ (leqnn _))/eqP.
-rewrite coef_pTn natrX expf_eq0 andbC.
-have := divrr V2.
-case: eqP => [->|//] /eqP.
-by rewrite mul0r eq_sym oner_eq0.
+rewrite coef_pTn natrX.
+case: n => [ | n /=]; first by rewrite /= expr0 oner_eq0.
+case: n => [ | n /= /eqP eq]; first by rewrite /= expr0 oner_eq0.
+exfalso; have /negP not:= unitr0 R; apply not.
+by rewrite -eq; apply unitrX.
 Qed.
 
 Lemma pT_neq0 n: 'T_n != 0 :> {poly R}.
@@ -349,7 +356,12 @@ Qed.
 
 Lemma size_sum_pT (p: {poly R}):
 	size (\sum_(i < size p) p`_i *: 'T_i) = size p.
-Proof. by rewrite (@size_polybase _ (fun i => 'T_i)); last apply: size_pT. Qed.
+Proof.
+rewrite (@size_polybase _ (fun i => 'T_i)) => // [| n ]; first by apply size_pT.
+rewrite lead_coefE size_pT coef_pTn natrX => r eq.
+have V2n:= (unitrX n.-1 V2).
+by rewrite -[r]mulr1 -(divrr V2n) mulrA eq rm0.
+Qed.
 
 Lemma pT_eq (p q : {poly R}):
 	p = q <->
@@ -361,11 +373,12 @@ rewrite -(@polybase_widen _ (fun i => 'T_i) _ _ (leq_maxr (size p) (size q))).
 rewrite -subr_eq0 -sumrB.
 pose f (i : 'I_(maxn (size p) (size q))) := ((p- q)`_i) *: 'T_ i.
 rewrite (eq_bigr f) {}/f => [/eqP eq|i _]; last by rewrite coefB scalerBl.
-apply: subr0_eq.
-rewrite -polyP => i; rewrite coef0.
+apply: subr0_eq; rewrite -polyP => i; rewrite coef0.
 have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
-   apply: seqbase_coef_eq0 eq _ ineq; first by rewrite pT0 oner_eq0.
-  by apply size_pT.
+	apply: seqbase_coef_eq0; [exact: size_pT | | exact: eq | exact ineq].
+	move => n r eq'; have V2n:= (unitrX n.-1 V2).
+	rewrite lead_coefE size_pT coef_pTn natrX in eq'.
+	by rewrite -[r]mulr1 -(divrr V2n) mulrA eq' rm0.
 apply/ leq_sizeP; last apply ineq.
 by rewrite -[size q]size_opp size_add.
 Qed.
@@ -375,6 +388,51 @@ Lemma pT_eq0 (p: {poly R}):
 Proof. by rewrite pT_eq size_poly0 big_ord0. Qed.
 End LINEAR_INDEPENDENCE.
 
+Section pTab.
+Variable R: fieldType.
+
+Definition Tab (a b: R) := 	(1 + 1)/(b - a) *: 'X + (- (a + b) / (b - a))%:P.
+
+Definition pTab a b n := 'T_n \Po (Tab a b).
+
+Notation "''T^(' a ',' b ')_' n" := (pTab a b n)
+  (at level 3, n at level 2, format "''T^(' a ',' b ')_' n").
+
+Lemma horner_pTab a b n (x: R):
+('T^(a,b)_n).[x] = ('T_n).[(x*+2 - a - b) / (b - a)].
+Proof.
+rewrite /pTab horner_comp /Tab.
+rewrite hornerD hornerZ hornerX hornerC.
+f_equal.
+rewrite mulr2n -{2 3}[x]mul1r -[1 * x + 1 * x]mulrDl -addrA [RHS]mulrDl.
+by rewrite -[-a-b]opprD -{3}[b-a]mulr1 -mulf_div divr1.
+Qed.
+
+Lemma horner_pTab_a a b n:
+	b != a -> 	('T^(a,b)_n).[a] = ('T_n).[-1].
+Proof.
+move =>/eqP neq.
+rewrite horner_pTab mulr2n -[a + a - a]addrA.
+f_equal.
+have -> : a - a = 0 by apply /eqP; rewrite (subr_eq0 a a).
+rewrite rm0 -opprB mulNr divrr => //.
+rewrite unitfE.
+apply /eqP => /eqP eqn; apply /neq /eqP.
+by rewrite -subr_eq0.
+Qed.
+
+Lemma horner_pTab_b a b n:
+	b != a -> 	('T^(a,b)_n).[b] = ('T_n).[1].
+Proof.
+move =>/eqP neq.
+rewrite horner_pTab mulr2n -!addrA [- a - b]addrC !addrA -[b + b - b]addrA.
+have -> : b - b = 0 by apply /eqP; rewrite (subr_eq0 b b).
+rewrite rm0 divrr => //.
+rewrite unitfE.
+apply /eqP => /eqP eqn; apply /neq /eqP.
+by rewrite -subr_eq0.
+Qed.
+End pTab.
 
 
 
