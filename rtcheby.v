@@ -335,7 +335,7 @@ Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
   /GRing.one //=.
 
 Lemma pT_Tcheby n (x: R):
-	(Rle (-R1) x) /\ (Rle x R1) -> Tcheby n x = (pT n).[x].
+	(Rle (-R1) x) /\ (Rle x R1) -> Tcheby n x = (pT _ n).[x].
 Proof.
 move => ineq.
 elim: n {-2}(n) (leqnn n) => [n ass | n ih k ineqk].
