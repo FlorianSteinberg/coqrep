@@ -48,9 +48,9 @@ Inductive T := TL | TR | Tbot.
 
 Definition rep_T phi (t: T) :=
 	match t with
-		| TL => exists (n: nat), phi n = Some true /\ forall m, m < n -> phi m = None
-		| TR => exists (n: nat), phi n = Some false /\ forall m, m < n -> phi m = None
-		| Tbot => forall n, phi n = None
+		| TL => exists (n: nat), phi n = TL /\ forall m, m < n -> phi m = Tbot
+		| TR => exists (n: nat), phi n = TR /\ forall m, m < n -> phi m = Tbot
+		| Tbot => forall n, phi n = Tbot
 	end.
 
 Lemma rep_T_is_rep:
@@ -75,22 +75,23 @@ split.
 	case/orP: ineq => [/eqP <- | ineq]; first by rewrite eq.
 	move => eq' prp'; by rewrite prp' in eq.
 move => t.
-case: t; first by exists (fun _ => some true); exists 0.
-	by exists (fun _ => some false); exists 0.
-by exists (fun _ => None).
+case: t; first by exists (fun _ => TL); exists 0.
+	by exists (fun _ => TR); exists 0.
+by exists (fun _ => Tbot).
 Qed.
 
-Lemma bool_count:
-	bool \is_countable.
+Lemma T_count:
+	T \is_countable.
 Proof.
 exists (fun n => match n with
-	| 0 => Some true
-	| S 0 => Some false
-	| S (S n) => None
+	| 0 => Some TR
+	| S 0 => Some TL
+	| S (S 0) => Some Tbot
+	| S (S (S n)) => None
 end).
-move => ob.
-case: ob => [b | ]; last by exists 3.
-by case b; [exists 0 | exists 1].
+move => ot.
+case: ot => [t | ]; last by exists 3.
+by case: t; [exists 1 | exists 0 | exists 2].
 Qed.
 
 Print rep_space.
@@ -98,12 +99,12 @@ Search (_ \is_countable).
 Canonical rep_space_T := @make_rep_space
 	T
 	nat
-	(option bool)
+	T
 	rep_T
 	0
-	(None)
+	(Tbot)
 	nat_count
-	(option_count bool_count)
+	(T_count)
 	rep_T_is_rep.
 
 Definition rep_space_Tomega := rep_space_usig_prod rep_space_T.
