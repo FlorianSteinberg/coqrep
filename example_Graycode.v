@@ -47,33 +47,41 @@ rewrite [Rabs (powerRZ 2 z)]Rabs_pos_eq => //.
 by apply: powerRZ_le; lra.
 Qed.
 
-Lemma rep_sd_is_rep:
-	rep_sd \is_representation.
+Lemma rep_sd_sing:
+	rep_sd \is_single_valued.
 Proof.
-split => [phi [x ineqx] [y ineqy] phinx phiny/= | ].
-	apply /eq_sub /cond_eq_pwr => /= z.
-	rewrite /rep_sd /= in phinx phiny; move: ineqx ineqy => _ _.
-	pose q:= sum_f 0 (Z.to_nat (- (z - 1))) (fun i : nat => interp (phi i) * powerRZ 2 (- Z.of_nat i)).
-	have ->: x - y = x - q  + (q - y) by lra.
-	apply triang; rewrite [_ (q - y)]Rabs_minus_sym.
-	have -> : (z = z -1 +1)%Z by lia.
-	rewrite powerRZ_add; last by lra.
-	rewrite powerRZ_1 Rmult_comm.
-	have two: 2 = 1 + 1 by lra.
-	rewrite {1}two Rmult_plus_distr_r Rmult_1_l.
-	apply Rplus_le_compat.
-		apply /Rle_trans; first by apply phinx.
-		rewrite !powerRZ_Rpower; try lra.
-		apply Rle_Rpower; try lra.
-		case: (z-1)%Z => [ | p | p]; first by rewrite Z2Nat.id => //; rewrite opp_IZR; 	apply Rle_refl.
-			by rewrite /=; apply /IZR_le /Zle_0_pos.
-		by rewrite Z2Nat.id; try lia; rewrite opp_IZR; lra.
-	apply /Rle_trans; first by apply phiny.
+move => phi [x ineqx] [y ineqy] phinx phiny/=.
+apply /eq_sub /cond_eq_pwr => /= z.
+rewrite /rep_sd /= in phinx phiny; move: ineqx ineqy => _ _.
+pose q:= sum_f 0 (Z.to_nat (- (z - 1))) (fun i : nat => interp (phi i) * powerRZ 2 (- Z.of_nat i)).
+have ->: x - y = x - q  + (q - y) by lra.
+apply triang; rewrite [_ (q - y)]Rabs_minus_sym.
+have -> : (z = z -1 +1)%Z by lia.
+rewrite powerRZ_add; last by lra.
+rewrite powerRZ_1 Rmult_comm.
+have two: 2 = 1 + 1 by lra.
+rewrite {1}two Rmult_plus_distr_r Rmult_1_l.
+apply Rplus_le_compat.
+	apply /Rle_trans; first by apply phinx.
 	rewrite !powerRZ_Rpower; try lra.
 	apply Rle_Rpower; try lra.
 	case: (z-1)%Z => [ | p | p]; first by rewrite Z2Nat.id => //; rewrite opp_IZR; 	apply Rle_refl.
 		by rewrite /=; apply /IZR_le /Zle_0_pos.
 	by rewrite Z2Nat.id; try lia; rewrite opp_IZR; lra.
+apply /Rle_trans; first by apply phiny.
+rewrite !powerRZ_Rpower; try lra.
+apply Rle_Rpower; try lra.
+case: (z-1)%Z => [ | p | p]; first by rewrite Z2Nat.id => //; rewrite opp_IZR; 	apply Rle_refl.
+	by rewrite /=; apply /IZR_le /Zle_0_pos.
+by rewrite Z2Nat.id; try lia; rewrite opp_IZR; lra.
+Qed.
+
+
+
+Lemma rep_sd_is_rep:
+	rep_sd \is_representation.
+Proof.
+split; first exact :rep_sd_sing.
 Admitted.
 
 Lemma SD_count:
