@@ -1,18 +1,29 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import all_rs rs_reals_creals Rstruct.
+Require Import all_rs rs_reals_creals Rstruct under.
 Require Import Qreals Reals Psatz.
 
 Section Gray_code.
 Import GRing.Theory.
 Local Open Scope ring_scope.
 Local Open Scope R_scope.
-Definition SD := option bool.
 
-Notation one := (Some true).
-Notation zero := None.
-Notation minusone := (Some false).
+Inductive SD := minusone | zero | one.
 
-Definition interp sd := match sd with
+Definition SD2OB sd := match sd with
+	| minusone => some false
+	| zero => None
+	| one => some true
+end.
+
+Lemma SD_eqClass: Equality.class_of SD.
+Proof.
+exists (fun sd sd' => (SD2OB sd == SD2OB sd')%bool).
+by case; case; try exact: ReflectT; try exact: ReflectF.
+Qed.
+
+Canonical SD_eqType := Equality.Pack SD_eqClass Type.
+
+Definition SD2R sd := match sd with
 	| one => 1
 	| zero => 0
 	| minusone => -1
@@ -20,45 +31,10 @@ end.
 
 Definition UI := { x | -1 <= x <= 1}.
 
-Definition rep_sd (phi: nat -> SD) (x: UI) :=
-	forall n, Rabs (projT1 x - \sum_(i < n) interp (phi i) * (powerRZ 2 (- Z.of_nat i.+1))) <= powerRZ 2 (- Z.of_nat n.+1).
+Definition rep_sd (u: nat -> SD) (x: UI) :=
+	forall n, Rabs (projT1 x - \sum_(i < n.+1) SD2R (u i) * /2 ^ i) <= /2^n.+1.
 
 Definition accumulates_to_zero T f:= forall r, r > 0 -> exists t: T, Rabs (f t) < r.
-
-Lemma pwr2gtz (z: Z): exists n, 2^n > z.
-Proof.
-elim: z => [ | p | p ]; first by exists 0%nat; rewrite pow_O; lra.
-	elim: p => [p [n ih]| p [n ih]]; last by 	exists 1%nat; rewrite pow_1; lra.
-		have ineq: 1 <= IZR (Z.pos p) by apply /IZR_le; have:= Pos2Z.is_pos; lia.
-		exists n.+2 => /=; apply Rlt_gt; rewrite -Rmult_assoc.
-		apply /Rle_lt_trans; last by apply Rmult_lt_compat_l; last exact: ih; lra.
-		by rewrite Pos2Z.inj_xI plus_IZR mult_IZR; lra.
-	have ineq: 1 <= IZR (Z.pos p) by apply /IZR_le; have:= Pos2Z.is_pos; lia.
-	exists n.+2 => /=; apply Rlt_gt; rewrite -Rmult_assoc.
-	apply /Rle_lt_trans; last by apply Rmult_lt_compat_l; last exact: ih; lra.
-	by rewrite Pos2Z.inj_xO mult_IZR; lra.
-exists 0%nat; rewrite pow_O.
-rewrite -[1]Ropp_involutive -[IZR (Z.neg p)] Ropp_involutive.
-apply Ropp_lt_contravar; rewrite -!opp_IZR /=; apply IZR_lt.
-by apply /Z.lt_le_trans; last exact/ Zle_0_pos; lia.
-Qed.
-
-Lemma twopowern_accumulates_to_zero:
-	accumulates_to_zero Z (fun z => powerRZ 2 z).
-Proof.
-move => r rgt0.
-pose z := (up (1/r)).
-have [n nprp]:= pwr2gtz z.
-have : 0 < 2^n by apply pow_lt; lra.
-exists (Z.opp (Z.of_nat n)).
-rewrite Rabs_pos_eq; last by apply powerRZ_le; lra.
-rewrite powerRZ_neg; try lra; rewrite -pow_powerRZ -Rinv_pow; try lra.
-rewrite -[r]Rinv_involutive; try lra.
-apply Rinv_lt_contravar; first by rewrite Rmult_comm; apply Rdiv_lt_0_compat.
-apply/ Rlt_trans.
-	have:= (archimed (1 / r)).1 => ineq; rewrite -[/r]Rmult_1_l; apply ineq.
-done.
-Qed.
 
 Lemma cond_eq_f T f x y:
 	accumulates_to_zero T f -> (forall z, Rabs (x - y) <= Rabs (f z)) -> x = y.
@@ -69,38 +45,46 @@ have [t ineq]:= (acc eps epsg0).
 by apply /Rle_lt_trans; first by apply: (cond t).
 Qed.
 
-Lemma cond_eq_pwr x y : (forall z, Rabs (x - y) <= powerRZ 2 z) -> x = y.
+Lemma pwr2gtz m: exists n, (2^n > m)%nat.
+Proof.
+elim: m => [ | m [n /leP ih]]; first by exists 0%nat; apply /leP => /=; lia.
+exists n.+1; apply /leP => /=; lia.
+Qed.
+
+Lemma twopowern_accumulates_to_zero: accumulates_to_zero _ (fun n => /2^(n.+1)).
+Proof.
+move => r rgt0; pose z := Z.to_nat (up (1/r)).
+have [n /leP nprp]:= pwr2gtz z; have : 0 < 2^n.+1 by apply pow_lt; lra.
+exists (n).
+rewrite Rabs_pos_eq; last by rewrite Rinv_pow; try lra; apply /pow_le; lra.
+rewrite -[r]Rinv_involutive; try lra.
+apply Rinv_lt_contravar; first by rewrite Rmult_comm; apply Rdiv_lt_0_compat.
+apply /Rlt_trans; first by have:= (archimed (1 / r)).1 => ineq; rewrite -[/r]Rmult_1_l; apply ineq.
+case E: (up (1/r)) => [ | p | p] //; have pos:= (Pos2Z.pos_is_pos p); last first.
+	by apply /(@Rlt_le_trans _ (IZR 0)); [apply IZR_lt; lia | apply Rlt_le].
+rewrite -[Z.pos _]Z2Nat.id; try lia; rewrite -E -/z -INR_IZR_INZ.
+have ->: 2 = INR 2 by trivial.
+rewrite -pow_INR; apply lt_INR => /=; lia.
+Qed.
+
+Lemma cond_eq_pwr x y : (forall n, Rabs (x - y) <= /2 ^ n.+1) -> x = y.
 Proof.
 intros.
-apply (cond_eq_f Z (fun z => powerRZ 2 z) _ _ twopowern_accumulates_to_zero) => z.
-rewrite [Rabs (powerRZ 2 z)]Rabs_pos_eq => //.
-by apply: powerRZ_le; lra.
+apply (cond_eq_f _ _ _ _ twopowern_accumulates_to_zero) => n.
+rewrite [Rabs (/2 ^ n.+1)]Rabs_pos_eq => //.
+by rewrite Rinv_pow; first apply: pow_le; lra.
 Qed.
 
 Lemma rep_sd_sing:
 	rep_sd \is_single_valued.
 Proof.
-move => phi [x ineqx] [y ineqy] phinx phiny.
-apply /eq_sub /cond_eq_pwr => /= z.
-pose q:= \sum_(i < Z.to_nat (- (z - 1))) interp (phi i) * powerRZ 2 (- Z.of_nat i.+1).
+move => u [x ineqx] [y ineqy] unx uny.
+apply /eq_sub /cond_eq_pwr => n.
+pose q:= \sum_(i < n.+2) SD2R (u i) * /2 ^ i.
 have ->: x - y = x - q  + (q - y) by lra.
 apply triang; rewrite [_ (q - y)]Rabs_minus_sym.
-have -> : (z = z -1 +1)%Z by lia.
-rewrite powerRZ_add; last by lra.
-rewrite powerRZ_1 Rmult_comm.
-have two: 2 = 1 + 1 by lra.
-rewrite {1}two Rmult_plus_distr_r Rmult_1_l.
-apply Rplus_le_compat.
-	apply /Rle_trans;	first by apply phinx.
-	rewrite !powerRZ_Rpower; try lra.
-	apply Rle_Rpower; try lra.
-	case: (z)%Z => [ | p | p]; first by rewrite /=; lra.
-		apply /IZR_le; lia.
-	apply /IZR_le; rewrite Nat2Z.inj_succ Z2Nat.id /=; lia.
-apply /Rle_trans; first by apply phiny.
-rewrite !powerRZ_Rpower; try lra.
-apply Rle_Rpower; try lra.
-apply /IZR_le; case: (z-1)%Z => [ | p | p]; rewrite /=; lia.
+apply /Rle_trans; first by apply: Rplus_le_compat; [exact: unx | exact: uny].
+have neq:= pow_lt 2 n; rewrite /= Rinv_mult_distr; try lra.
 Qed.
 
 Lemma rep_sd_is_rep:
@@ -112,7 +96,15 @@ Admitted.
 
 Lemma SD_count:
 	SD \is_countable.
-Proof. by apply countType_count. Qed.
+Proof.
+exists (fun n => match n with
+	| 0%nat => Some minusone
+	| S 0 => Some zero
+	| S (S 0) => Some one
+	| S (S (S n)) => None
+end).
+by case; [case; [exists 0%nat | exists 1%nat | exists 2%nat] | exists 3%nat].
+Qed.
 
 Canonical rep_space_UIsd := @make_rep_space
 	UI
@@ -125,35 +117,29 @@ Canonical rep_space_UIsd := @make_rep_space
 	SD_count
 	rep_sd_is_rep.
 
-Lemma aux p (x: UI):
-	p \is_name_of x -> -1 <= 2 * sval x - interp (p 0%nat) <= 1.
+Lemma aux u (x: UI):
+	u \is_name_of x -> - 1 <= 2 * sval x - SD2R (u 0%nat) <= 1.
 Proof.
-move: x => [x ineq].
-rewrite /=/rep_sd/GRing.zero/=.
-move => pnx.
-specialize (pnx 0%nat).
-move: pnx; rewrite big_ord0/= Rmult_1_r.
-case: (p 0%nat); first case; rewrite /interp /=.
-(*split_Rabs; lra.
-Qed.*)
+move: x => [x ineq]; rewrite /=/rep_sd/GRing.zero /= => unx.
+specialize (unx 0%nat); move: unx; rewrite big_ord1/= Rmult_1_r.
+case: (u 0%nat); rewrite /= Rinv_1 mulr1; split_Rabs; try lra.
+Qed.
+
+Lemma coinduct_sd (u: names rep_space_UIsd) x (unx: u \is_name_of x):
+	Rabs (2 * sval x - SD2R (u 0%nat)) <= 1 /\ (fun (n: questions rep_space_UIsd) => u (S n)) \is_name_of (@exist R _ (2 * sval x - SD2R (u 0%nat)) (aux u x unx)).
+Proof.
+split; first by have:= (aux u x unx);	split_Rabs; lra.
+move: x unx => [x ineq] unx => n /=.
+have:= unx n.+1; rewrite big_ord_recl /= Rinv_1 mulr1.
 Admitted.
 
-Lemma coinduct_sd (p: names rep_space_UIsd) x (pnx: p \is_name_of x):
-	Rabs (2 * sval x - interp (p 0%nat)) <= 1 /\ (fun (n: questions rep_space_UIsd) => p (S n)) \is_name_of (@exist R _ (2 * sval x - interp (p 0%nat)) (aux p x pnx)).
-Proof.
-split; first by have:= (aux p x pnx);	split_Rabs; lra.
-move: x pnx; rewrite /=/rep_sd => [[x ineq]] pnx.
-move => n.
-move: (pnx n.+1).
-rewrite big_ord_recl.
-
-Definition interpT t := match t with
+Definition T2R t := match t with
 	| TL => -1
 	| TR => 1
-	| Tbot => 1
+	| Tbot => 0
 end.
 
-Coercion interpT: T >-> R.
+Coercion T2R: T >-> R.
 
 Definition UI_Tomega_rep (p: rep_space_Tomega) (x: UI) :=
 	forall n, Rabs (projT1 x - sum_f 0 n (fun i => -(prod_f_R0 (fun j => - p j) n) * (pow (1/2) i))) <= pow (1/2) n.
@@ -206,14 +192,10 @@ Definition UI2Tomega_rlzr (u: names rep_space_UIsd) : names rep_space_Tomega :=
 Lemma UI2Tomega_frlzr:
 	UI2Tomega_rlzr \is_realizer_function_for UI2Tomega.
 Proof.
-rewrite /frlzr => u.
-move => [x xinUI].
-move => unx.
-rewrite /=/rep_usig_prod.
-move => n.
+move => u [x xinUI] unx n.
 elim: n => /=.
 case: ifP => [ineq | ].
-rewrite /rep_T.
+
 exists 0%nat.
 split => //.
 rewrite /UI2Tomega_rlzr/=.
