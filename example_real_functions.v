@@ -1,10 +1,38 @@
 From mathcomp Require Import all_ssreflect.
-Require Import all_rs rs_reals_creals.
+Require Import all_rs rs_reals_acc rs_reals_creals.
 Require Import Qreals Reals Psatz.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
+Definition Cantor:= rep_space_usig_prod (rep_space_opt rep_space_one).
+
+Definition nz (p: Cantor) (s: Sirp) :=
+	s = bot <-> forall n, p n = None.
+
+Definition F (phi: names Cantor) (q: questions rep_space_S): answers rep_space_S := (phi (q, inl star)).1.
+Require Import Classical.
+Lemma nz_is_computable:
+	nz \is_computable.
+Proof.
+apply rec_cmpt.
+exists F.
+move => phi x phinx _.
+case: (classic (forall n, x n = None)) => ass.
+	exists bot; split => //.
+	rewrite /F /= /rep_S/=.
+	by split => // [[n]]; have /=:= phinx n; rewrite ass /= => ->.
+exists top; split => //.
+rewrite /= /rep_S; split => // _.
+have [n neq]:= (not_all_ex_not _ _ ass).
+exists n.
+rewrite /F /= /rep_S/=.
+have /=:= phinx n.
+have -> /=: x n = some star.
+	by case: (x n) neq => // a; case a.
+by case => -> /=.
+Qed.
 
 Import QArith.
 Local Open Scope R_scope.
@@ -150,23 +178,6 @@ Check archimedQ.
 up function by uses of the upQ function. Of course, one has to prove that this does not change the
 statement. As example consider the limit operator, not that "=~=" is a notation for the equality of
 multivalued functions and translates to forall s t, f s t <-> g s t *)
-Lemma Uncv_lim:
-	Un_cv =~= lim.
-Proof.
-move => xn x.
-split => limxnx eps epsg0.
-	have [N Nprop]:= limxnx (Q2R eps) epsg0.
-	exists N => n ineq.
-	have ineq': (n >= N)%coq_nat by apply /leP.
-	have:= Nprop n ineq'; rewrite /R_dist.
-	split_Rabs; lra.
-have [qeps [qepsg0 qepsleps]]:= Q_accumulates_to_zero epsg0.
-have [N Nprop]:= limxnx (qeps) qepsg0.
-exists N => n ineq.
-have ineq': (N <= n)%nat by apply /leP.
-have:= Nprop n ineq'; rewrite /R_dist.
-split_Rabs; lra.
-Qed.
 
 (* Thus, the discontinuity proven for lim can be transfered to Un_cv *)
 Lemma Uncv_not_cont:

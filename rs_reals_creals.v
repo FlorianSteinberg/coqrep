@@ -1,11 +1,5 @@
-(* This is example shows how to use a representation of the real numbers by means of rational
-approximations to compute on the reals. Usually integers are prefered to avoid to many problems
-that arise due to the possibility to use unnecessary high precission approximations. I tried
-that approach but it lead to extensive additional work so I gave up at some point. I feel that
-the approach in the present file is more appropriate. *)
-
 From mathcomp Require Import all_ssreflect.
-Require Import all_rs_base rs_dscrt rs_usig.
+Require Import all_rs_base rs_dscrt rs_usig rs_reals_acc.
 Require Import Qreals Reals Psatz ClassicalChoice.
 
 Set Implicit Arguments.
@@ -24,57 +18,16 @@ are prefered to avoid to many possible answers. I tried using integers, but it g
 so I gave up at some point. I feel like the above is the most natural formulation of the Cauchy
 representation anyway. *)
 
-(* The following are auxiliary lemmas that are needed for the proof that the relation defined
-above is the graph of a partial function. I.e. that it is single valued as a multi-valued
-function. Laurent Thery provided the proofs of the following lemmas and improved their statments *)
-Lemma Q_accumulates_to_zero r : 0 < r -> exists q : Q, 0 < Q2R q < r.
-Proof.
-move=> rPos.
-have ir_Pos : 0 < /r by apply: Rinv_0_lt_compat.
-pose z := up (/ r).
-have irLz : / r < IZR z by rewrite /z; have := archimed (/ r); lra.
-have zPos : 0 < IZR z by lra.
-pose p := Z.to_pos z.
-have pE : (Z.pos p)%Z = z by rewrite Z2Pos.id //; apply: lt_0_IZR.
-exists (1 # p).
-rewrite /Q2R /= pE [1 * / _]Rmult_1_l.
-split; first by apply: Rinv_0_lt_compat.
-rewrite -(Rinv_involutive r); try lra.
-apply: Rinv_lt_contravar; try nra.
-Qed.
-
-Lemma cond_eq_rat x y : (forall q, Q2R q > 0 -> Rabs (x - y) <= Q2R q) -> x = y.
-Proof.
-wlog: x y / y <= x => [Hw Hp|xLy Hp].
-  have [/Hw->//|yLx] := Rle_dec y x.
-  apply/sym_equal/Hw; try lra.
-  by move=> q; rewrite Rabs_minus_sym; apply: Hp.
-have [//|xDy] := Req_dec x y.
-have /Q_accumulates_to_zero[q Hq] : 0 < x - y by lra.
-have : Rabs (x - y) <= Q2R q by apply: Hp; lra.
-rewrite Rabs_pos_eq; lra.
-Qed.
-
 Lemma rep_R_sing: rep_R \is_single_valued.
 Proof.
-move => phi x x' pinox H.
-apply: cond_eq_rat => q qg0.
-set r := Q2R (phi (Qdiv q (1+1))).
+move => phi x x' phinx phinx'.
+apply (cond_eq_f accf_Q2R_0) => q qg0.
+set r := Q2R (phi (q/(1 + 1))%Q); rewrite /R_dist.
 replace (x-x') with ((x-r) + (r-x')) by field.
-apply: Rle_trans.
-	apply: (Rabs_triang (x-r)).
-rewrite -(eps2 (Q2R q)).
-replace (Q2R q * / 2) with (Q2R (q * / (1 + 1))); last first.
-	rewrite Q2R_mult Q2R_inv; last by lra.
-	by replace (Q2R (1 + 1)) with 2 by by rewrite Q2R_plus /Q2R/IZR/IPR/=; field.
-apply: Rplus_le_compat.
-	apply: pinox.
-	rewrite Q2R_div; last by lra.
-	rewrite {2}/Q2R/=; lra.
-replace (Rabs (r - x')) with (Rabs (x' - r)) by by split_Rabs; lra.
-apply: H.
-rewrite Q2R_div; last by lra.
-rewrite {2}/Q2R/=; lra.
+apply /triang /Rle_trans.
+	apply /Rplus_le_compat; last rewrite Rabs_minus_sym; [apply phinx | apply phinx'];
+		rewrite Q2R_div; try lra; rewrite {2}/Q2R/=; lra.
+by rewrite Q2R_div; try lra; rewrite {2 4}/Q2R/=; lra.
 Qed.
 
 (* Auxillary lemmas for the proof that the Cauchy representation is surjective. *)
@@ -91,11 +44,8 @@ Qed.
 (* The notation is_representation is for being single_valued and surjective. *)
 Lemma rep_R_is_rep: rep_R \is_representation.
 Proof.
-split.
-	exact: rep_R_sing.
-move => x.
-exists (fun eps => Qmult eps (Qmake(Int_part(x/(Q2R eps))) xH)).
-move => epsr eg0.
+split => [ | x]; first exact: rep_R_sing.
+exists (fun eps => Qmult eps (Qmake(Int_part(x/(Q2R eps))) xH)) => epsr eg0.
 rewrite Q2R_mult.
 set eps := Q2R epsr.
 rewrite Rabs_pos_eq.
@@ -136,12 +86,6 @@ Lemma id_is_computable : (id : R -> R) \is_computable_function.
 Proof.
 apply/ rec_fun_cmpt.
 by exists (fun phi => phi).
-Qed.
-
-Lemma triang r x y: (Rabs x) + (Rabs y) <= r -> Rabs(x + y) <= r.
-Proof.
-apply: Rle_trans.
-by apply: Rabs_triang.
 Qed.
 
 Lemma Q_rec_elts:
@@ -307,29 +251,6 @@ Lemma Rmult_cmpt_fun:
 	Rmult \is_computable_function.
 Proof. exact/rec_fun_cmpt/Rmult_rec_fun. Defined.
 
-Definition lim xn x :=
-	forall eps, Q2R eps > 0 -> exists N, forall n, (N <= n)%nat -> Rabs (x - xn n) <= Q2R eps.
-
-Lemma lim_sing:
-	lim \is_single_valued.
-Proof.
-move => xn x x' limxnx limxnx'.
-apply/ cond_eq_rat => eps ineq.
-have ineq': Q2R (eps * (1#2)) > 0 by rewrite Q2R_mult {2}/Q2R/=; lra.
-move: (limxnx (Qmult eps (1#2)) ineq') => [N prop].
-move: (limxnx' (Qmult eps (1#2)) ineq') => [M prop'].
-rewrite -(Rplus_0_r x) -(Rplus_opp_r (xn (M + N)%nat)).
-replace (x + (xn (M + N)%nat + - xn (M + N)%nat) - x')
-	with ((x - xn (M + N)%nat) - (x' - xn (M + N)%nat)) by field.
-apply triang.
-replace (Q2R eps) with (Q2R eps/2 + Q2R eps/ 2) by field.
-have ->: Q2R eps / 2 = Q2R (Qmult eps (1#2)) by rewrite Q2R_mult {3}/Q2R/=; lra.
-apply: Rplus_le_compat.
-	apply (prop (M + N)%nat); rewrite /addn/addn_rec; apply /leP;	lia.
-rewrite Rabs_Ropp.
-by apply (prop' (M + N)%nat); rewrite /addn/addn_rec; apply/leP; lia.
-Qed.
-
 Lemma lim_not_cont: ~lim \has_continuous_realizer.
 Proof.
 move => [/= F [/= rlzr cont]].
@@ -455,9 +376,59 @@ Proof.
 rewrite /upQ; split; have [h1 h2]:= base_Int_partQ r; rewrite plus_IZR; lra.
 Qed.
 
-Definition eff_conv xn := exists x, forall n, Rabs (xn n - x) <= 1/2^n.
-Definition eff_zero xn := forall n, Rabs (xn n) <= 1/2^n.
-Definition lim_eff := lim \restricted_to eff_conv.
+Definition Cauchy_crit_eff xn:= forall n m, Rabs (xn n - xn m) <= /2^n + /2^m.
+Lemma Cauchy_crit_eff_Cauchy_crit xn : Cauchy_crit_eff xn -> Cauchy_crit xn.
+Proof.
+move => Cauchy eps epsg0.
+have [N [_ ineq]]:= accf_2powSn epsg0.
+exists N.+2 => n m nineq mineq.
+apply /Rle_lt_trans; last exact ineq.
+apply /Rle_trans.
+	by apply Cauchy.
+rewrite -[/2^ N.+1]eps2.
+apply /Rplus_le_compat.
+	rewrite Rmult_comm -[/2]pow_1 !Rinv_pow; try lra; rewrite -Rdef_pow_add.
+		rewrite -!Rinv_pow; try lra; apply Rinv_le_contravar; first by apply pow_lt; lra.
+	by apply Rle_pow; try lra; lia.
+rewrite Rmult_comm -[/2]pow_1 !Rinv_pow; try lra; rewrite -Rdef_pow_add.
+	rewrite -!Rinv_pow; try lra; apply Rinv_le_contravar; first by apply pow_lt; lra.
+by apply Rle_pow; try lra; lia.
+Qed.
+
+Definition eff_conv xn := exists x, forall n, Rabs (xn n - x) <= /2^n.
+
+Lemma Cauchy_conv xn: Cauchy_crit_eff xn <-> eff_conv xn.
+Proof.
+split => [Cauchy | [x conv] n m]; last first.
+	have -> : xn n - xn m = xn n - x + (x - xn m) by lra.
+	apply /triang /Rplus_le_compat; first exact: conv.
+	by rewrite Rabs_minus_sym; apply: conv.
+have [x /Uncv_lim prp]:= R_complete xn (Cauchy_crit_eff_Cauchy_crit Cauchy).
+exists x => n.
+apply le_epsilon => eps epsg0.
+have [m ineq]:= accf_2powSn epsg0.
+have ieq: 0 < eps - /2^m.+1 by lra.
+have [m' m'prp]:= prp (eps - /2^ m.+1) ieq.
+set k:= maxn m.+1 m'.
+have -> : xn n - x = xn n - xn k + (xn k - x) by lra.
+apply /triang.
+have -> : /2 ^ n + eps = /2 ^ n + /2^ k + (eps - /2^ k) by lra.
+apply Rplus_le_compat; first exact: Cauchy.
+apply /Rle_trans.
+	rewrite Rabs_minus_sym.
+	by apply /m'prp /leq_maxr.
+suff : /2^k <= /2 ^ m.+1 by lra.
+apply: Rinv_le_contravar; first by apply pow_lt; lra.
+apply Rle_pow; try lra.
+exact /leP /leq_maxl.
+Qed.
+
+Definition lim_eff := lim \restricted_to Cauchy_crit_eff.
+
+Lemma lim_eff_conv: lim_eff =~= lim \restricted_to eff_conv.
+Proof.
+by move => xn x; rewrite /lim_eff; split; move => [dom limit]; by split; first apply Cauchy_conv.
+Qed.
 
 Fixpoint Pos_size p := match p with
 	| xH => 1%nat
@@ -507,8 +478,9 @@ Lemma lim_eff_rec:
 Proof.
 exists (fun phin eps => phin (S (Pos_size (Qden eps))%nat, (Qmult eps (1#2)))).
 rewrite rrlzr_rlzr /rlzr F2MF_comp.
-move => phin [x [[xn [phinxn [[y eff] limxnx]]] prop]].
-have limxny: lim xn y.
+move => phin [x [[xn [phinxn [Cauchy /lim_limQ limxnx]]]] prop].
+have [y eff]:= (Cauchy_conv xn).1 Cauchy.
+have limxny: limQ xn y.
 	move => eps epsg0.
 	set N:= (Pos_size (Qden eps)); exists N.
 	move => n ineq.
@@ -531,10 +503,11 @@ have limxny: lim xn y.
 		apply Rle_pow; first by rewrite /INR; lra.
 		rewrite /N/=; lia.
 	apply/ Rle_trans; last by apply ineq'.
+	rewrite -[/_]Rmult_1_l.
 	apply Rmult_le_compat_l; first by lra.
 	apply Rinv_le_contravar; first by apply: pow_lt; lra.
 	by apply Rle_pow; [lra | apply /leP].
-rewrite (lim_sing limxny limxnx) in eff.
+rewrite (limQ_sing limxny limxnx) in eff.
 move: y limxny => _ _.
 have: (fun eps : Q => phin (S (Pos_size (Qden eps)), (eps * (1 # 2))%Q)) \is_name_of x.
 	move => eps epsg0.
@@ -570,9 +543,16 @@ have: (fun eps : Q => phin (S (Pos_size (Qden eps)), (eps * (1 # 2))%Q)) \is_nam
 split; first by exists x.
 move => y cond.
 rewrite (rep_sing rep_space_R (fun eps : Q => phin (S (Pos_size (Qden eps)), (eps * (1 # 2))%Q)) y x) => //.
-split; first by exists xn; do 2 split => //; exists x.
+split.
+	exists xn; split => //.
+	apply lim_eff_conv.
+	split; first by exists x.
+	by apply lim_limQ.
 move => yn phinyn; rewrite (rep_sing _ phin yn xn) => //.
-by exists x; split => //; exists x.
+exists x.
+apply lim_eff_conv.
+split; first by exists x.
+by apply lim_limQ.
 Qed.
 
 (*
