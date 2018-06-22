@@ -9,7 +9,6 @@ Unset Printing Implicit Defensive.
 Section CAUCHYREALS.
 Import QArith.
 Local Open Scope R_scope.
-Coercion IZR : Z >-> R.
 
 Definition rep_R : (Q -> Q) -> R -> Prop :=
   fun phi x => forall eps, 0 < Q2R eps-> Rabs(x-Q2R(phi eps)) <= Q2R eps.
@@ -83,31 +82,26 @@ Canonical rep_space_R := @make_rep_space
 	rep_R_is_rep.
 
 Lemma id_is_computable : (id : R -> R) \is_computable_function.
-Proof.
-apply/ rec_fun_cmpt.
-by exists (fun phi => phi).
-Qed.
+Proof. by apply/ rec_fun_cmpt; exists (fun phi => phi). Qed.
 
-Lemma Q_rec_elts:
-	forall q: Q, (Q2R q) \is_recursive_element.
+Lemma Q_rec_elts q: (Q2R q) \is_recursive_element.
 Proof.
-move => q.
 exists (fun eps => q).
-abstract by move => eps ineq; apply/ Rbasic_fun.Rabs_le; lra.
+by abstract by move => eps ineq; apply/ Rbasic_fun.Rabs_le; lra.
 Defined.
 
+
+Section addition.
 Lemma Ropp_rec_fun:
 	Ropp \is_recursive_function.
 Proof.
 exists (fun phi q => Qopp (phi q)).
-abstract by move => phi x phinx eps epsg0 /=; rewrite Q2R_opp; move: (phinx eps epsg0); split_Rabs; lra.
+by abstract by move => phi x phinx eps epsg0 /=; rewrite Q2R_opp; move: (phinx eps epsg0); split_Rabs; lra.
 Defined.
 
 Lemma Ropp_cmpt_fun:
 	Ropp \is_computable_function.
-Proof.
-exact/rec_fun_cmpt/Ropp_rec_fun.
-Defined.
+Proof. exact/rec_fun_cmpt/Ropp_rec_fun. Defined.
 
 Definition Rplus_frlzr (phi: names (rep_space_prod rep_space_R rep_space_R)) (eps: questions rep_space_R) :=
   (Qplus (phi (inl (Qdiv eps (1+1)))).1 (phi (inr (Qdiv eps (1+1)))).2).
@@ -146,7 +140,9 @@ Lemma Rplus_cmpt_fun:
 Proof.
 exact/rec_fun_cmpt/Rplus_rec_fun.
 Defined.
+End addition.
 
+Section multiplication.
 (* Multiplication is more involved as the precision of approximations that have to be used
 depends on the size of the inputs *)
 Let trunc (eps: questions rep_space_R) := if Qlt_le_dec eps 1 then eps else (1%Q: questions rep_space_R).
@@ -250,7 +246,11 @@ Defined.
 Lemma Rmult_cmpt_fun:
 	Rmult \is_computable_function.
 Proof. exact/rec_fun_cmpt/Rmult_rec_fun. Defined.
+End multiplication.
 
+Section limit.
+(* The unrestricted limit function is discontinuous with respect to the Cauchy representation,
+and thus there is no hope to prove it computable *)
 Lemma lim_not_cont: ~lim \has_continuous_realizer.
 Proof.
 move => [/= F [/= rlzr cont]].
@@ -329,107 +329,6 @@ rewrite {2 4}/Q2R/=.
 split_Rabs; lra.
 Qed.
 
-Lemma Z_tech a b : (0 < b -> a / b * b > a  - b)%Z.
-Proof.
-move=> Pb.
-rewrite {2}(Z_div_mod_eq a b); try lia.
-suffices : (0 <= a mod b < b)%Z by lia.
-by apply: Z_mod_lt; lia.
-Qed.
-
-Definition Int_partQ eps := ((Qnum eps)/(Z.pos (Qden eps)))%Z.
-Lemma base_Int_partQ eps:
-	IZR (Int_partQ eps) <= Q2R eps /\ IZR (Int_partQ eps) - Q2R eps > -1.
-Proof.
-have ineq: (Z.pos (Qden eps) > 0)%Z.
-	suffices: (0 < Z.pos (Qden eps))%Z by lia.
-	apply lt_IZR; replace (IZR (Z.pos (Qden eps))) with (IPR (Qden eps)) by trivial.
-	by rewrite -INR_IPR; apply: pos_INR_nat_of_P.
-rewrite /Int_partQ /Q2R.
-split.
-	rewrite -(Rmult_1_r (Qnum eps / Z.pos (Qden eps))%Z).
-	rewrite -(Rinv_r (Z.pos (Qden eps))); last exact: IZR_nz.
-	rewrite -Rmult_assoc.
-	apply/ Rmult_le_compat_r => //.
-		apply Rlt_le; apply Rinv_0_lt_compat.
-		apply IZR_lt; lia.
-	rewrite Rmult_comm -mult_IZR.
-	by apply IZR_le; apply Z_mult_div_ge; lia.
-have ineq': ((Qnum eps / Z.pos (Qden eps)) * (Z.pos (Qden eps)) > Qnum eps - Z.pos (Qden eps))%Z.
-apply (@Z_tech (Qnum eps) (Z.pos (Qden eps))); lia.
-apply Rlt_gt.
-suffices ineq'': (Qnum eps - Z.pos (Qden eps)) < (Qnum eps / Z.pos (Qden eps))%Z * Z.pos (Qden eps).
-	suffices:(Qnum eps * / Z.pos (Qden eps) - 1 < (Qnum eps / Z.pos (Qden eps))%Z) by lra.
-	replace (Qnum eps * / Z.pos (Qden eps) - 1) with ((Qnum eps  - Z.pos (Qden eps))/ Z.pos (Qden eps)); last field.
-	replace (IZR(Qnum eps / Z.pos (Qden eps))%Z) with
-		((Qnum eps / Z.pos (Qden eps))%Z * Z.pos (Qden eps)/ Z.pos (Qden eps)); last field => //.
-	by apply Rmult_lt_compat_r; first by apply Rinv_0_lt_compat; apply IZR_lt; lia.
-	apply IZR_neq; apply Z.neg_pos_cases; right; lia.
-rewrite -mult_IZR -minus_IZR.
-apply IZR_lt; lia.
-Qed.
-
-Definition upQ eps:= (Int_partQ eps + 1)%Z.
-Lemma archimedQ r:
-	IZR (upQ r) > Q2R r /\ IZR (upQ r) - Q2R r <= 1.
-Proof.
-rewrite /upQ; split; have [h1 h2]:= base_Int_partQ r; rewrite plus_IZR; lra.
-Qed.
-
-Definition Cauchy_crit_eff xn:= forall n m, Rabs (xn n - xn m) <= /2^n + /2^m.
-Lemma Cauchy_crit_eff_Cauchy_crit xn : Cauchy_crit_eff xn -> Cauchy_crit xn.
-Proof.
-move => Cauchy eps epsg0.
-have [N [_ ineq]]:= accf_2powSn epsg0.
-exists N.+2 => n m nineq mineq.
-apply /Rle_lt_trans; last exact ineq.
-apply /Rle_trans.
-	by apply Cauchy.
-rewrite -[/2^ N.+1]eps2.
-apply /Rplus_le_compat.
-	rewrite Rmult_comm -[/2]pow_1 !Rinv_pow; try lra; rewrite -Rdef_pow_add.
-		rewrite -!Rinv_pow; try lra; apply Rinv_le_contravar; first by apply pow_lt; lra.
-	by apply Rle_pow; try lra; lia.
-rewrite Rmult_comm -[/2]pow_1 !Rinv_pow; try lra; rewrite -Rdef_pow_add.
-	rewrite -!Rinv_pow; try lra; apply Rinv_le_contravar; first by apply pow_lt; lra.
-by apply Rle_pow; try lra; lia.
-Qed.
-
-Definition eff_conv xn := exists x, forall n, Rabs (xn n - x) <= /2^n.
-
-Lemma Cauchy_conv xn: Cauchy_crit_eff xn <-> eff_conv xn.
-Proof.
-split => [Cauchy | [x conv] n m]; last first.
-	have -> : xn n - xn m = xn n - x + (x - xn m) by lra.
-	apply /triang /Rplus_le_compat; first exact: conv.
-	by rewrite Rabs_minus_sym; apply: conv.
-have [x /Uncv_lim prp]:= R_complete xn (Cauchy_crit_eff_Cauchy_crit Cauchy).
-exists x => n.
-apply le_epsilon => eps epsg0.
-have [m ineq]:= accf_2powSn epsg0.
-have ieq: 0 < eps - /2^m.+1 by lra.
-have [m' m'prp]:= prp (eps - /2^ m.+1) ieq.
-set k:= maxn m.+1 m'.
-have -> : xn n - x = xn n - xn k + (xn k - x) by lra.
-apply /triang.
-have -> : /2 ^ n + eps = /2 ^ n + /2^ k + (eps - /2^ k) by lra.
-apply Rplus_le_compat; first exact: Cauchy.
-apply /Rle_trans.
-	rewrite Rabs_minus_sym.
-	by apply /m'prp /leq_maxr.
-suff : /2^k <= /2 ^ m.+1 by lra.
-apply: Rinv_le_contravar; first by apply pow_lt; lra.
-apply Rle_pow; try lra.
-exact /leP /leq_maxl.
-Qed.
-
-Definition lim_eff := lim \restricted_to Cauchy_crit_eff.
-
-Lemma lim_eff_conv: lim_eff =~= lim \restricted_to eff_conv.
-Proof.
-by move => xn x; rewrite /lim_eff; split; move => [dom limit]; by split; first apply Cauchy_conv.
-Qed.
-
 Fixpoint Pos_size p := match p with
 	| xH => 1%nat
 	| xI p' => S (Pos_size p')
@@ -454,29 +353,13 @@ apply/ Z.lt_le_trans; last by apply Zmult_le_compat_l; last lia; apply ineq.
 by lia.
 Qed.
 
-Lemma lim_eff_sing:
-	lim_eff \is_single_valued.
-Proof.
-by move => xn x x' [_ limxnx] [_ limxnx']; apply: lim_sing; first apply limxnx.
-Qed.
+Definition lim_eff_frlzr (phin: names (rep_space_usig_prod rep_space_R)) :(names rep_space_R) :=
+	fun eps =>	phin (S (Pos_size (Qden eps))%nat, (Qmult eps (1#2))).
 
-Lemma Qnum_gt:
-	forall eps: Q, (0 < eps)%Q -> (0 < Qnum eps)%Z.
+(* The proof of this was done ages ago, it should be overhauled *)
+Lemma lim_eff_frlzr_crct:
+	lim_eff_frlzr \is_rec_realizer_of lim_eff.
 Proof.
-move => eps epsg0.
-rewrite Zlt_Qlt/inject_Z.
-have eq: eps == Qnum eps # Qden eps by trivial.
-have lt: (0 * (Z.pos (Qden eps)#1) < eps * ((Z.pos (Qden eps))#1))%Q by apply Qmult_lt_compat_r.
-apply Rlt_Qlt.
-have:= (Qlt_Rlt (0 * (Z.pos (Qden eps) # 1)) (eps * (Z.pos (Qden eps) # 1)) (lt)).
-rewrite Q2R_mult /Q2R/= mult_IZR Pos.mul_1_r !Rmult_assoc Rinv_r; last exact: IZR_nz.
-by rewrite Rinv_1.
-Qed.
-
-Lemma lim_eff_rec:
-	lim_eff \is_recursive.
-Proof.
-exists (fun phin eps => phin (S (Pos_size (Qden eps))%nat, (Qmult eps (1#2)))).
 rewrite rrlzr_rlzr /rlzr F2MF_comp.
 move => phin [x [[xn [phinxn [Cauchy /lim_limQ limxnx]]]] prop].
 have [y eff]:= (Cauchy_conv xn).1 Cauchy.
@@ -554,6 +437,14 @@ apply lim_eff_conv.
 split; first by exists x.
 by apply lim_limQ.
 Qed.
+
+Lemma lim_eff_rec:
+	lim_eff \is_recursive.
+Proof. by exists lim_eff_frlzr; apply lim_eff_frlzr_crct. Defined.
+
+Lemma lim_eff_cmpt: lim_eff \is_computable.
+Proof. by apply /rec_cmpt /lim_eff_rec. Defined.
+End limit.
 
 (*
 Lemma cont_rlzr_cont (f: R -> R):
