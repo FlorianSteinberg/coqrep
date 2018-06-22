@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import all_rs_base rs_dscrt rs_usig rs_reals_acc.
+Require Import all_rs_base rs_dscrt rs_usig rs_reals.
 Require Import Qreals Reals Psatz ClassicalChoice.
 
 Set Implicit Arguments.
