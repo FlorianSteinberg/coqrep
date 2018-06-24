@@ -32,7 +32,10 @@ all_rs.v
 
 Rstruct.v
 under.v
+rs_reals.v
 rs_reals_creals.v
+
 examples_continuity.v
 example_Graycode.v
+example_polynomials.v
 example_real_functions.v

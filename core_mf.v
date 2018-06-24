@@ -499,7 +499,7 @@ split => [ | t fst]; first by apply: (H s (H0 s H1).1).1.
 by apply: ((H0 s H1).2 t); apply: ((H s (H0 s H1).1).2 t).
 Qed.
 
-Lemma tight_sing (f: S ->> T) g:
+Lemma sing_tight_exte (f: S ->> T) g:
 	f \is_single_valued -> g \tightens f -> g \extends f.
 Proof.
 move => fsing gef s t fst.
@@ -507,7 +507,7 @@ case: (gef s) =>[|[t' gst' cond]]; first by exists t.
 by rewrite (fsing s t t'); [ | | apply (cond t') ].
 Qed.
 
-Lemma sing_tight (f: S ->> T) g:
+Lemma sing_exte_tight (f: S ->> T) g:
 	g \is_single_valued -> g \extends f -> g \tightens f.
 Proof.
 move => gsing gef s [t fst].
@@ -518,7 +518,13 @@ Qed.
 Lemma exte_tight (f: S ->> T) g:
 	f \is_single_valued -> g \is_single_valued -> (g \extends f <-> g \tightens f).
 Proof.
-split; [exact: sing_tight | exact: tight_sing] .
+split; [exact: sing_exte_tight | exact: sing_tight_exte] .
+Qed.
+
+Lemma exte_sing (f: S ->> T) (g: S ->> T):
+	f \extends g -> f \is_single_valued -> g \is_single_valued.
+Proof.
+move => exte sing s t t' gst gst'; apply /sing; apply exte; [apply gst | apply gst'].
 Qed.
 
 Lemma exte_comp R (f f': T ->> R) (g: S ->> T):

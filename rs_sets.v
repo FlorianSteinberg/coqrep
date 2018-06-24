@@ -6,7 +6,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Section SIRPINSKISPACE.
+Section SIERPINSKISPACE.
 Inductive Sirp := top | bot.
 
 Definition rep_S phi s :=
@@ -41,7 +41,7 @@ Canonical rep_space_S := @make_rep_space
   (nat_count)
   (option_count one_count)
   (rep_S_is_rep).
-End SIRPINSKISPACE.
+End SIERPINSKISPACE.
 
 Section space_T.
 Inductive T := TL | TR | Tbot.
@@ -94,8 +94,6 @@ case: ot => [t | ]; last by exists 3.
 by case: t; [exists 1 | exists 0 | exists 2].
 Qed.
 
-Print rep_space.
-Search (_ \is_countable).
 Canonical rep_space_T := @make_rep_space
 	T
 	nat

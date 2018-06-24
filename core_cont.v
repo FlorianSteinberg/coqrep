@@ -242,7 +242,7 @@ Qed.
 Lemma cont_exte (F G: B ->> B'):
 	G \tightens F -> G \is_continuous -> F \is_single_valued -> F \is_continuous.
 Proof.
-move => GtF Gcont Fsing phi; case; have GeF:= (tight_sing Fsing GtF); intros => q'.
+move => GtF Gcont Fsing phi; case; have GeF:= (sing_tight_exte Fsing GtF); intros => q'.
 have [ | L [_ /=Lprop]]:= (Gcont phi _ q'); first by exists x; apply GeF.
 by exists L; split; [exists x | intros; apply/ (cert_exte GeF)/ Lprop/GeF].
 Qed.

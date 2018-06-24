@@ -12,6 +12,26 @@ Definition is_rep S T (delta: S ->> T):=
 	delta \is_surjective_partial_function.
 Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
 
+Definition trans X B B' T (delta: B ->> X) (delta': B' ->> X) := delta o T \tightens delta'.
+
+Notation "T '\translates' delta '\into' delta'" := (trans T delta delta') (at level 2).
+
+Notation "delta '\is_translatable_to' delta'" :=
+	(exists T, T \translates delta \into delta') (at level 2).
+
+Definition equivalent X B B' (delta: B ->> X) (delta': B' ->> X):=
+	delta \is_translatable_to delta' /\ delta' \is_translatable_to delta.
+
+Lemma equiv_cotot X B B' (delta: B ->> X) (delta': B' ->> X):
+	delta \is_representation -> delta' \is_translatable_to delta -> is_cotot delta'.
+Proof.
+move => [sing cotot] [T trans] x.
+have [phi phinx]:= cotot x.
+have [ | [y phiny] prp]:= trans phi; first by exists x.
+have [[Tphi [TphiTphi Tphiny subs]]]:= phiny.
+by exists Tphi; rewrite (sing phi x y); last apply prp.
+Qed.
+
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names have to be of the form
 Q -> A where Q and A are countable and A is inhabited. This must also be proven. *)

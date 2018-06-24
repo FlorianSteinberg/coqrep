@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect all_algebra.
 Require Import FunctionalExtensionality.
-Require Import all_rs rs_reals_creals Rstruct under.
+Require Import all_rs rs_reals rs_reals_creals Rstruct under.
 Require Import Qreals Reals Psatz ClassicalChoice.
 Require Import Lists.Streams.
 
@@ -404,6 +404,7 @@ Definition UI2Tomega (x: rep_space_UIsd) := (fun n => UI2Tomega_rec x n): rep_sp
 Definition SDSDtoT (sd sd': SD):= if sd == zero then Tbot else
 	if sd == sd' then TL else TR.
 
+(*
 Definition UI2Tomega_rlzr (u: names rep_space_UIsd) : names rep_space_Tomega :=
 	fun an => match an.2 with
 		| 0%nat => match u 0%nat with
@@ -523,5 +524,5 @@ Fixpoint sgfirst (p: nat -> SD) n := match n with
 Fixpoint sg (p: nat -> SD) n := match n with
 	| 0 => 
 	
-
-End Gray_code.
+*)
+End signed_digit_representation.
