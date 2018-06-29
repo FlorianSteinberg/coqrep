@@ -12,25 +12,67 @@ Definition is_rep S T (delta: S ->> T):=
 	delta \is_surjective_partial_function.
 Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
 
-Definition trans X B B' T (delta: B ->> X) (delta': B' ->> X) := delta o T \tightens delta'.
+Definition trans X B B' T (delta: B ->> X) (delta': B' ->> X) := delta' o T \tightens delta /\ T \is_single_valued.
 
-Notation "T '\translates' delta '\into' delta'" := (trans T delta delta') (at level 2).
+Notation "T '\translates' delta '\to' delta'" := (trans T delta delta') (at level 2).
 
-Notation "delta '\is_translatable_to' delta'" :=
-	(exists T, T \translates delta \into delta') (at level 2).
+Notation "delta '\is_translatable_to' delta'" := (exists T, T \translates delta \to delta') (at level 2).
 
-Definition equivalent X B B' (delta: B ->> X) (delta': B' ->> X):=
-	delta \is_translatable_to delta' /\ delta' \is_translatable_to delta.
-
-Lemma equiv_cotot X B B' (delta: B ->> X) (delta': B' ->> X):
-	delta \is_representation -> delta' \is_translatable_to delta -> is_cotot delta'.
+Lemma trans_cotot X B B' (delta: B ->> X) (delta': B' ->> X):
+	delta \is_representation -> delta \is_translatable_to delta' -> is_cotot delta'.
 Proof.
-move => [sing cotot] [T trans] x.
+move => [sing cotot] [T [trans singT]] x.
 have [phi phinx]:= cotot x.
 have [ | [y phiny] prp]:= trans phi; first by exists x.
 have [[Tphi [TphiTphi Tphiny subs]]]:= phiny.
 by exists Tphi; rewrite (sing phi x y); last apply prp.
 Qed.
+
+Notation "delta '\is_equivalent_to' delta'":=
+	(delta \is_translatable_to delta' /\ delta' \is_translatable_to delta) (at level 2).
+
+(*
+Lemma trans_sing X B B' (delta: B ->> X) (delta': B' ->> X):
+	delta \is_representation -> delta \is_equivalent_to delta' -> delta' \is_representation.
+Proof.
+move => [sing cotot] [[T [trans singT]] [T' [trans' singT']]].
+split; last by apply/ trans_cotot; [split; first by apply sing | exists T].
+move => phi x y phinx phiny.
+apply /(@sing _ x y).
+have [ | [z phinz] prp]:= trans' phi; first by exists x.
+have [[Tphi [TphiTphi Tphinz _]]]:= phinz.
+have: z = x.
+apply /(@sing _ z x); first by apply Tphinz.
+have [psi psinx]:= cotot x.
+have : delta o T' phi x.
+	split.
+		exists Tphi; split => //.
+		have [ | [z' phinz'] prp']:= trans Tphi; first by exists z.
+		have [[Tphi' [TphiTphi' Tphinz' _]]]:= phinz'.
+		apply prp'.
+		split.
+			exists phi.
+			
+			split.
+		ahve :
+		exists 
+rewrite prp.
+have eq	: z = x by apply /(@sing phi z x); first apply prp.
+
+
+have := prp z.
+have [psi psinx]:= cotot x.
+Admitted.
+*)
+
+Definition rec_trans X B B' T (delta: B ->> X) (delta': B' ->> X) := delta o (F2MF T) \tightens delta'.
+
+Notation "T '\translates' delta '\to' delta' '\recursively'" := (rec_trans T delta delta') (at level 2).
+
+Notation "delta '\is_recursively_translatable_to' delta'" := ({T | T \translates delta \to delta' \recursively}) (at level 2).
+
+Definition rec_equivalent X B B' (delta: B ->> X) (delta': B' ->> X):=
+	(delta \is_recursively_translatable_to delta', delta' \is_recursively_translatable_to delta).
 
 (* To construct a represented space it is necessary to provide a proof that the
 representation is actually a representation. The names have to be of the form
@@ -48,6 +90,12 @@ Structure rep_space := make_rep_space {
 }.
 End RS.
 Notation "delta '\is_representation'" := (is_rep delta) (at level 2).
+Notation "T '\translates' delta '\to' delta'" := (trans T delta delta') (at level 2).
+Notation "delta '\is_translatable_to' delta'" := (exists T, T \translates delta \to delta') (at level 2).
+Notation "delta '\is_equivalent_to' delta'":=
+	(delta \is_translatable_to delta' /\ delta' \is_translatable_to delta) (at level 2).
+Notation "T '\translates' delta '\to' delta' '\recursively'" := (rec_trans T delta delta') (at level 2).
+Notation "delta '\is_recursively_translatable_to' delta'" := ({T | T \translates delta \to delta' \recursively}) (at level 2).
 Notation names X := ((questions X) -> (answers X)).
 Notation rep := @delta.
 Notation "phi '\is_name_of' x" := (delta phi x) (at level 2).
