@@ -329,10 +329,6 @@ Fixpoint sds n := match n with
 	| S (S (S n)) => sds n
 end.
 
-Definition SDs2Qn sds n := (inject_Z (SDs2Zn sds n) / (2#1)^Z.of_nat n)%Q.
-
-Compute Qreduction.Qred (SDs2Qn sds 17).
-
 Lemma SD_to_SD_inc_correct sds x:
 	rep_SD sds x -> rep_SD_inc (SD_to_SD_inc sds) x.
 Proof.
@@ -373,6 +369,7 @@ split; last split; last by split => x y; apply comp_id_l.
 apply rec_cmpt; exists SD_inc_to_SD => phi x phinx _.
 by exists x; split => //; apply SD_inc_to_SD_correct.
 Qed.
+End SD_and_SD_inc.
 
 Section sd_coinduction.
 Lemma SDs2R_hd sds x: SDs2R sds x -> - 1 <= 2 * x - SD2R (sds 0%nat) <= 1.
@@ -398,3 +395,8 @@ rewrite !Rinv_mult_distr; try lra.
 by rewrite /GRing.mul/=; try lra.
 Qed.
 End sd_coinduction.
+
+Section output_and_examples.
+Definition SDs2Qn sds n := (inject_Z (SDs2Zn sds n) / (2#1)^Z.of_nat n)%Q.
+(*Example: Compute Qreduction.Qred (SDs2Qn sds 17). *)
+End output_and_examples.
