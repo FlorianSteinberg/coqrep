@@ -92,12 +92,14 @@ abstract by apply/ tight_trans; [apply tight_comp_r; apply: rec_F2MF_op 0 | appl
 Defined.
 
 Lemma cnst_rec_fun (X Y: rep_space) (fx: Y):
-	fx \is_recursive_element -> (fun x: X => fx) \is_recursive_function.
-Proof. by move => [psi psiny]; exists (fun _ => psi). Defined.
+	forall (f: X -> Y), fx \is_recursive_element -> (forall x, f x = fx) -> f \is_recursive_function.
+Proof. by move => f [psi psiny] eq; exists (fun _ => psi) => phi x phinx /=; rewrite eq. Defined.
 
-Lemma cnst_rec (X Y: rep_space) (fx: Y):
-	fx \is_recursive_element -> (F2MF (fun (x: X) => fx)) \is_recursive.
-Proof. by move => fxcmpt; by apply rec_fun_rec; apply cnst_rec_fun. Defined.
+Lemma cnst_rec (X Y: rep_space) (fx: Y) (f: X ->> Y):
+	fx \is_recursive_element -> (forall x, f x fx) -> f \is_recursive.
+Proof.
+by move => [psi psinfx] eq; exists (fun _ => psi) => phi x phinx xfd; exists fx.
+Defined.
 
 Lemma id_rec_fun X:
 	(@id (space X)) \is_recursive_function.
@@ -148,7 +150,7 @@ apply /rec_fun_comp.
 	apply /rec_fun_comp.
 		apply /prod_rec_fun.
 			by apply id_rec_fun.
-		by apply/ cnst_rec_fun; apply xcmpt.
+		by apply /cnst_rec_fun; first apply xcmpt.
 	apply/ rec_fun_comp.
 		by apply switch_rec_fun.
 	by apply frec.

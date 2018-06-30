@@ -6,40 +6,12 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Definition Cantor:= rep_space_usig_prod (rep_space_opt rep_space_one).
-
-Definition nz (p: Cantor) (s: Sirp) :=
-	s = bot <-> forall n, p n = None.
-
-Definition F (phi: names Cantor) (q: questions rep_space_S): answers rep_space_S := (phi (q, inl star)).1.
-Require Import Classical.
-Lemma nz_is_computable:
-	nz \is_computable.
-Proof.
-apply rec_cmpt.
-exists F.
-move => phi x phinx _.
-case: (classic (forall n, x n = None)) => ass.
-	exists bot; split => //.
-	rewrite /F /= /rep_S/=.
-	by split => // [[n]]; have /=:= phinx n; rewrite ass /= => ->.
-exists top; split => //.
-rewrite /= /rep_S; split => // _.
-have [n neq]:= (not_all_ex_not _ _ ass).
-exists n.
-rewrite /F /= /rep_S/=.
-have /=:= phinx n.
-have -> /=: x n = some star.
-	by case: (x n) neq => // a; case a.
-by case => -> /=.
-Qed.
-
 Import QArith.
 Local Open Scope R_scope.
 
 Section REALFUNCTIONS.
 (* This is example uses the Cauchy representation on the reals. This means that everything is executable but slow. *)
-Check rep rep_space_R.
+Locate rep_space_R.
 (* The represented set is the type of real numbers from the standard library. *)
 Compute space rep_space_R.
 (* The names are functions from rationals to rationals *)
@@ -50,19 +22,29 @@ Print rep_R.
 (* Here is the information that is saved: *)
 Print rep_space_R.
 
-(* The tools provided by the library are that the arithmetic operations are computable, or more
-specifically recursive functions (being recursive is slightly stronger than computability) *)
+(* The tools provided by the library include that the arithmetic operations are computable,
+or more specifically recursive functions (being recursive is slightly stronger than
+computability) *)
 Check Rplus_rec_fun.
 Check Rplus_cmpt_fun.
-(* The proof of computability is just applying the general argument that a recursive function is computable *)
-Print Rplus_cmpt_fun.
 
-(* As an example, let's prove that the power function is computable. To do this, we first prove by 
-induction that for each n the function x => x^n is computable. *)
+(* As an example of how to apply these tools, let's prove that the power function
+is computable. To do this, we first prove by induction that for each n 
+the function x => x^n is computable. *)
 Lemma pow_n_rec_fun:
 	forall n, (fun x => pow x n) \is_recursive_function.
 Proof.
 elim.
+	(*The function x => x^0 is constant and there is a lemma that a constant function
+	is recursive if the element it maps to is. *)
+	apply/cnst_rec_fun.
+	(*The return value should be the real number 1 and is recursive because it is
+	a rational number *)
+	apply /(Q_rec_elts 1).
+	(* It is left to prove that that claim is true. *)
+	move => _ /=.
+	rewrite /Q2R/=; lra.
+	(* Alternatively one could have proven this by hand:
 	Locate "\is_recursive_function".
 	Print is_rec_fun.
 	(* We have to specify a realizer of the constant one function. *)
@@ -77,7 +59,7 @@ elim.
 	rewrite /rep_R.
 	move => eps epsg0.
 	(* The rest can automatically be done by the solver for linear inequalities over the reals. *)
-	split_Rabs; lra.
+	split_Rabs; lra. *)
 move => n ih /=.
 (* In this case we need to decompose the function into a composition of functions we already know
 to be recursive by using the lemma that proves that the composition of recursive functions is
@@ -102,12 +84,14 @@ by trivial.
 by trivial.
 Defined.
 
-(* The above is directly executable. To execute in a rational number q, you first have to get a name of the
-rational number. You can either proof that (fun _ => q) does the trick or use the lemma Q_cmpt_elts.
-To get the algorithmic content use projT1. So the following composes an algorithm extracted from the
-above lemma where n is set to 5 with an algorithm extracted from the lemma Q_cmpt_elts where the rational
-parameter is set to 1/2 to get an algorithm that produces arbitrary precision approximations to (1/2)^5 and
-we execute this algorithm on input 1/100 to get a 1/100-approximation. *)
+(* The above is directly executable. To execute in a rational number q, you first have to
+get a name of the rational number. You can either proof that (fun _ => q) does the
+trick or use the lemma Q_cmpt_elts. To get the algorithmic content use projT1.
+So the following composes an algorithm extracted from the above lemma where
+n is set to 5 with an algorithm extracted from the lemma Q_cmpt_elts where the
+rational parameter is set to 1/2 to get an algorithm that produces arbitrary precision
+approximations to (1/2)^5 and we execute this algorithm on input 1/100 to get a
+1/100-approximation. *)
 Compute (projT1 (pow_n_rec_fun 5)) (projT1 (Q_rec_elts (1#2))) (1#100)%Q.
 
 (* The proof that x^n is computable is uniform and can be turned into a statment that the function (n,x) => x^n

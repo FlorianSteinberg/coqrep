@@ -300,7 +300,7 @@ Lemma list_rev_rs_rec_ind (X Y: rep_space) (g: Y) (h: (rep_space_prod X Y) -> Y)
 Proof.
 move => grec hrec feq.
 set g' := (fun str: rep_space_one => g).
-have g'rec: g' \is_recursive_function by apply cnst_rec_fun.
+have g'rec: g' \is_recursive_function by apply /cnst_rec_fun; first apply: grec.
 set h' := (fun p:rep_space_prod rep_space_one (rep_space_prod X Y) => h p.2).
 have h'rec: h' \is_recursive_function.
 	move: hrec => [hM hMprop].
@@ -330,7 +330,10 @@ apply/ rec_fun_rec_elt.
 	apply ih => x listin.
 	by apply prp; right.
 apply/ rec_fun_comp; [apply diag_rec_fun| | ].
-apply/ rec_fun_comp; first by apply prod_rec_fun; [apply/cnst_rec_fun/prp; left | apply id_rec_fun].
+apply/ rec_fun_comp.
+	apply prod_rec_fun.
+		by apply/cnst_rec_fun; first by apply /prp; left.
+	by apply id_rec_fun.
 apply cons_rec_fun_rev.
 done.
 done.
@@ -358,7 +361,8 @@ have hrec: (fun zaT => (f (zaT.1, zaT.2.1) :: zaT.2.2)) \is_recursive_function.
 	apply/ rec_fun_comp; first by apply prod_rec_fun; [apply frec | apply id_rec_fun].
 	by apply cons_rec_fun_rev.
 	done. done.
-apply/ (list_rev_rs_rec_pind (@cnst_rec_fun Z (rep_space_list_rev Y) nil (@nil_rev_rec_elt Y)) hrec).
+apply/ list_rev_rs_rec_pind; first by apply /cnst_rec_fun; first apply /nil_rev_rec_elt.
+	exact: hrec.
 move => [z K] /=; by elim: K => // a K <-.
 Defined.
 

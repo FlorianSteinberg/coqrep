@@ -142,7 +142,7 @@ split.
 split; last by rewrite !F2MF_comp/F2MF/=; split => s t; case: s => //; elim.
 apply/rec_fun_cmpt/rec_fun_comp; [ | apply paib_rec_fun | ] => /=.
 	apply/ sum_rec_fun; first exact: Some_rec_fun.
-	by apply cnst_rec_fun; apply None_rec_elt.
+	by apply /cnst_rec_fun; first apply None_rec_elt.
 by case.
 Qed.
 End OPTIONSPACES.

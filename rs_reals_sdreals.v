@@ -36,14 +36,14 @@ end).
 by case; [case; [exists 0%nat | exists 1%nat | exists 2%nat] | exists 3%nat].
 Qed.
 
-Definition UI := { x | -1 <= x <= 1}.
-
 Definition SD2Z sd : Z := match sd with
 	| one => 1%Z
 	| zero => 0%Z
 	| minusone => -1%Z
 end.
+End signed_digits.
 
+Section SDs.
 Fixpoint SDs2Zn (sds: nat -> SD) n := match n with
 	| 0%nat => 0%Z
 	| m.+1 => (2 * SDs2Zn sds m + SD2Z (sds m))%Z
@@ -108,8 +108,7 @@ Proof.
 rewrite /SDs2Rn big_ord_recl /= addrC.
 congr (_ + _); last rewrite Rmult_1_r /GRing.mul /=; try lra.
 elim: n => [ | n ih]; first by rewrite !big_ord0 /GRing.zero /=; lra.
-rewrite big_ord_recr /= ih.
-rewrite [\sum_(i < n.+1) _] big_ord_recr /=.
+rewrite big_ord_recr /= ih [\sum_(i < n.+1) _] big_ord_recr /=.
 have ->: bump 0%nat n = n.+1 by rewrite /bump.
 rewrite Rmult_plus_distr_l.
 congr (_ + _).
@@ -166,7 +165,9 @@ Proof.
 move => /SDs2R_eff val; move: (val 0%nat) => /=.
 rewrite /SDs2Rn big_ord0/= Rminus_0_l Rabs_Ropp; split_Rabs; lra.
 Qed.
+End SDs.
 
+Section Lists.
 Fixpoint SDL2R L:= match L with
 	| [::] => 0
 	| sd :: K => SDL2R K + SD2R sd * /2 ^ (size L)
@@ -200,68 +201,71 @@ Proof.
 elim: n => [ | n ih]; first by rewrite /SDs2Rn big_ord0.
 by rewrite /= SDs2RnS /= size_inseg ih.
 Qed.
+End Lists.
 
-Definition rep_SD sds (x: UI):= SDs2R sds (projT1 x).
+Section rep_UI.
+Definition UI := { x | -1 <= x <= 1}.
 
-Lemma rep_sd_tot: rep_SD \is_total.
+Definition rep_UI sds (x: UI):= SDs2R sds (projT1 x).
+
+Lemma rep_UI_tot: rep_UI \is_total.
 Proof.
-move => sds; have [x val]:= SDs2R_tot sds.
-by exists (exist _ x (SDs2R_UI sds x val)).
+by move => sds; have [x val]:= SDs2R_tot sds; exists (exist _ x (SDs2R_UI sds x val)).
 Qed.
 
-Lemma rep_SD_sing: 	rep_SD \is_single_valued.
+Lemma rep_UI_sing: 	rep_UI \is_single_valued.
 Proof.
 move => sds x y sdsnx sdsny; apply /eq_sub /SDs2R_sing; [apply sdsnx | apply sdsny].
 Qed.
 
-Definition rep_SD_inc phi (x: UI) :=
+Definition rep_UI_inc phi (x: UI) :=
 	forall L, Rabs (projT1 x - SDL2R L) <= /2^(size L)
 	->
 	Rabs (projT1 x - SDL2R (phi L :: L)) <= /2^(size L).+1.
 
-Fixpoint SD_inc_to_SD_rec (Lf: seq SD -> SD) m := match m with
+Fixpoint UI_inc_to_UI_rec (Lf: seq SD -> SD) m := match m with
 	| 0%nat => [::]
-	| S k => (Lf (SD_inc_to_SD_rec Lf k):: SD_inc_to_SD_rec Lf k)
+	| S k => (Lf (UI_inc_to_UI_rec Lf k):: UI_inc_to_UI_rec Lf k)
 end.
 
-Lemma SD_inc_to_SD_rec_size Lf n:
-	size (SD_inc_to_SD_rec Lf n) = n.
+Lemma UI_inc_to_UI_rec_size Lf n:
+	size (UI_inc_to_UI_rec Lf n) = n.
 Proof. by elim: n => // n /= ->. Qed.
 
-Definition SD_inc_to_SD (Lf: seq SD -> SD) n := Lf (SD_inc_to_SD_rec Lf n).
+Definition UI_inc_to_UI (Lf: seq SD -> SD) n := Lf (UI_inc_to_UI_rec Lf n).
 
-Lemma SD_inc_to_SD_inseg Lf n:
-	in_seg (SD_inc_to_SD Lf) n = SD_inc_to_SD_rec Lf n.
+Lemma UI_inc_to_UI_inseg Lf n:
+	in_seg (UI_inc_to_UI Lf) n = UI_inc_to_UI_rec Lf n.
 Proof. by elim :n => // n /= ->. Qed.
 
-Lemma SD_inc_to_SD_correct Lf x:
-	rep_SD_inc Lf x -> rep_SD (SD_inc_to_SD Lf) x.
+Lemma UI_inc_to_UI_correct Lf x:
+	rep_UI_inc Lf x -> rep_UI (UI_inc_to_UI Lf) x.
 Proof.
-move: x => [x ineq] Lfnx; rewrite /rep_SD SDs2R_eff; elim => [ | n /=].
+move: x => [x ineq] Lfnx; rewrite /rep_UI SDs2R_eff; elim => [ | n /=].
 	by rewrite /= SDs2Rn0; split_Rabs; try lra.
-rewrite SDs2RnS SDs2Rn_SDL2R Rabs_minus_sym SD_inc_to_SD_inseg.
+rewrite SDs2RnS SDs2Rn_SDL2R Rabs_minus_sym UI_inc_to_UI_inseg.
 have ltn: 0<2^n by apply pow_lt; lra.
-rewrite -{2}(SD_inc_to_SD_rec_size Lf n); try lra; move => ih.
-have /=:= Lfnx (SD_inc_to_SD_rec Lf n) ih.
-by rewrite SD_inc_to_SD_rec_size Rabs_minus_sym.
+rewrite -{2}(UI_inc_to_UI_rec_size Lf n); try lra; move => ih.
+have /=:= Lfnx (UI_inc_to_UI_rec Lf n) ih.
+by rewrite UI_inc_to_UI_rec_size Rabs_minus_sym.
 Qed.
 
-Lemma rep_SD_inc_sing: rep_SD_inc \is_single_valued.
+Lemma rep_UI_inc_sing: rep_UI_inc \is_single_valued.
 Proof.
 move => Lf x y Lfnx Lfny.
-by apply /(rep_SD_sing (SD_inc_to_SD Lf)); apply SD_inc_to_SD_correct.
+by apply /(rep_UI_sing (UI_inc_to_UI Lf)); apply UI_inc_to_UI_correct.
 Qed.
 
-Lemma rep_SD_inc_nc (x: UI): 
+Lemma rep_UI_inc_nc (x: UI): 
 	(forall q, exists a, Rabs (projT1 x - SDL2R q) <= /2^(size q)
 		-> Rabs (projT1 x - SDL2R (a :: q)) <= /2^(size q).+1)
-	-> x \from_codom rep_SD_inc.
+	-> x \from_codom rep_UI_inc.
 Proof. by move => R; apply (choice _ R). Qed.
 
-Lemma rep_SD_inc_cotot: is_cotot rep_SD_inc.
+Lemma rep_UI_inc_cotot: is_cotot rep_UI_inc.
 Proof.
 move => [x ineq].
-apply rep_SD_inc_nc => sdL.
+apply rep_UI_inc_nc => sdL.
 case: (classic (x <= SDL2R sdL)) => leq.
 	exists minusone => /= ineq'.
 have leq':= pow_lt 2 (size sdL).
@@ -275,38 +279,34 @@ have leq'': 0 < /2 ^ (size sdL) by apply Rinv_0_lt_compat; lra.
 by split_Rabs; try lra.
 Qed.
 
-Lemma rep_SD_inc_is_rep: 	rep_SD_inc \is_representation.
-Proof.
-split; [exact rep_SD_inc_sing | exact rep_SD_inc_cotot].
-Qed.
+Lemma rep_UI_inc_is_rep: 	rep_UI_inc \is_representation.
+Proof. by split; [apply: rep_UI_inc_sing | apply rep_UI_inc_cotot]. Qed.
 
-Definition rep_space_SD_inc :=
-@make_rep_space UI (seq SD) SD rep_SD_inc [::] zero (list_count SD_count) (SD_count) rep_SD_inc_is_rep.
+Definition rep_space_UI_inc :=
+@make_rep_space UI (seq SD) SD rep_UI_inc [::] zero (list_count SD_count) (SD_count) rep_UI_inc_is_rep.
 
-Lemma rep_SD_cotot: is_cotot rep_SD.
+Lemma rep_UI_cotot: is_cotot rep_UI.
 Proof.
 move => x.
-have [Lf Lfnx]:= rep_SD_inc_cotot x.
-exists (SD_inc_to_SD Lf).
-by apply SD_inc_to_SD_correct.
+have [Lf Lfnx]:= rep_UI_inc_cotot x.
+exists (UI_inc_to_UI Lf).
+by apply UI_inc_to_UI_correct.
 Qed.
 
-Lemma rep_sd_is_rep: rep_SD \is_representation.
-Proof.
-by split; [exact: rep_SD_sing | exact: rep_SD_cotot].
-Qed.
+Lemma rep_UI_is_rep: rep_UI \is_representation.
+Proof. by split; [apply: rep_UI_sing | apply: rep_UI_cotot]. Qed.
 
-Canonical rep_space_UIsd := @make_rep_space
+Canonical rep_space_UI := @make_rep_space
 	UI
 	_
 	_
-	rep_SD
+	rep_UI
 	(some_question _)
 	zero
 	(countable_questions _)
 	SD_count
-	rep_sd_is_rep.
-End signed_digits.
+	rep_UI_is_rep.
+End rep_UI.
 
 Section SD_and_SD_inc.
 (* The representation rec_SD_inc provides more information about signed digits:
@@ -317,7 +317,7 @@ since I couldn't figure out how to properly do branching on rational numbers.*)
 
 (* This function should do the branching over the rational numbers so it
 is executable. *)
-Definition SD_to_SD_inc sds L :=
+Definition UI_to_UI_inc sds L :=
 	if is_left (Z_lt_dec (SDs2Zn sds (size L).+1) (2 * SDL2Z L)) then minusone
 		else if is_left (Z_lt_dec (2 * SDL2Z L) (SDs2Zn sds (size L).+1)) then one
 			else zero.
@@ -329,14 +329,14 @@ Fixpoint sds n := match n with
 	| S (S (S n)) => sds n
 end.
 
-Lemma SD_to_SD_inc_correct sds x:
-	rep_SD sds x -> rep_SD_inc (SD_to_SD_inc sds) x.
+Lemma UI_to_UI_inc_correct sds x:
+	rep_UI sds x -> rep_UI_inc (UI_to_UI_inc sds) x.
 Proof.
 move: x => [x xui] /SDs2R_eff /= sdsnx L /= ineq1.
 have g0: 0 < 2 ^ size L by apply pow_lt; lra.
 have := sdsnx (size L).+1; rewrite Rabs_minus_sym Rinv_mult_distr; try lra.
 move => ineq2.
-rewrite /SD_to_SD_inc; case: ifP; case: Z_lt_dec => // lt _.
+rewrite /UI_to_UI_inc; case: ifP; case: Z_lt_dec => // lt _.
 	move/(Zlt_le_succ _ _)/IZR_le: lt.
 	rewrite /Z.succ plus_IZR mult_IZR SDs2Zn_SDs2Rn SDL2Z_SDL2R => /= lt.
 	have ineq3: (SDs2Rn sds (size L).+1) <= SDL2R L - /2* /2^size L.
@@ -360,14 +360,14 @@ have: (SDs2Rn sds (size L).+1 = SDL2R L).
 by move <-; split_Rabs; try lra.
 Qed.
 
-Lemma SD_SD_inc_iso: wisomorphic rep_space_UIsd rep_space_SD_inc.
+Lemma UI_UI_inc_iso: wisomorphic rep_space_UI rep_space_UI_inc.
 Proof.
 do 2 exists ((fun x y => x = y)).
 split; last split; last by split => x y; apply comp_id_l.
-	apply rec_cmpt; exists SD_to_SD_inc => phi x phinx _.
-	by exists x; split => //; apply SD_to_SD_inc_correct.
-apply rec_cmpt; exists SD_inc_to_SD => phi x phinx _.
-by exists x; split => //; apply SD_inc_to_SD_correct.
+	apply rec_cmpt; exists UI_to_UI_inc => phi x phinx _.
+	by exists x; split => //; apply UI_to_UI_inc_correct.
+apply rec_cmpt; exists UI_inc_to_UI => phi x phinx _.
+by exists x; split => //; apply UI_inc_to_UI_correct.
 Qed.
 End SD_and_SD_inc.
 
@@ -400,3 +400,78 @@ Section output_and_examples.
 Definition SDs2Qn sds n := (inject_Z (SDs2Zn sds n) / (2#1)^Z.of_nat n)%Q.
 (*Example: Compute Qreduction.Qred (SDs2Qn sds 17). *)
 End output_and_examples.
+
+Section all_reals.
+Definition ZUI2R (zx: Z * UI) := IZR zx.1 + projT1 zx.2.
+
+Definition count_pos n := match n with
+	| 0%nat => None
+	| S n => Some (Pos.of_nat n)
+end.
+
+Lemma count_pos_sur: count_pos \is_surjective_function.
+Proof.
+case => [p | ]; last by exists 0%nat.
+by exists (Pos.to_nat p).+1; rewrite /count_pos Pos2Nat.id.
+Qed.
+
+Lemma Z_count: Z \is_countable.
+Proof.
+pose count_Z := fix count_Z n := match n with
+	| 0%nat => None
+	| S 0 => Some Z0
+	| S (S 0) => Some (Z.pos xH)
+	| S (S (S 0)) => Some (Z.neg xH)
+	| S (S n) => match count_Z n with
+		| None => None
+		| Some Z0 => Some Z0
+		| Some (Z.neg p) => Some (Z.pred (Z.neg p))
+		| Some (Z.pos p) => Some (Z.succ (Z.pos p))
+	end
+end.
+exists count_Z.
+case; last by exists 0%nat.
+case => [ | p | p]; first by exists 1%nat.
+	rewrite -[p]Pos2Nat.id.
+	elim: (Pos.to_nat p) => [ | n [m eq]]; first by exists 2%nat.
+	case: n eq => [ | n eq]; first by exists 2%nat.
+	exists m.+2.
+	Search _ Pos.of_nat.
+	rewrite /= eq.
+	case: m eq => //; case => // m eq.
+	by rewrite Pplus_one_succ_r.
+rewrite -[p]Pos2Nat.id.
+elim: (Pos.to_nat p) => [ | n [m eq]]; first by exists 3%nat.
+case: n eq => [ | n eq]; first by exists 3%nat.
+exists m.+2.
+Search _ Pos.of_nat.
+rewrite /= eq.
+case: m eq => //; case => // m eq.
+by rewrite Pplus_one_succ_r.
+Qed.
+
+Canonical rep_space_Z := @make_rep_space Z rs_one.one Z (@id_rep Z) star Z0 one_count Z_count (@id_rep_is_rep Z).
+
+Definition rep_R := (F2MF ZUI2R) o (rep (rep_space_prod rep_space_Z rep_space_UI)).
+
+Lemma rep_R_sing: rep_R \is_single_valued.
+Proof. by apply/ comp_sing; [apply: F2MF_sing | apply /(rep_sing _)]. Qed.
+
+Lemma rep_R_cotot: is_cotot rep_R.
+Proof.
+move => x; have ineq: -1 <= x - up x <= 1 by have := archimed x; lra.
+pose y:UI := (exist _ (x - up x) ineq).
+have [phi2 phi2ny]:= rep_UI_cotot y.
+pose phi1: names rep_space_Z := (fun _ => up x).
+exists (name_pair phi1 (phi2: names rep_space_UI)).
+split; last by move => a b; apply F2MF_tot.
+exists (up x, y).
+split; last by rewrite /F2MF /y /ZUI2R /=; lra.
+by rewrite /=/prod_rep/= lprj_pair rprj_pair.
+Qed.
+
+Lemma rep_R_is_rep: rep_R \is_representation.
+Proof. by split; [apply: rep_R_sing | apply: rep_R_cotot]. Qed.
+
+Canonical rep_space_R := @make_rep_space R _ _ rep_R (some_question _) (some_answer _) (countable_questions _) (countable_answers _) rep_R_is_rep.
+End all_reals.

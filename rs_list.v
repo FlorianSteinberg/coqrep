@@ -194,7 +194,7 @@ Lemma list_rs_rec_ind (X Y: rep_space) (g: Y) (h: rep_space_prod X Y -> Y) f:
 Proof.
 move => gcmpt hprec feq.
 set g' := (fun _: rep_space_one => g).
-have g'rec: g' \is_recursive_function by apply cnst_rec_fun.
+have g'rec: g' \is_recursive_function by apply /cnst_rec_fun; first apply gcmpt.
 set h' := (fun p:rep_space_prod rep_space_one (rep_space_prod X Y) => h p.2).
 have h'rec: h' \is_recursive_function.
 	move: hprec => [hM hMprop].
