@@ -35,7 +35,7 @@ under.v
 rs_reals.v
 rs_reals_creals.v
 rs_reals_sdreals.v
-rs_reals_sdvc.v
+rs_reals_sdvsc.v
 
 examples_continuity.v
 example_polynomials.v

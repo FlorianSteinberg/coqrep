@@ -169,7 +169,7 @@ pose h (zaT: rep_space_prod rep_space_R (rep_space_prod rep_space_R rep_space_R)
 cut (fun xp => horner_rec (xp.2: seq_R) (xp.1: rep_space_R)) \is_recursive_function => [evp | ].
 	by apply/ rec_fun_comp; [apply switch_rec_fun | apply evp | ].
 apply/ (@list_rev_rs_rec_pind _ _ _ g h (fun px => horner_rec (px.2) px.1)).
-	by apply cnst_rec_fun; apply: Q_rec_elts.
+	by apply /cnst_rec_fun; first apply: (Q_rec_elts 0).
 rewrite /h.
 apply/ rec_fun_comp; [apply prod_rec_fun; [ apply id_rec_fun | apply switch_rec_fun]| | ] => /=.
 apply/ rec_fun_comp; [apply prod_assoc_rec_fun | | ] => /=.
@@ -236,7 +236,7 @@ rewrite /ladd/=.
 have nth0_rec: (fun (K:seq_R) => nth 0 K:(nat -> rep_space_R)) \is_recursive_function.
 	apply /rec_fun_comp; [ | apply nth_rec_rev | ] => /=.
 		apply /rec_fun_comp; [apply diag_rec_fun | | ] => /=.
-			by apply /prod_rec_fun; [by apply/cnst_rec_fun/(Q_rec_elts 0) | apply id_rec_fun].
+			by apply /prod_rec_fun; [by apply/cnst_rec_fun; first apply/(Q_rec_elts 0) | apply id_rec_fun].
 		done.
 	by replace (Q2R 0) with 0%R by by rewrite /Q2R/=; lra.
 have seq_rec:

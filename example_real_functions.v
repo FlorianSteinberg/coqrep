@@ -107,8 +107,7 @@ Unfortunately when working with prec functions, this is not true. Thus the induc
 a little more complicated than one might expect. *)
 Check nat_rs_rec_pind.
 apply (@nat_rs_rec_pind _ _ (fun _ => Q2R 1) (fun p => p.1 * p.2)).
-	apply/ cnst_rec_fun.
-	exact: Q_rec_elts.
+	by apply/ cnst_rec_fun; first apply: (Q_rec_elts 1).
 exact: Rmult_rec_fun.
 move => [r n].
 elim: n => //=.
