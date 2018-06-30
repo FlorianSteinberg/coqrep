@@ -25,8 +25,20 @@ Print rep_space_R.
 (* The tools provided by the library include that the arithmetic operations are computable,
 or more specifically recursive functions (being recursive is slightly stronger than
 computability) *)
-Check Rplus_rec_fun.
-Check Rplus_cmpt_fun.
+Search _ R is_cmpt_fun.
+Search _ R is_rec_fun.
+(* And that all rational numbers are recursive as real numbers: *)
+Check Q_rec_elts.
+(* Furthermore, it provides a proof that it is possible to take efficient limits: *)
+Check lim_eff_rec.
+(* Where efficient limits are limits that guarantee that come with a rate of convergence: *)
+Print lim_eff.
+(* The library also provides some abstract tools for reasoning about recursive and
+computable functions, for instance that these properties are preserved under
+composition, and that a constant function with recursive values is recursive. *)
+Check rec_fun_comp.
+Check cnst_rec_fun.
+
 
 (* As an example of how to apply these tools, let's prove that the power function
 is computable. To do this, we first prove by induction that for each n 
@@ -43,7 +55,7 @@ elim.
 	apply /(Q_rec_elts 1).
 	(* It is left to prove that that claim is true. *)
 	move => _ /=.
-	rewrite /Q2R/=; lra.
+	by rewrite /Q2R/=; lra.
 	(* Alternatively one could have proven this by hand:
 	Locate "\is_recursive_function".
 	Print is_rec_fun.
@@ -83,8 +95,11 @@ This is typically trivial if everything was done correctly. *)
 by trivial.
 by trivial.
 Defined.
+(* It should be noted, that the above does not mention the Cauchy representation and the
+proof can be reused for any representation of the real numbers for which proofs that the
+arithmetic operations and the rationals are recurisive are available. *)
 
-(* The above is directly executable. To execute in a rational number q, you first have to
+(* The above is also directly executable. To execute in a rational number q, you first have to
 get a name of the rational number. You can either proof that (fun _ => q) does the
 trick or use the lemma Q_cmpt_elts. To get the algorithmic content use projT1.
 So the following composes an algorithm extracted from the above lemma where
@@ -101,10 +116,10 @@ Lemma pow_rec_fun:
 Proof.
 (* pow is defined inductively *)
 rewrite /pow.
-(* So one way of proving this is to use the induction principle for prec_functions on the natural numbers.
-Note that there is a parameter r. Usually function spaces work well and this parameter can be curried.
-Unfortunately when working with prec functions, this is not true. Thus the induction principle looks
-a little more complicated than one might expect. *)
+(* So one way of proving this is to use the induction principle for prec_functions on the
+natural numbers. Note that there is a parameter r. Usually function spaces work well and
+this parameter can be curried. Unfortunately when working with prec functions, this is not
+true. Thus the induction principle looks a little more complicated than one might expect. *)
 Check nat_rs_rec_pind.
 apply (@nat_rs_rec_pind _ _ (fun _ => Q2R 1) (fun p => p.1 * p.2)).
 	by apply/ cnst_rec_fun; first apply: (Q_rec_elts 1).
@@ -115,70 +130,64 @@ elim: n => //=.
 by move => n /= ->.
 Defined.
 
-(* If one is familiar with the representations of the natural and real numbers, one can also specify an
-algorithm directly and prove it correct. *)
+(* If one is familiar with the representations of the natural and real numbers, one can also
+specify an algorithm directly and prove it correct. *)
 Lemma pow_rec_fun':
 	(fun p => pow p.1 p.2) \is_recursive_function.
 Proof.
 exists (fun phi eps => (projT1 (pow_n_rec_fun (rprj phi (star: questions rep_space_nat)))) (lprj phi) eps).
 abstract by move => phi [x n] [/=phinx phinn]; rewrite phinn; apply ((projT2 (pow_n_rec_fun n)) (lprj phi) x phinx).
 Defined.
-(* Both of these are directly executable again. *)
-Compute (projT1 pow_rec_fun (name_pair (projT1 (Q_rec_elts (1#2))) (fun _ => 5%nat))) (1#100)%Q.
-Compute (projT1 pow_rec_fun' (name_pair (projT1 (Q_rec_elts (1#2))) (fun _ => 5%nat))) (1#100)%Q.
 (* The later is the better practice as it keeps the non algorithmic part of the proof opaque.
 Note that if some essential part of the proof is opaque, the computation will usually take
 forever. But in case it comes to an end form the output it is usually apparent what needs to
 be done to restore executability. Unfortunately, executability is somewhat fragile it can
 also be broken by the use of lra in some cases. *)
 
-(* The library also provides an algorithm for taking efficient limits *)
-Check lim_eff_rec.
-(* Here, lim_eff is the restriction of the limit operator  *)
-Print lim.
-(* To the efficiently convergent Cauchy sequences *)
-(* The restriction to efficiently convergent sequences is neccessary, as the limit
-operator is discontinuous on its natural domain. *)
-Check lim_not_cont.
-(* And thus also not computable. *)
+(* Both of these are directly executable again. *)
+Compute (projT1 pow_rec_fun (name_pair (projT1 (Q_rec_elts (1#2))) (fun _ => 5%nat))) (1#100)%Q.
+Compute (projT1 pow_rec_fun' (name_pair (projT1 (Q_rec_elts (1#2))) (fun _ => 5%nat))) (1#100)%Q.
 
+(* The limit operator on real numbers is defined as one would expect: *)
+Print lim.
 (* The standard library provides its own limit operator, which is called Un_cv *)
 Print Un_cv.
-(* Note, that there is a slight difference, as the limit operator used in the standard library makes
-eps a real number and uses strict inequality. By contrast, lim uses a rational epsilons and <=.
-The former has the advantage that it is not tied to any representation or arbitrary choice of a dense
-subsequence. The later has the advantage that it makes computation easier. In particular the
-discontinuous and therefore also uncomputable up function that is integral part of the type of reals
-due to the archemidean Axiom *)
-Print archimed.
-(* is often used to translate an error bound eps into a discrete quantity like the index of a sequence.
-It's restriction to the rationals is computable. *)
-Print upQ.
-Print Int_partQ.
-Check archimedQ.
-(* Some ineffient proofs can be made efficient by replacing real epsilons by rational epsilons and uses of
-up function by uses of the upQ function. Of course, one has to prove that this does not change the
-statement. As example consider the limit operator, not that "=~=" is a notation for the equality of
-multivalued functions and translates to forall s t, f s t <-> g s t *)
-
-(* Thus, the discontinuity proven for lim can be transfered to Un_cv *)
-Lemma Uncv_not_cont:
-	~ Un_cv \has_continuous_realizer.
-Proof.
-move => discont.
-apply lim_not_cont.
-rewrite -Uncv_lim.
-done.
-Qed.
-
-(* On the other hand, the properties proved about Un_cv in the standard library can be transferred: *)
+(* The difference is the conventions in typing and inequalities, the induced functions
+are identical and a prove of this is included in the library. *)
+Check Uncv_lim.
+(* This makes it possible to transfer the properties proved about Un_cv in the standard
+library to the limit operator: *)
 Lemma lim_mult xn x yn y:
 	lim xn x -> lim yn y -> lim (ptw (fun p => p.1 * p.2) (xn, yn)) (x * y).
 Proof.
-move => limxnx limyny.
-rewrite -(Uncv_lim _).
-by apply CV_mult; rewrite (Uncv_lim _).
+by move => limxnx limyny; rewrite -(Uncv_lim _); apply CV_mult; rewrite (Uncv_lim _).
 Qed.
+(* With respect to the Cauchy representation, these limit operators are discontinuous *)
+Check lim_not_cont.
+Lemma Uncv_not_cont:
+	~ Un_cv \has_continuous_realizer.
+Proof. by move => discont; apply lim_not_cont; rewrite -Uncv_lim. Qed.
+(* Thus, computability fails and the library provides an algorithm for taking efficient
+limits instead. *)
+Check lim_eff_rec.
+(* Here, lim_eff is the restriction of the limit operator  *)
+Check lim_eff_Cauchy.
+(* To the efficiently convergent Cauchy sequences *)
+Print Cauchy_crit_eff.
+
+(* When using the Cauchy representation with limits, it is often convenient to restrict the
+quantification over real epsilons to the rationals. The according operator is also defined
+in the library *)
+Print limQ.
+(* Since the rationals are dense in R, this operator can be proven equivalent to the regular
+limit operator *)
+Check lim_limQ.
+(* In the same vain, there are tools to make the up function efficient by restricting it to
+rational inputs. This is convenient as it is often used to translate an error bound eps into
+a discrete quantity like the index of a sequence. *)
+Print upQ.
+Print Int_partQ.
+Check archimedQ.
 
 (* It is easy to define subspaces *)
 Definition I := (@rep_space_sub_space rep_space_R (fun x => -1 <= x <= 1)).
