@@ -38,5 +38,6 @@ rs_reals_sdreals.v
 rs_reals_sdvsc.v
 
 examples_continuity.v
+example_Cantor_space.v
 example_polynomials.v
 example_real_functions.v
